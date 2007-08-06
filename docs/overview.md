@@ -33,9 +33,9 @@ Uploaded archives are size- and integrity-checked. Defaults allow 1 MB metadata 
 
 Open **System → Import Sessions** to filter sessions by kind, status, or initiating user. This resource is restricted to global administrators with `import-session.view`; it is not site-scoped. Open a session to inspect its timeline, validation report, result summary, page decisions, relation decisions, and manifest. A failed session also shows its failure reason.
 
-If a **Running** session has become stale, the list may show **Recover stale imports**. This is a confirmed recovery action for stale sessions; it is not a rollback of completed imported content.
+If a **Running** or **Queued** session has become stale, the list may show **Recover stale imports**. This includes a queue handoff interrupted by broker failure or process death. Recovery renews the session's enqueue lease before redispatching; execution still rechecks the initiating actor's permissions and site access. This action does not roll back completed imported content.
 
-An operator with `import-session.cancel` can cancel a Draft, Parsed, Mapped, Validated, or Queued session. Cancellation does not stop a Running job. A failed session shows **Retry** only to an operator with `import-session.retry` and only while the source archive and stored decisions still make that session retriable; otherwise start a new import from the original archive.
+An operator with `import-session.cancel` can cancel a Draft, Parsed, Mapped, Validated, or Queued session. Cancellation does not stop a Running job. A failed session shows **Retry** only to an operator with `import-session.retry` and only while the source archive and stored decisions still make that session retriable. If a standard page or site archive attempt created records, execute its rollback first: retry remains blocked until every recorded creation was deleted or was already missing, and stays blocked when rollback skips an edited record. Otherwise start a new import from the original archive.
 
 ## Roll back created records
 
@@ -49,7 +49,7 @@ This is not a database restore. It only considers records captured as created by
 
 Session manifests, decisions, resolution maps, validation/results, archive paths, target URLs, failure reasons, and most rollback details are encrypted at rest. Rollback provenance and its signature remain readable so they can be verified. Import archives and content can still contain personal or confidential data, so restrict the configured disk, working directories, queue payloads, notifications, logs, and backups.
 
-The standard queued executor normally deletes its staged upload after successful completion and on most terminal failure paths, so do not treat Migration Assistant as archive storage. Import sessions, rollback reports, and rollback audit rows have no scheduled retention cleanup in this package; define a retention process that preserves operational and compliance evidence for only as long as required.
+The standard queued executor deletes its staged upload after successful completion. Failed and partial imports retain the archive so operators can retry or recover them; partial imports that created models also retain signed rollback evidence. Do not treat Migration Assistant as long-term archive storage. Import sessions, rollback reports, and rollback audit rows have no scheduled retention cleanup in this package; define a retention process that preserves operational and compliance evidence for only as long as required.
 
 ## Good to know
 

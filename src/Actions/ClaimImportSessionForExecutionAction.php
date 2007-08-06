@@ -17,8 +17,16 @@ final class ClaimImportSessionForExecutionAction
     /**
      * @param  list<ImportSessionStatus>  $allowedStatuses
      */
-    public function handle(ImportSession $session, ImportSessionStatus $targetStatus, array $allowedStatuses): ?ImportSession
-    {
+    public function handle(
+        ImportSession $session,
+        ImportSessionStatus $targetStatus,
+        array $allowedStatuses,
+        ?string $failureReason = null,
+    ): ?ImportSession {
+        // Conditional query updates bypass casts, including encrypted failure reasons.
+        $transition = new ImportSession;
+        $transition->forceFill(['failure_reason' => $failureReason]);
+
         $updated = ImportSession::query()
             ->whereKey($session->getKey())
             ->whereIn('status', array_map(
@@ -27,7 +35,7 @@ final class ClaimImportSessionForExecutionAction
             ))
             ->update([
                 'status' => $targetStatus->value,
-                'failure_reason' => null,
+                'failure_reason' => $transition->getAttributes()['failure_reason'],
                 'updated_at' => now(),
             ]);
 

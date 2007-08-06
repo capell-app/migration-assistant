@@ -64,7 +64,7 @@
             ]
         },
         {
-            "type": "configurator",
+            "type": "console-command",
             "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantConsoleCommandsContribution",
             "commands": [
                 "migration-assistant:export",

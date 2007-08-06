@@ -21,7 +21,7 @@ final class BuildImportRecoveryStatusAction
         $configuredMinutes = config('migration-assistant.recovery.stale_after_minutes', 30);
         $staleAfterMinutes = is_numeric($configuredMinutes) ? max(20, (int) $configuredMinutes) : 30;
         $query = ImportSession::query()
-            ->where('status', ImportSessionStatus::Running->value)
+            ->whereIn('status', [ImportSessionStatus::Running->value, ImportSessionStatus::Queued->value])
             ->where('updated_at', '<=', now()->subMinutes($staleAfterMinutes));
         $oldest = (clone $query)->oldest('updated_at')->first(['updated_at']);
 

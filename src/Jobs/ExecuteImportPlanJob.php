@@ -55,6 +55,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
     public function __construct(public int $importSessionId)
     {
+        $this->afterCommit();
         $queueName = config('migration-assistant.queue.name', 'migration-assistant');
         $this->onQueue(is_string($queueName) ? $queueName : 'migration-assistant');
 
@@ -127,6 +128,8 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
             $failureReason = $report->isSuccess() ? null : implode(' / ', array_slice($report->errors, 0, 5));
 
+            // Created identifiers must survive a rollback-report write failure;
+            // archive replay requires matching resolved rollback evidence.
             $session->forceFill([
                 'result_summary' => $report->toArray(),
                 'status' => $report->isSuccess() ? ImportSessionStatus::Completed : ImportSessionStatus::Failed,
@@ -134,13 +137,16 @@ final class ExecuteImportPlanJob implements ShouldQueue
                 'executed_at' => now(),
             ])->save();
 
-            if ($report->isSuccess()) {
+            if ($report->createdModels() !== []) {
                 CreateImportRollbackReportAction::run($session, $report);
+            }
+
+            if ($report->isSuccess()) {
                 event(new ImportCompleted($session));
+                $this->deleteCompletedArchive($session);
             } else {
                 event(new ImportFailed($session, (string) $failureReason));
             }
-            $this->deleteTerminalArchive($session);
         } catch (ImportExecutionAuthorizationException $exception) {
             $this->markFailed($session, $exception->getMessage());
 
@@ -153,7 +159,6 @@ final class ExecuteImportPlanJob implements ShouldQueue
             }
 
             $this->markFailed($session, $throwable->getMessage());
-            $this->deleteTerminalArchive($session);
 
             throw $throwable;
         } finally {
@@ -167,7 +172,8 @@ final class ExecuteImportPlanJob implements ShouldQueue
     public function middleware(): array
     {
         return [
-            (new WithoutOverlapping('migration-assistant:import-session:' . $this->importSessionId))
+            new WithoutOverlapping('migration-assistant:import-session:' . $this->importSessionId)
+                ->expireAfter(1200)
                 ->dontRelease(),
         ];
     }
@@ -176,12 +182,11 @@ final class ExecuteImportPlanJob implements ShouldQueue
     {
         $session = ImportSession::query()->find($this->importSessionId);
 
-        if (! $session instanceof ImportSession || ! in_array($session->status, [ImportSessionStatus::Queued, ImportSessionStatus::Running], true)) {
+        if (! $session instanceof ImportSession) {
             return;
         }
 
         $this->markFailed($session, $exception->getMessage());
-        $this->deleteTerminalArchive($session);
     }
 
     private function targetContextId(ImportSession $session): ?int
@@ -375,15 +380,19 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
     private function markFailed(ImportSession $session, string $reason): void
     {
-        $session->forceFill([
-            'status' => ImportSessionStatus::Failed,
-            'failure_reason' => $reason,
-        ])->save();
+        $failedSession = ClaimImportSessionForExecutionAction::run(
+            $session,
+            ImportSessionStatus::Failed,
+            [ImportSessionStatus::Queued, ImportSessionStatus::Running],
+            $reason,
+        );
 
-        event(new ImportFailed($session, $reason));
+        if ($failedSession instanceof ImportSession) {
+            event(new ImportFailed($failedSession, $reason));
+        }
     }
 
-    private function deleteTerminalArchive(ImportSession $session): void
+    private function deleteCompletedArchive(ImportSession $session): void
     {
         $archivePath = (string) $session->source_package_path;
 
@@ -402,10 +411,11 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
     private function releaseSessionForRetry(ImportSession $session): void
     {
-        $session->forceFill([
-            'status' => ImportSessionStatus::Queued,
-            'failure_reason' => null,
-        ])->save();
+        ClaimImportSessionForExecutionAction::run(
+            $session,
+            ImportSessionStatus::Queued,
+            [ImportSessionStatus::Running],
+        );
     }
 
     private function restoreAuthenticatedUser(?Authenticatable $previousUser): void

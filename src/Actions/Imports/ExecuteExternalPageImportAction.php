@@ -7,6 +7,7 @@ namespace Capell\MigrationAssistant\Actions\Imports;
 use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Site;
+use Capell\MigrationAssistant\Actions\ClaimImportSessionForExecutionAction;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Data\ExternalImportPreview;
@@ -102,12 +103,16 @@ final class ExecuteExternalPageImportAction
                 throw $throwable;
             }
 
-            $session->forceFill([
-                'status' => ImportSessionStatus::Failed,
-                'failure_reason' => $throwable->getMessage(),
-            ])->save();
+            $failedSession = ClaimImportSessionForExecutionAction::run(
+                $session,
+                ImportSessionStatus::Failed,
+                [ImportSessionStatus::Running],
+                $throwable->getMessage(),
+            );
 
-            event(new ImportFailed($session, $throwable->getMessage()));
+            if ($failedSession instanceof ImportSession) {
+                event(new ImportFailed($failedSession, $throwable->getMessage()));
+            }
 
             throw $throwable;
         }

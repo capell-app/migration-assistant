@@ -24,7 +24,7 @@ final class ReclaimStaleImportSessionsAction
         $reclaimed = 0;
 
         $sessionIds = ImportSession::query()
-            ->where('status', ImportSessionStatus::Running->value)
+            ->whereIn('status', [ImportSessionStatus::Running->value, ImportSessionStatus::Queued->value])
             ->where('updated_at', '<=', $cutoff)
             ->orderBy('updated_at')
             ->limit(max(1, $limit))
@@ -33,7 +33,7 @@ final class ReclaimStaleImportSessionsAction
         foreach ($sessionIds as $sessionId) {
             $updated = ImportSession::query()
                 ->whereKey($sessionId)
-                ->where('status', ImportSessionStatus::Running->value)
+                ->whereIn('status', [ImportSessionStatus::Running->value, ImportSessionStatus::Queued->value])
                 ->where('updated_at', '<=', $cutoff)
                 ->update([
                     'status' => ImportSessionStatus::Queued->value,

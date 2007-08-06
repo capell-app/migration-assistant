@@ -152,7 +152,7 @@ it('declares migration assistant install surfaces and contribution traceability'
             ],
         ],
         [
-            'type' => 'configurator',
+            'type' => 'console-command',
             'class' => MigrationAssistantConsoleCommandsContribution::class,
             'commands' => [
                 'migration-assistant:export',

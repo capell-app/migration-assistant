@@ -24,14 +24,7 @@ final class CancelImportSessionAction
 
     public static function isCancellable(ImportSession $session): bool
     {
-        return match ($session->status) {
-            ImportSessionStatus::Draft,
-            ImportSessionStatus::Parsed,
-            ImportSessionStatus::Mapped,
-            ImportSessionStatus::Validated,
-            ImportSessionStatus::Queued => true,
-            default => false,
-        };
+        return in_array($session->status, self::cancellableStatuses(), true);
     }
 
     public function handle(ImportSession $session): ImportSession
@@ -42,10 +35,20 @@ final class CancelImportSessionAction
             );
         }
 
-        $session->forceFill([
-            'status' => ImportSessionStatus::Abandoned,
-        ])->save();
+        ClaimImportSessionForExecutionAction::run($session, ImportSessionStatus::Abandoned, self::cancellableStatuses());
 
         return $session->refresh();
+    }
+
+    /** @return list<ImportSessionStatus> */
+    private static function cancellableStatuses(): array
+    {
+        return [
+            ImportSessionStatus::Draft,
+            ImportSessionStatus::Parsed,
+            ImportSessionStatus::Mapped,
+            ImportSessionStatus::Validated,
+            ImportSessionStatus::Queued,
+        ];
     }
 }

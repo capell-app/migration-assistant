@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Capell\MigrationAssistant\Actions\CancelImportSessionAction;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
 use Capell\MigrationAssistant\Actions\PrepareMigrationScreenshotDetailAction;
@@ -176,6 +177,17 @@ it('shows cancel for queued sessions and flips status to abandoned on confirm', 
 
     expect($session->refresh()->status)->toBe(ImportSessionStatus::Abandoned);
 });
+
+it('does not cancel a stale queued snapshot after execution has advanced', function (ImportSessionStatus $status): void {
+    $session = makeImportSession(['status' => ImportSessionStatus::Queued]);
+    $stale = ImportSession::query()->findOrFail($session->getKey());
+    $session->forceFill(['status' => $status, 'failure_reason' => 'Existing result'])->save();
+
+    $result = CancelImportSessionAction::run($stale);
+
+    expect($result->status)->toBe($status)
+        ->and($result->failure_reason)->toBe('Existing result');
+})->with([ImportSessionStatus::Running, ImportSessionStatus::Completed, ImportSessionStatus::Failed, ImportSessionStatus::Abandoned]);
 
 it('hides the retry action unless the session is failed', function (): void {
     $session = makeImportSession(['status' => ImportSessionStatus::Queued]);

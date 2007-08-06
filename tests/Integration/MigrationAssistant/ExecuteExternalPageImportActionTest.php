@@ -12,6 +12,7 @@ use Capell\MigrationAssistant\Data\ExternalImportPreview;
 use Capell\MigrationAssistant\Data\ExternalImportReadResult;
 use Capell\MigrationAssistant\Data\ExternalPageImportTargetData;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
+use Capell\MigrationAssistant\Events\ImportCompleted;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ExternalImportPreviewBuilder;
@@ -23,6 +24,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Assert;
 use Spatie\Permission\Models\Role;
@@ -30,6 +32,30 @@ use Spatie\Permission\Models\Role;
 beforeEach(function (): void {
     Notification::fake();
     $this->actingAsAdmin();
+});
+
+it('preserves completed external imports when completion listeners fail', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->page()->create();
+    $site = Site::factory()->create();
+    $preview = (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'csv',
+        columns: ['title'],
+        rows: [['title' => 'Completed before notification failure']],
+        suggestedTarget: 'page',
+    ));
+    Event::listen(ImportCompleted::class, static function (): never {
+        throw new RuntimeException('Completion listener failed');
+    });
+
+    expect(fn () => ExecuteExternalPageImportAction::run($preview, migrationAssistantExternalTarget($site, $layout, $type)))
+        ->toThrow(RuntimeException::class, 'Completion listener failed');
+
+    $session = ImportSession::query()->sole();
+    expect($session->status)->toBe(ImportSessionStatus::Completed)
+        ->and($session->failure_reason)->toBeNull()
+        ->and($session->rollbackReports()->count())->toBe(1)
+        ->and($session->result_summary['pages_created'] ?? null)->toBe(1);
 });
 
 it('executes external preview rows into pages with an import session and rollback report', function (): void {
