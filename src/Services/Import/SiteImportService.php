@@ -25,12 +25,13 @@ final readonly class SiteImportService
         PackageReadResult $package,
         ResolutionMap $resolutionMap,
         ?int $targetContextId = null,
+        ?int $mediaImportSessionId = null,
     ): ImportExecutionReport {
-        return DB::transaction(function () use ($package, $resolutionMap, $targetContextId): ImportExecutionReport {
+        return DB::transaction(function () use ($package, $resolutionMap, $targetContextId, $mediaImportSessionId): ImportExecutionReport {
             $createdSiteIds = $this->emptyCreatedIds();
             $createdSiteDomainIds = $this->emptyCreatedIds();
             $map = $this->materialiseSiteRelations($package, $resolutionMap, $createdSiteIds, $createdSiteDomainIds);
-            $report = $this->pageImporter->import($package, $map, $targetContextId);
+            $report = $this->pageImporter->import($package, $map, $targetContextId, mediaImportSessionId: $mediaImportSessionId);
 
             return new ImportExecutionReport(
                 pagesCreated: $report->pagesCreated,

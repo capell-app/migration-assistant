@@ -40,6 +40,7 @@ final readonly class ResolutionMapBuilder
     public function build(array $payload): ResolutionMap
     {
         $siteIdsBySourceId = $this->resolveSiteIdMap($payload);
+        $mediaSiteIds = $this->resolveMediaSiteIds($payload, $siteIdsBySourceId);
 
         $resolved = [];
         $unresolved = [];
@@ -68,7 +69,9 @@ final readonly class ResolutionMapBuilder
                 continue;
             }
 
-            $siteId = $this->targetSiteId($descriptor, $siteIdsBySourceId);
+            $siteId = $folder === 'media'
+                ? ($mediaSiteIds[$ref] ?? null)
+                : $this->targetSiteId($descriptor, $siteIdsBySourceId);
             $resolution = $this->registry->resolve($folder, $descriptor, $siteId);
             if (! $resolution instanceof MatchResolution) {
                 $unresolved[] = $ref;
@@ -132,6 +135,43 @@ final readonly class ResolutionMapBuilder
         $sourceSiteId = $this->integerAttribute($attributes['site_id'] ?? null);
 
         return $sourceSiteId === null ? null : ($siteIdsBySourceId[$sourceSiteId] ?? null);
+    }
+
+    /**
+     * Media exports carry their page owner rather than a site_id. Derive the
+     * preview scope from importing pages; ambiguous multi-site bindings stay unresolved.
+     *
+     * @param  array<string, string>  $payload
+     * @param  array<int, int>  $siteIdsBySourceId
+     * @return array<string, int|null>
+     */
+    private function resolveMediaSiteIds(array $payload, array $siteIdsBySourceId): array
+    {
+        $siteIdsByMediaRef = [];
+        foreach ($payload as $path => $contents) {
+            if (! str_starts_with($path, 'pages/')) {
+                continue;
+            }
+            $page = $this->decode($contents, $path);
+            $siteRef = data_get($page, 'shared_relations.site.ref');
+            $sourceSiteId = is_string($siteRef) && str_starts_with($siteRef, 'site:')
+                ? $this->integerAttribute(substr($siteRef, 5))
+                : null;
+            $siteId = $sourceSiteId === null ? $this->targetSiteId($page, $siteIdsBySourceId) : ($siteIdsBySourceId[$sourceSiteId] ?? null);
+            $bindings = $page['media_bindings'] ?? [];
+            if (! is_array($bindings)) {
+                continue;
+            }
+            foreach ($bindings as $binding) {
+                $ref = is_array($binding) ? ($binding['ref'] ?? null) : null;
+                if (! is_string($ref)) {
+                    continue;
+                }
+                $siteIdsByMediaRef[$ref] = array_key_exists($ref, $siteIdsByMediaRef) && $siteIdsByMediaRef[$ref] !== $siteId ? null : $siteId;
+            }
+        }
+
+        return $siteIdsByMediaRef;
     }
 
     private function integerAttribute(mixed $value): ?int

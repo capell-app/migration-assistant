@@ -47,6 +47,10 @@ Screenshot contract: `docs/screenshots.json`.
 
 ## Technical Shape
 
+### Imported media security
+
+The importer derives stored extensions from sniffed MIME types and checks container framing and storage destinations. Payload bytes remain opaque; safe storage and static serving form the security boundary. See [the media threat model](docs/media-security.md) for the checks and server configuration requirements.
+
 ### Service providers
 
 - `Capell\MigrationAssistant\Providers\MigrationAssistantInstallServiceProvider`

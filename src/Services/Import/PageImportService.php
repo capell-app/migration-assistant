@@ -7,11 +7,14 @@ namespace Capell\MigrationAssistant\Services\Import;
 use Capell\Core\Models\Media;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\PageUrl;
+use Capell\Core\Support\Publishing\PublishSentinel;
 use Capell\MigrationAssistant\Contracts\MigrationAssistantContextResolver;
 use Capell\MigrationAssistant\Contracts\MigrationAssistantRowContributor;
 use Capell\MigrationAssistant\Contracts\NullMigrationAssistantContextResolver;
 use Capell\MigrationAssistant\Contracts\NullMigrationAssistantRowContributor;
+use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Throwable;
 use UnexpectedValueException;
 
@@ -36,6 +39,7 @@ final readonly class PageImportService
         ResolutionMap $resolutionMap,
         ?int $targetContextId = null,
         ?int $authorizedSiteId = null,
+        ?int $mediaImportSessionId = null,
     ): ImportExecutionReport {
         $created = [];
         $skipped = 0;
@@ -48,6 +52,7 @@ final readonly class PageImportService
             $package,
             $resolutionMap,
             $authorizedSiteId,
+            $mediaImportSessionId,
             &$created,
             &$skipped,
             &$errors,
@@ -59,6 +64,7 @@ final readonly class PageImportService
                 $package,
                 $resolutionMap,
                 $authorizedSiteId,
+                $mediaImportSessionId,
                 &$created,
                 &$skipped,
                 &$errors,
@@ -107,7 +113,7 @@ final readonly class PageImportService
                     try {
                         $this->remapParent($localId, $descriptor, $sourceIdToLocalId);
                         $urlsCreated += $this->restorePageUrls($localId, $descriptor);
-                        $mediaReassigned += $this->rebindMedia($localId, $descriptor, $resolutionMap);
+                        $mediaReassigned += $this->rebindMedia($localId, $descriptor, $resolutionMap, $mediaImportSessionId);
                     } catch (Throwable $e) {
                         $this->recordError($errors, $structuredErrors, $entryPath, 'owned-relations', $e);
                     }
@@ -234,6 +240,12 @@ final readonly class PageImportService
         // read out of the untrusted payload.
         $attributes['site_id'] = $siteId;
 
+        // Source publication status must remain effective without an editorial package.
+        $meta = $attributes['meta'] ?? null;
+        if (is_array($meta) && array_key_exists('status', $meta) && (! is_string($meta['status']) || strtolower(trim($meta['status'])) !== 'publish')) {
+            $attributes['visible_from'] = PublishSentinel::draftValue();
+        }
+
         $page = new Page;
         $page->forceFill($attributes);
         $page->save();
@@ -339,7 +351,7 @@ final readonly class PageImportService
     /**
      * @param  array<string, mixed>  $descriptor
      */
-    private function rebindMedia(int|string $localId, array $descriptor, ResolutionMap $map): int
+    private function rebindMedia(int|string $localId, array $descriptor, ResolutionMap $map, ?int $mediaImportSessionId): int
     {
         $bindings = is_array($descriptor['media_bindings'] ?? null) ? $descriptor['media_bindings'] : [];
         $count = 0;
@@ -359,13 +371,22 @@ final readonly class PageImportService
                 continue;
             }
 
-            Media::query()
+            $media = Media::query()->findOrFail($localMediaId);
+            $page = Page::query()->withoutGlobalScopes()->findOrFail($localId);
+            $owner = $media->model;
+            $sameSite = $owner instanceof Page && (string) $owner->site_id === (string) $page->site_id;
+            $ownedByImport = $owner instanceof ImportSession && $mediaImportSessionId !== null
+                && $owner->id === $mediaImportSessionId;
+            throw_unless($sameSite || $ownedByImport, RuntimeException::class, 'Media owner is outside the importing site or session.');
+
+            $count += Media::query()
                 ->whereKey($localMediaId)
+                ->where('model_type', $media->model_type)
+                ->where('model_id', $media->model_id)
                 ->update([
                     'model_type' => (new Page)->getMorphClass(),
                     'model_id' => $localId,
                 ]);
-            $count++;
         }
 
         return $count;

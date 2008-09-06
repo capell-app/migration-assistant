@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Services\Import\Resolvers;
 
 use Capell\Core\Models\Media;
+use Capell\Core\Models\Page;
+use Illuminate\Database\Eloquent\Builder;
+use Override;
 
 /**
  * Match media by content checksum first, then by file name. Checksum
@@ -14,11 +17,22 @@ use Capell\Core\Models\Media;
  */
 final class MediaMatchResolver implements MatchResolver
 {
+    #[Override]
     public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
     {
+        if ($siteId === null) {
+            return null;
+        }
+
+        $query = Media::query()->whereHasMorph(
+            'model',
+            [Page::class],
+            static fn (Builder $query): Builder => $query->withoutGlobalScopes()->where('site_id', $siteId),
+        );
+
         $checksum = $descriptor['checksum'] ?? null;
         if (is_string($checksum) && $checksum !== '') {
-            $model = Media::query()
+            $model = (clone $query)
                 ->where('custom_properties->checksum', $checksum)
                 ->first();
             if ($model instanceof Media) {
@@ -28,7 +42,7 @@ final class MediaMatchResolver implements MatchResolver
 
         $fileName = $descriptor['file_name'] ?? null;
         if (is_string($fileName) && $fileName !== '') {
-            $model = Media::query()->where('file_name', $fileName)->first();
+            $model = (clone $query)->where('file_name', $fileName)->first();
             if ($model instanceof Media) {
                 return new MatchResolution(
                     localId: $model->getKey(),

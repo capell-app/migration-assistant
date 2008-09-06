@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Services\Import\Resolvers;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Override;
 
 /**
  * Match by stable key, falling back to a normalised-name lookup.
@@ -32,9 +33,10 @@ final readonly class KeyedMatchResolver implements MatchResolver
         private bool $scopeToSite = false,
     ) {}
 
+    #[Override]
     public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
     {
-        $key = $descriptor[$this->keyColumn] ?? null;
+        $key = $descriptor[$this->keyColumn] ?? data_get($descriptor, 'attributes.' . $this->keyColumn);
         if (is_string($key) && $key !== '') {
             $model = $this->scopedQuery($siteId)->where($this->keyColumn, $key)->first();
             if ($model instanceof Model) {
@@ -43,7 +45,7 @@ final readonly class KeyedMatchResolver implements MatchResolver
         }
 
         if ($this->nameColumn !== null) {
-            $name = $descriptor[$this->nameColumn] ?? null;
+            $name = $descriptor[$this->nameColumn] ?? data_get($descriptor, 'attributes.' . $this->nameColumn);
             if (is_string($name) && $name !== '') {
                 $normalised = $this->normalise($name);
                 $modelClass = $this->modelClass;

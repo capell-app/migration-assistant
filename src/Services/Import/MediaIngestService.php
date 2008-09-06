@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Services\Import;
 
-use Capell\Core\Models\Media;
+use Capell\MigrationAssistant\Actions\StoreImportedMediaAction;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 use RuntimeException;
-use Throwable;
 use ZipArchive;
 
 /**
- * Copies media binaries from an incoming content package onto the local
+ * Copies media binaries from an incoming content package onto the configured
  * media disk and creates a matching Media row when the incoming ref has
  * no local match. Called outside the PageImportService transaction so
  * the filesystem side-effect is safe to retry; idempotency is keyed on
@@ -81,14 +79,6 @@ final class MediaIngestService
         $fileName = is_string($descriptor['file_name'] ?? null) ? $descriptor['file_name'] : '';
         throw_if($fileName === '', RuntimeException::class, 'Media descriptor is missing a file_name.');
 
-        $existing = Media::query()
-            ->where('custom_properties->checksum', $checksum)
-            ->first();
-
-        if ($existing instanceof Media && $this->mediaFileExists($existing)) {
-            return $existing->getKey();
-        }
-
         $hex = substr($checksum, strlen('sha256-'));
         throw_unless(strlen($hex) === 64 && ctype_xdigit($hex), RuntimeException::class, 'Media descriptor checksum must be a sha256 hex digest.');
 
@@ -96,50 +86,21 @@ final class MediaIngestService
         $entryPath = sprintf('media/%s%s', $hex, $extension === '' ? '' : '.' . $extension);
 
         [$mediaStream, $size] = $this->verifiedMediaStream($archive, $entryPath, $checksum);
-        $diskConfig = config('media-library.disk_name', 'public');
-        $disk = is_string($diskConfig) ? $diskConfig : 'public';
-        $safeFileName = $this->safeFileName($fileName, $hex, $extension);
-
-        $mimeType = is_string($descriptor['mime_type'] ?? null) ? $descriptor['mime_type'] : 'application/octet-stream';
-        $collectionName = is_string($descriptor['collection_name'] ?? null) ? $descriptor['collection_name'] : 'default';
-
-        $media = new Media;
-        $media->forceFill([
-            'model_type' => $temporaryOwner->getMorphClass(),
-            'model_id' => $temporaryOwner->getKey(),
-            'collection_name' => $collectionName,
-            'name' => pathinfo($safeFileName, PATHINFO_FILENAME),
-            'file_name' => $safeFileName,
-            'mime_type' => $mimeType,
-            'disk' => $disk,
-            'conversions_disk' => $disk,
-            'size' => $size,
-            'manipulations' => [],
-            'custom_properties' => ['checksum' => $checksum],
-            'generated_conversions' => [],
-            'responsive_images' => [],
-            'order_column' => 1,
-        ])->save();
 
         try {
-            rewind($mediaStream);
-            $stored = Storage::disk($disk)->put($media->getPathRelativeToRoot(), $mediaStream);
+            $collectionName = is_string($descriptor['collection_name'] ?? null) ? $descriptor['collection_name'] : 'default';
 
-            throw_unless($stored === true, RuntimeException::class, sprintf(
-                'Failed to store media binary [%s].',
-                $entryPath,
-            ));
-        } catch (Throwable $throwable) {
-            $media->deleteQuietly();
-
-            throw $throwable;
+            return (new StoreImportedMediaAction)->handle(
+                $mediaStream,
+                $fileName,
+                $checksum,
+                $size,
+                $temporaryOwner,
+                $collectionName,
+            )->getKey();
         } finally {
-            if (is_resource($mediaStream)) {
-                fclose($mediaStream);
-            }
+            fclose($mediaStream);
         }
-
-        return $media->getKey();
     }
 
     private function openArchive(string $archivePath): ZipArchive
@@ -151,15 +112,6 @@ final class MediaIngestService
         }
 
         return $archive;
-    }
-
-    private function mediaFileExists(Media $media): bool
-    {
-        $disk = $media->getAttribute('disk');
-        $disk = is_string($disk) && $disk !== '' ? $disk : config('media-library.disk_name', 'public');
-        $disk = is_string($disk) && $disk !== '' ? $disk : 'public';
-
-        return Storage::disk($disk)->exists($media->getPathRelativeToRoot());
     }
 
     /**
@@ -241,17 +193,5 @@ final class MediaIngestService
         $maxBytesConfig = config($key, $default);
 
         return is_numeric($maxBytesConfig) ? (int) $maxBytesConfig : $default;
-    }
-
-    private function safeFileName(string $fileName, string $hex, string $extension): string
-    {
-        $normalized = str_replace('\\', '/', str_replace("\0", '', $fileName));
-        $basename = basename($normalized);
-
-        if (in_array($basename, ['', '.', '..'], true)) {
-            return $hex . ($extension === '' ? '' : '.' . $extension);
-        }
-
-        return $basename;
     }
 }

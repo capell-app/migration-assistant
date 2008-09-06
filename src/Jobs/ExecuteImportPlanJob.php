@@ -124,7 +124,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
             $this->assertNoBlockingUnresolvedReferences($package, $map, $session->kind);
 
             $report = $this->importerFor($session->kind, $pageImporter, $siteImporter)
-                ->import($package, $map, $this->targetContextId($session));
+                ->import($package, $map, $this->targetContextId($session), mediaImportSessionId: $session->id);
 
             $failureReason = $report->isSuccess() ? null : implode(' / ', array_slice($report->errors, 0, 5));
 

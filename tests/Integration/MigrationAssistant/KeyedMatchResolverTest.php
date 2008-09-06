@@ -55,3 +55,14 @@ it('remains fully unscoped by default, matching a private layout with no site co
 
     expect($resolver->resolve(['key' => 'unscoped-layout'])?->localId)->toBe($layout->getKey());
 });
+
+it('matches exported relation attributes while preserving site scoping', function (): void {
+    $site = Site::factory()->create();
+    $otherSite = Site::factory()->create();
+    $layout = Layout::factory()->create(['key' => 'exported-layout', 'site_id' => $site->getKey()]);
+    $descriptor = ['attributes' => ['key' => 'exported-layout']];
+    $resolver = new KeyedMatchResolver(Layout::class, scopeToSite: true);
+    expect($resolver->resolve($descriptor, $site->getKey())?->localId)->toBe($layout->getKey())
+        ->and($resolver->resolve($descriptor, $otherSite->getKey()))->toBeNull()
+        ->and((new KeyedMatchResolver(Site::class, keyColumn: 'slug'))->resolve(['attributes' => ['name' => $site->name]])?->localId)->toBe($site->getKey());
+});

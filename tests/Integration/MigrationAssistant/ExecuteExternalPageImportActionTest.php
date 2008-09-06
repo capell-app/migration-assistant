@@ -7,6 +7,7 @@ use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
+use Capell\Core\Support\Publishing\PublishSentinel;
 use Capell\MigrationAssistant\Actions\Imports\ExecuteExternalPageImportAction;
 use Capell\MigrationAssistant\Data\ExternalImportPreview;
 use Capell\MigrationAssistant\Data\ExternalImportReadResult;
@@ -314,3 +315,37 @@ function migrationAssistantExternalTarget(Site $site, Layout $layout, Blueprint 
         languageId: (int) $site->language_id,
     );
 }
+
+it('keeps WordPress non-public statuses unpublished without Publishing Studio', function (string $status): void {
+    $site = Site::factory()->create();
+    $layout = Layout::factory()->create();
+    $blueprint = Blueprint::factory()->page()->create();
+    $preview = (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'wordpress-wxr',
+        columns: ['post_title', 'post_status', 'post_date'],
+        rows: [['post_title' => 'Private imported page', 'post_status' => $status, 'post_date' => '2020-01-01 00:00:00']],
+        suggestedTarget: 'page',
+    ));
+    $result = ExecuteExternalPageImportAction::run($preview, migrationAssistantExternalTarget($site, $layout, $blueprint));
+    expect($result->report->errors)->toBe([]);
+    $page = Page::query()->withoutGlobalScopes()->findOrFail($result->report->createdPageIds[0]);
+    expect(PublishSentinel::isDraftValue($page->visible_from))->toBeTrue()
+        ->and($page->meta['status'] ?? null)->toBe($status);
+})->with(['draft', 'private', 'pending', 'trash', 'auto-draft', 'future', 'inherit', 'custom-status', '']);
+
+it('keeps the allow-listed WordPress publish status public', function (): void {
+    $site = Site::factory()->create();
+    $layout = Layout::factory()->create();
+    $blueprint = Blueprint::factory()->page()->create();
+    $preview = (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'wordpress-wxr',
+        columns: ['post_title', 'post_status', 'post_date'],
+        rows: [['post_title' => 'Published imported page', 'post_status' => 'publish', 'post_date' => '2020-01-01 00:00:00']],
+        suggestedTarget: 'page',
+    ));
+    $result = ExecuteExternalPageImportAction::run($preview, migrationAssistantExternalTarget($site, $layout, $blueprint));
+    expect($result->report->errors)->toBe([]);
+    $page = Page::query()->withoutGlobalScopes()->findOrFail($result->report->createdPageIds[0]);
+    expect(PublishSentinel::isDraftValue($page->visible_from))->toBeFalse()
+        ->and($page->visible_from?->format('Y-m-d H:i:s'))->toBe('2020-01-01 00:00:00');
+});

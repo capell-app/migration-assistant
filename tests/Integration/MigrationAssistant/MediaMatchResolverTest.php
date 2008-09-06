@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Capell\Core\Models\Media;
 use Capell\Core\Models\Page;
+use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MediaMatchResolver;
 
 /**
@@ -47,7 +48,7 @@ it('matches media by checksum before falling back to file name', function (): vo
     $resolution = (new MediaMatchResolver)->resolve([
         'checksum' => 'sha256-checksum-match',
         'file_name' => 'shared-file-name.png',
-    ]);
+    ], (int) $owner->site_id);
     $resolution = migrationAssistantMatchResolution($resolution);
 
     expect($resolution)->not->toBeNull()
@@ -60,7 +61,7 @@ it('falls back to a lower confidence file name match when checksum is missing', 
     $owner = Page::factory()->create();
     $media = createMigrationAssistantMedia($owner, ['file_name' => 'fallback.jpg']);
 
-    $resolution = (new MediaMatchResolver)->resolve(['file_name' => 'fallback.jpg']);
+    $resolution = (new MediaMatchResolver)->resolve(['file_name' => 'fallback.jpg'], (int) $owner->site_id);
     $resolution = migrationAssistantMatchResolution($resolution);
 
     expect($resolution)->not->toBeNull()
@@ -80,4 +81,13 @@ it('returns null when neither checksum nor file name matches local media', funct
         'checksum' => 'sha256-missing',
         'file_name' => 'missing.png',
     ]))->toBeNull();
+});
+
+it('refuses checksum and filename matches outside the resolved importing site', function (): void {
+    $owner = Page::factory()->create();
+    createMigrationAssistantMedia($owner, ['custom_properties' => ['checksum' => 'sha256-foreign']]);
+    $target = Site::factory()->create();
+    $descriptor = ['checksum' => 'sha256-foreign', 'file_name' => 'hero.png'];
+    expect((new MediaMatchResolver)->resolve($descriptor, (int) $target->getKey()))->toBeNull()
+        ->and((new MediaMatchResolver)->resolve($descriptor))->toBeNull();
 });

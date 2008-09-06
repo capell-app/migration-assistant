@@ -174,7 +174,7 @@ it('rebinds media owners to the newly imported page', function (): void {
     $type = Blueprint::factory()->create();
     $site = Site::factory()->create();
 
-    $holder = Page::factory()->create();
+    $holder = Page::factory()->create(['site_id' => $site->getKey()]);
     $media = new Media;
     $media->forceFill([
         'model_type' => $holder->getMorphClass(),
@@ -476,4 +476,29 @@ it('does not import internal page state from package attributes', function (): v
         ->and($page->getAttribute('created_by'))->not->toBe(999)
         ->and($page->getAttribute('updated_by'))->not->toBe(999)
         ->and($page->getAttribute('deleted_by'))->not->toBe(999);
+});
+
+it('never reassigns media from another site even through an explicit resolution', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->create();
+    $site = Site::factory()->create();
+    $foreignPage = Page::factory()->create();
+    $media = new Media;
+    $media->forceFill([
+        'model_type' => $foreignPage->getMorphClass(), 'model_id' => $foreignPage->getKey(),
+        'collection_name' => 'default', 'name' => 'foreign', 'file_name' => 'foreign.png',
+        'mime_type' => 'image/png', 'disk' => 'public', 'conversions_disk' => 'public', 'size' => 10,
+        'manipulations' => [], 'custom_properties' => [], 'generated_conversions' => [], 'responsive_images' => [],
+    ])->save();
+    $descriptor = capell_json_array(makePageDescriptor($layout, $type, $site));
+    $descriptor['media_bindings'] = [['ref' => 'media:foreign']];
+    $map = fullyResolvedMap($layout, $type, $site);
+    $mediaId = $media->getKey();
+    throw_unless(is_int($mediaId) || is_string($mediaId), RuntimeException::class);
+    $map = new ResolutionMap(resolved: [...$map->resolved, 'media:foreign' => new MatchResolution(localId: $mediaId, strategy: 'manual')], unresolved: []);
+    $package = new PackageReadResult(archivePath: '', manifest: [], integrity: [], payload: ['pages/foreign.json' => json_encode($descriptor, JSON_THROW_ON_ERROR)]);
+    $report = (new PageImportService)->import($package, $map);
+    expect($report->mediaReassigned)->toBe(0)
+        ->and($report->errors)->not->toBe([])
+        ->and($media->refresh()->model_id)->toBe($foreignPage->getKey());
 });

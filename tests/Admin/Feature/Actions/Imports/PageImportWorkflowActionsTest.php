@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Models\Media;
+use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Actions\Imports\AdvancePageImportToValidationAction;
 use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
@@ -10,6 +12,7 @@ use Capell\MigrationAssistant\Actions\Imports\RefreshPageImportStatusAction;
 use Capell\MigrationAssistant\Actions\Imports\ResolvePageImportSessionAction;
 use Capell\MigrationAssistant\Actions\Imports\StartPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\StartSiteImportAction;
+use Capell\MigrationAssistant\Data\DependencyGraph;
 use Capell\MigrationAssistant\Data\Imports\PageImportDecisionData;
 use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
 use Capell\MigrationAssistant\Data\PageReviewRow;
@@ -19,6 +22,7 @@ use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportSession;
+use Capell\MigrationAssistant\Services\Export\PayloadSerializer;
 use Capell\MigrationAssistant\Support\ChecksumGenerator;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Illuminate\Database\Events\QueryExecuted;
@@ -217,6 +221,64 @@ beforeEach(function (): void {
     $this->fakeMigrationAssistantLocalStorage();
     Queue::fake();
 });
+
+it('matches existing media through the normal archive preview without a supplied media site', function (bool $withChecksum): void {
+    $site = Site::factory()->create();
+    $foreignSite = Site::factory()->create();
+    $checksum = 'sha256-' . str_repeat('a', 64);
+    $mediaBySite = [];
+    foreach ([$foreignSite, $site] as $ownerSite) {
+        $owner = Page::factory()->create(['site_id' => $ownerSite->getKey()]);
+        $media = new Media;
+        $media->forceFill([
+            'model_type' => $owner->getMorphClass(), 'model_id' => $owner->getKey(),
+            'collection_name' => 'default', 'name' => 'hero', 'file_name' => 'preview.png',
+            'mime_type' => 'image/png', 'disk' => 'public', 'size' => 12,
+            'manipulations' => [], 'custom_properties' => ['checksum' => $checksum],
+            'generated_conversions' => [], 'responsive_images' => [],
+        ])->save();
+        $mediaBySite[$ownerSite->getKey()] = $media->getKey();
+    }
+
+    $uuid = (string) Str::uuid();
+    $path = 'migration-assistant/imports/staged/media-preview.zip';
+    stageActionImportPackage($path, $uuid, (int) $site->getKey(), '/media-preview');
+    $zip = new ZipArchive;
+    expect($zip->open(Storage::disk('local')->path($path)))->toBeTrue();
+    $pagePath = "pages/{$uuid}.json";
+    $page = capell_json_array((string) $zip->getFromName($pagePath));
+    $page['media_bindings'] = [['ref' => 'media:777', 'collection' => 'default']];
+    $pageJson = json_encode($page, JSON_THROW_ON_ERROR);
+    $localMedia = Media::query()->whereKey($mediaBySite[$site->getKey()])->firstOrFail();
+    $payload = (new PayloadSerializer)->serialize(new DependencyGraph(
+        pages: [],
+        sites: [],
+        sharedRelations: [Site::class => ['site:' . $site->getKey() => $site], Media::class => ['media:777' => $localMedia]],
+        media: $withChecksum ? ['media:777' => ['path' => '', 'checksum' => $checksum, 'model' => $localMedia]] : [],
+    ));
+    $integrity = capell_json_array((string) $zip->getFromName('integrity.json'));
+    $integrityFiles = capell_test_array($integrity['files'] ?? null);
+    $integrityFiles[$pagePath] = ChecksumGenerator::forString($pageJson);
+    $zip->addFromString($pagePath, $pageJson);
+    foreach ($payload as $entry => $contents) {
+        $integrityFiles[$entry] = ChecksumGenerator::forString($contents);
+        $zip->addFromString($entry, $contents);
+    }
+    $integrity['files'] = $integrityFiles;
+    $zip->addFromString('integrity.json', json_encode($integrity, JSON_THROW_ON_ERROR));
+    $zip->close();
+
+    $state = StartPageImportAction::run(BindMigrationArchiveUploadAction::run([
+        'archive' => $path, 'archive_filename' => 'media-preview.zip', 'workspace_name' => 'Media Preview',
+    ]));
+    $map = capell_test_array(actionImportSessionForState($state)->resolution_map);
+    $resolved = capell_test_array($map['resolved'] ?? null);
+    $resolvedSite = capell_test_array($resolved['site:' . $site->getKey()] ?? null);
+    $resolvedMedia = capell_test_array($resolved['media:777'] ?? null);
+    expect($resolvedSite['local_id'] ?? null)->toBe($site->getKey())
+        ->and($resolvedMedia['local_id'] ?? null)->toBe($mediaBySite[$site->getKey()])
+        ->and($map['unresolved'] ?? [])->not->toContain('media:777');
+})->with(['checksum' => [true], 'filename' => [false]]);
 
 it('moves upload state to review state after parsing a package', function (): void {
     [$state, $pageUuid] = startActionImportWizard('action-review.zip', 'Action Review');

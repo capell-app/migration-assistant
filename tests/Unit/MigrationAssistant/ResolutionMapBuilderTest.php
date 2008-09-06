@@ -12,6 +12,7 @@ function makeResolver(?MatchResolution $resolution): MatchResolver
     {
         public function __construct(private ?MatchResolution $resolution) {}
 
+        #[Override]
         public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
         {
             return $this->resolution;
@@ -37,6 +38,7 @@ function makeSiteIdCapturingResolver(?MatchResolution $resolution, ResolutionMap
         /**
          * @param  array<string, mixed>  $descriptor
          */
+        #[Override]
         public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
         {
             $this->capture->calls[] = $siteId;
@@ -50,6 +52,7 @@ function makeSiteEchoResolver(): MatchResolver
 {
     return new class implements MatchResolver
     {
+        #[Override]
         public function resolve(array $descriptor, ?int $siteId = null): MatchResolution
         {
             $ref = is_string($descriptor['ref'] ?? null) ? $descriptor['ref'] : '';
@@ -167,4 +170,38 @@ it('threads each relation its own resolved site id regardless of payload order',
     ]);
 
     expect($capture->calls)->toEqual([5, 9]);
+});
+
+it('derives each media preview site from its importing page regardless of payload order', function (): void {
+    $capture = new ResolutionMapBuilderSiteIdCapture;
+    $builder = new ResolutionMapBuilder([
+        'sites' => makeSiteEchoResolver(),
+        'media' => makeSiteIdCapturingResolver(null, $capture),
+    ]);
+    $builder->build([
+        'relations/media/first.json' => migrationAssistantResolutionPayload(['ref' => 'media:1']),
+        'relations/media/second.json' => migrationAssistantResolutionPayload(['ref' => 'media:2']),
+        'pages/first.json' => migrationAssistantResolutionPayload(['shared_relations' => ['site' => ['ref' => 'site:5']], 'media_bindings' => [['ref' => 'media:1']]]),
+        'pages/second.json' => migrationAssistantResolutionPayload(['attributes' => ['site_id' => 9], 'media_bindings' => [['ref' => 'media:2']]]),
+        'relations/sites/first.json' => migrationAssistantResolutionPayload(['ref' => 'site:5', 'id' => 5]),
+        'relations/sites/second.json' => migrationAssistantResolutionPayload(['ref' => 'site:9', 'id' => 9]),
+    ]);
+    expect($capture->calls)->toBe([5, 9]);
+});
+
+it('does not select a media site from an ambiguous or unowned descriptor', function (): void {
+    $capture = new ResolutionMapBuilderSiteIdCapture;
+    $builder = new ResolutionMapBuilder([
+        'sites' => makeSiteEchoResolver(),
+        'media' => makeSiteIdCapturingResolver(null, $capture),
+    ]);
+    $builder->build([
+        'relations/media/shared.json' => migrationAssistantResolutionPayload(['ref' => 'media:1', 'attributes' => ['site_id' => 5]]),
+        'relations/media/unowned.json' => migrationAssistantResolutionPayload(['ref' => 'media:2', 'attributes' => ['site_id' => 9]]),
+        'pages/first.json' => migrationAssistantResolutionPayload(['attributes' => ['site_id' => 5], 'media_bindings' => [['ref' => 'media:1']]]),
+        'pages/second.json' => migrationAssistantResolutionPayload(['attributes' => ['site_id' => 9], 'media_bindings' => [['ref' => 'media:1']]]),
+        'relations/sites/first.json' => migrationAssistantResolutionPayload(['ref' => 'site:5', 'id' => 5]),
+        'relations/sites/second.json' => migrationAssistantResolutionPayload(['ref' => 'site:9', 'id' => 9]),
+    ]);
+    expect($capture->calls)->toBe([null, null]);
 });
