@@ -31,27 +31,43 @@
             "package": "migration-assistant",
             "surface": "admin",
             "targetType": "admin-surface",
-            "target": null,
+            "target": "ImportSessionResource.view",
             "required": false,
-            "notes": "Optional Beta evidence target. The current file duplicates other Migration Assistant placeholders; replace it with an independently captured validation summary before using it as release evidence.",
+            "notes": "Use the deterministic screenshot-reviewed-pages.zip session prepared by the guarded package route. Require the actual Validation report section on its real session detail; expand relation decisions before capture. A missing section must fail, never fall back to the import index.",
             "useCase": "An operator reviews validation errors and warnings before executing an import.",
             "screenshotPath": "packages/migration-assistant/docs/screenshots/import-validation-summary.png",
-            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-validation-summary-dark.png"
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-validation-summary-dark.png",
+            "url": "/screenshot-fixtures/migration-assistant/reviewed-detail",
+            "scenario": "admin-form",
+            "fullPage": false,
+            "beforeWait": [
+                {
+                    "type": "scrollIntoView",
+                    "selector": ".fi-section:has(.fi-section-header-heading:text-is(\"Validation report\"))"
+                }
+            ],
+            "waitFor": ".fi-section:has(.fi-section-header-heading:text-is(\"Validation report\")) .fi-section-content"
         },
         {
             "id": "recovery-page-imports",
-            "title": "Illustrative recovery page imports preview.",
+            "title": "Completed page import and recovery report",
             "package": "migration-assistant",
-            "surface": "frontend",
-            "targetType": "frontend-url",
-            "target": "/screenshot-fixtures/catalogue/migration-assistant/recovery-page-imports",
+            "surface": "admin",
+            "targetType": "admin-route",
+            "target": "/screenshot-fixtures/migration-assistant/page-import-report",
             "required": true,
-            "notes": "Illustrative deterministic catalogue fixture, not a live package UI capture. Show recovery-center page import validation, relation resolution, execution state, and rollback reporting.",
+            "notes": "Capture the real authenticated package page with the prepared fixture selected. Reject empty rows, generic fixture cards and unstyled output. Existing image remains pending authentic recapture.",
             "useCase": "An operator imports pages through Recovery Center and reviews validation, relation resolution, execution, and rollback state.",
             "screenshotPath": "packages/migration-assistant/docs/screenshots/recovery-page-imports.png",
-            "url": "/screenshot-fixtures/catalogue/migration-assistant/recovery-page-imports",
+            "url": "/screenshot-fixtures/migration-assistant/page-import-report",
             "colorSchemes": ["light", "dark"],
-            "fixtureKind": "illustrative-catalogue"
+            "user": "admin",
+            "waitFor": ".fi-page:has-text(\"marketing-pages.zip\")",
+            "viewport": "desktop",
+            "requiredViewport": {
+                "width": 1440,
+                "height": 900
+            }
         },
         {
             "id": "relation-resolution-review",
@@ -59,12 +75,26 @@
             "package": "migration-assistant",
             "surface": "admin",
             "targetType": "admin-surface",
-            "target": null,
+            "target": "ImportSessionResource.view",
             "required": false,
-            "notes": "Optional Beta evidence target. The current file duplicates other Migration Assistant placeholders; replace it with an independently captured relation review before using it as release evidence.",
+            "notes": "Use the deterministic screenshot-reviewed-pages.zip session prepared by the guarded package route. Require the actual Relation decisions section on its real session detail; expand relation decisions before capture. A missing section must fail, never fall back to the import index.",
             "useCase": "An operator maps imported references to existing Capell records before execution.",
             "screenshotPath": "packages/migration-assistant/docs/screenshots/relation-resolution-review.png",
-            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/relation-resolution-review-dark.png"
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/relation-resolution-review-dark.png",
+            "url": "/screenshot-fixtures/migration-assistant/reviewed-detail",
+            "scenario": "admin-form",
+            "fullPage": false,
+            "beforeWait": [
+                {
+                    "type": "click",
+                    "selector": ".fi-section:has(.fi-section-header-heading:text-is(\"Relation decisions\")) .fi-section-header"
+                },
+                {
+                    "type": "scrollIntoView",
+                    "selector": ".fi-section:has(.fi-section-header-heading:text-is(\"Relation decisions\"))"
+                }
+            ],
+            "waitFor": ".fi-section:has(.fi-section-header-heading:text-is(\"Relation decisions\")) .fi-section-content"
         },
         {
             "id": "import-rollback-report-view",
@@ -72,25 +102,22 @@
             "package": "migration-assistant",
             "surface": "admin",
             "targetType": "admin-surface",
-            "target": null,
+            "target": "ImportSessionResource.view",
             "required": false,
-            "notes": "Optional Beta evidence target. The current file duplicates other Migration Assistant placeholders; replace it with an independently captured rollback report before using it as release evidence.",
+            "notes": "Use the deterministic screenshot-reviewed-pages.zip session prepared by the guarded package route. Require the actual Signed rollback reports section on its real session detail; expand relation decisions before capture. A missing section must fail, never fall back to the import index.",
             "useCase": "An operator reviews what rollback changed and what manual cleanup remains.",
             "screenshotPath": "packages/migration-assistant/docs/screenshots/import-rollback-report-view.png",
-            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-rollback-report-view-dark.png"
-        },
-        {
-            "id": "package-export-intent-screen",
-            "title": "Package export intent screen.",
-            "package": "migration-assistant",
-            "surface": "admin",
-            "targetType": "admin-surface",
-            "target": null,
-            "required": false,
-            "notes": "Optional Beta evidence target. The current file duplicates other Migration Assistant placeholders; replace it with an independently captured export-intent screen before using it as release evidence.",
-            "useCase": "An operator prepares an export package and confirms included resources before download.",
-            "screenshotPath": "packages/migration-assistant/docs/screenshots/package-export-intent-screen.png",
-            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/package-export-intent-screen-dark.png"
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-rollback-report-view-dark.png",
+            "url": "/screenshot-fixtures/migration-assistant/reviewed-detail",
+            "scenario": "admin-form",
+            "fullPage": false,
+            "beforeWait": [
+                {
+                    "type": "scrollIntoView",
+                    "selector": ".fi-section:has(.fi-section-header-heading:text-is(\"Signed rollback reports\"))"
+                }
+            ],
+            "waitFor": ".fi-section:has(.fi-section-header-heading:text-is(\"Signed rollback reports\")) .fi-section-content"
         },
         {
             "id": "migration-assistant-admin-sidebar-menu-open",

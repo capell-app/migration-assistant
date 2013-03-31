@@ -23,8 +23,6 @@ return [
         'import' => 'Import',
         'result' => 'Result',
         'current' => 'Current step',
-        'completed' => 'Completed',
-        'upcoming' => 'Upcoming',
     ],
     'external_target_actor_required' => 'An authenticated actor is required to select an external import target.',
     'external_target_blueprint_invalid' => 'The selected page blueprint is invalid for this import target.',

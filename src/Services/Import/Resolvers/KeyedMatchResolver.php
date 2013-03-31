@@ -67,7 +67,7 @@ final readonly class KeyedMatchResolver implements MatchResolver
     }
 
     /**
-     * @return Builder<Model>
+     * @return Builder<TModel>
      */
     private function scopedQuery(?int $siteId): Builder
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
+use Capell\MigrationAssistant\Actions\PrepareMigrationScreenshotDetailAction;
 use Capell\MigrationAssistant\Actions\RetryImportSessionAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
@@ -22,6 +23,23 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(CreatesAdminUser::class)->group('import-session-resource');
+
+it('prepares visible validation relation and signed rollback screenshot sections', function (): void {
+    putenv('CAPELL_SCREENSHOT_FIXTURE=record-state');
+    try {
+        $session = (new PrepareMigrationScreenshotDetailAction)->handle();
+        Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
+            ->assertSee('Validation report')
+            ->assertSee('Two existing pages were deliberately skipped.')
+            ->assertSee('Relation decisions')
+            ->assertSee('Keep the existing homepage relation.')
+            ->assertSee('Signed rollback reports');
+        expect($session->validation_results)->not->toBe($session->relation_decisions)
+            ->and($session->rollbackReports()->count())->toBe(1);
+    } finally {
+        putenv('CAPELL_SCREENSHOT_FIXTURE');
+    }
+});
 
 beforeEach(function (): void {
     if (! class_exists(ImportSession::class)) {
