@@ -63,6 +63,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
             ->name(self::$name)
             ->hasConfigFile('migration-assistant')
             ->hasTranslations()
+            ->hasViews()
             ->hasCommands([
                 ExecuteMigrationAssistantRollbackCommand::class,
                 ExportMigrationAssistantPackageCommand::class,

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
 use Capell\MigrationAssistant\Actions\RetryImportSessionAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
@@ -10,6 +11,8 @@ use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionRes
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\Pages\ViewImportSession;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportSession;
+use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
+use Capell\MigrationAssistant\Support\RollbackProvenance;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -25,11 +28,11 @@ beforeEach(function (): void {
         test()->markTestSkipped('capell-app/migration-assistant is not installed in this checkout.');
     }
 
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    resolve(PermissionRegistrar::class)->forgetCachedPermissions();
 
     Permission::findOrCreate('View:ImportSessionResource', 'web');
     InstallMigrationAssistantPermissionsAction::run();
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    resolve(PermissionRegistrar::class)->forgetCachedPermissions();
 
     config()->set('migration-assistant.disk', 'local');
     Storage::fake(migrationAssistantArchiveDisk());
@@ -46,7 +49,7 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
-    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    resolve(PermissionRegistrar::class)->forgetCachedPermissions();
 });
 
 /**
@@ -79,6 +82,40 @@ it('shows the download archive action when the source archive exists on disk', f
 
     Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
         ->assertActionVisible('downloadArchive');
+});
+
+it('reloads an in-flight session without dispatching another import', function (ImportSessionStatus $status): void {
+    $session = makeImportSession(['status' => $status, 'result_summary' => ['pages_imported' => 2]]);
+
+    Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
+        ->assertSee($status->getLabel())
+        ->assertSee('package.zip');
+
+    Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
+        ->assertSee($status->getLabel())
+        ->assertSee('package.zip');
+
+    expect($session->fresh()?->status)->toBe($status);
+    Queue::assertNothingPushed();
+})->with([ImportSessionStatus::Queued, ImportSessionStatus::Running]);
+
+it('inspects its signed rollback report without executing recovery or exposing another session report', function (): void {
+    $session = makeImportSession(['status' => ImportSessionStatus::Completed, 'executed_at' => now()]);
+    $report = CreateImportRollbackReportAction::run($session, new ImportExecutionReport(0, 0, [], []));
+    $other = makeImportSession(['status' => ImportSessionStatus::Completed, 'executed_at' => now()]);
+    $otherReport = CreateImportRollbackReportAction::run($other, new ImportExecutionReport(0, 0, [], []));
+    // Compare two database reads so strict equality uses the same column order.
+    $original = $report->refresh()->getRawOriginal();
+
+    Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
+        ->assertSee($report->uuid)
+        ->assertSee($report->manual_instructions)
+        ->assertSee($report->provenance_signature)
+        ->assertDontSee($otherReport->uuid);
+
+    expect($report->fresh()?->getRawOriginal())->toBe($original)
+        ->and(RollbackProvenance::hasValidSignature($report->provenance ?? [], $report->provenance_signature))->toBeTrue();
+    Queue::assertNothingPushed();
 });
 
 it('uses the installed import-session view permission for global admin resource access', function (): void {

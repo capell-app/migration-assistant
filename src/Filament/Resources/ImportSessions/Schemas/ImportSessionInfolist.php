@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Filament\Resources\ImportSessions\Schemas;
 
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
+use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Section;
@@ -60,6 +62,23 @@ class ImportSessionInfolist
                         ->view('capell-admin::components.exchanger.import-session-result'),
                 ])
                 ->visible(fn (ImportSession $record): bool => is_array($record->result_summary) && $record->result_summary !== []),
+            Section::make(__('migration-assistant::rollback.reports'))
+                ->collapsible()
+                ->schema([
+                    RepeatableEntry::make('rollbackReports')
+                        ->hiddenLabel()
+                        ->schema([
+                            TextEntry::make('uuid')->label(__('capell-admin::exchanger.uuid')),
+                            TextEntry::make('manual_instructions')->label(__('migration-assistant::rollback.instructions')),
+                            TextEntry::make('provenance_signature')->label(__('migration-assistant::rollback.signature')),
+                            ViewEntry::make('provenance')
+                                ->view('capell-admin::components.exchanger.import-session-json')
+                                ->state(fn (ImportRollbackReport $record): array => [
+                                    'payload' => $record->provenance,
+                                ]),
+                        ]),
+                ])
+                ->visible(fn (ImportSession $record): bool => $record->rollbackReports->isNotEmpty()),
             Section::make(__('capell-admin::exchanger.page_decisions'))
                 ->collapsible()
                 ->collapsed()

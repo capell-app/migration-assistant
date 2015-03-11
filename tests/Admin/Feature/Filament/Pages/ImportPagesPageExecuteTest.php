@@ -109,6 +109,26 @@ it('transitions to the executing step after dispatchImport with session id captu
         ->assertSet('step', ImportPagesPage::STEP_EXECUTING);
 });
 
+it('keeps the executing step and exposes running progress when reloaded', function (): void {
+    $component = bootExecuteWizardToDispatch('execute-running.zip', 'Running WS');
+
+    $sessionId = $component->get('sessionId');
+    throw_unless(is_numeric($sessionId), RuntimeException::class, 'Expected import session id to be numeric.');
+
+    ImportSession::query()
+        ->whereKey((int) $sessionId)
+        ->update(['status' => ImportSessionStatus::Running]);
+
+    $component->call('refreshStatus')
+        ->assertSet('step', ImportPagesPage::STEP_EXECUTING)
+        ->assertSet('sessionStatus', ImportSessionStatus::Running->value);
+
+    $page = $component->instance();
+    throw_unless($page instanceof ImportPagesPage, RuntimeException::class, 'Expected the import page component.');
+
+    expect($page->getProgressPercent())->toBe(50);
+});
+
 it('transitions to completed step with result_summary surfaced', function (): void {
     $component = bootExecuteWizardToDispatch('execute-complete.zip', 'Complete WS');
 

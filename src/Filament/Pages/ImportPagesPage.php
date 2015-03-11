@@ -100,7 +100,7 @@ class ImportPagesPage extends Page implements HasForms
 
     protected static ?string $slug = 'migration-assistant/recovery-center/import-pages';
 
-    protected string $view = 'capell-admin::components.pages.import-pages';
+    protected string $view = 'migration-assistant::pages.import-pages';
 
     #[Override]
     public static function shouldRegisterNavigation(): bool

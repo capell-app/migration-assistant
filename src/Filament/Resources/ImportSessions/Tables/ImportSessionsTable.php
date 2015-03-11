@@ -11,6 +11,8 @@ use Capell\MigrationAssistant\Actions\BuildImportRecoveryStatusAction;
 use Capell\MigrationAssistant\Actions\ReclaimStaleImportSessionsAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
+use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
+use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -63,8 +65,17 @@ class ImportSessionsTable implements TableConfigurator
                 ViewAction::make(),
             ])
             ->emptyStateHeading(__('capell-admin::generic.no_import_sessions'))
-            ->emptyStateDescription(__('capell-admin::generic.no_import_sessions_description'))
-            ->emptyStateIcon('heroicon-o-arrow-down-tray');
+            ->emptyStateDescription(__('migration-assistant::imports.empty_state_description'))
+            ->emptyStateIcon('heroicon-o-arrow-down-tray')
+            ->emptyStateActions([
+                Action::make('start_page_import')
+                    ->label(__('migration-assistant::imports.empty_state_page_import'))
+                    ->url(ImportPagesPage::getUrl()),
+                Action::make('start_site_import')
+                    ->label(__('migration-assistant::imports.empty_state_site_import'))
+                    ->color('gray')
+                    ->url(ImportSitesPage::getUrl()),
+            ]);
     }
 
     /**

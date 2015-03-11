@@ -21,9 +21,12 @@ use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Support\ChecksumGenerator;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Testing\Fakes\QueueFake;
 
 uses(CreatesAdminUser::class)
     ->group('page-import-actions');
@@ -498,3 +501,67 @@ it('moves executing state to failed when the session fails', function (): void {
         ->and($status->sessionStatus)->toBe(ImportSessionStatus::Failed->value)
         ->and($status->failureReason)->toBe('import execution failed');
 });
+
+it('keeps imported content unchanged through review validation and queue dispatch', function (bool $siteImport): void {
+    $site = Site::factory()->create();
+    $uuid = (string) Str::uuid();
+    $path = 'migration-assistant/imports/staged/write-boundary.zip';
+
+    if ($siteImport) {
+        stageActionSiteImportPackage($path, $uuid, 987654);
+    } else {
+        stageActionImportPackage($path, $uuid, (int) $site->getKey(), '/write-boundary');
+    }
+
+    $contentWrites = [];
+    $queue = Queue::getFacadeRoot();
+    throw_unless($queue instanceof QueueFake, RuntimeException::class, 'Expected the import queue to be faked.');
+    // Site factories queue theme image generation before the import begins.
+    $queuedBeforeImport = $queue->pushedJobs();
+    DB::listen(function (QueryExecuted $query) use (&$contentWrites): void {
+        if (preg_match('/^\s*(insert\s+into|update|delete\s+from)\s+[`"]?(pages|page_urls|sites|site_domains|layouts|blueprints|media)[`"]?\s/i', $query->sql) === 1) {
+            $contentWrites[] = $query->sql;
+        }
+    });
+
+    $upload = BindMigrationArchiveUploadAction::run([
+        'archive' => $path,
+        'archive_filename' => 'write-boundary.zip',
+        'workspace_name' => 'Write boundary',
+    ]);
+    $state = $siteImport ? StartSiteImportAction::run($upload) : StartPageImportAction::run($upload);
+    expect($contentWrites)->toBe([]);
+    expect($queue->pushedJobs())->toBe($queuedBeforeImport);
+    Queue::assertNotPushed(ExecuteImportPlanJob::class);
+
+    $validated = AdvancePageImportToValidationAction::run(actionDecisionDataFromState($state), true);
+    $pageSummary = $validated->validationSummary['pages'] ?? null;
+    throw_unless(is_array($pageSummary), RuntimeException::class, 'Expected a page validation summary.');
+    expect($validated->step)->toBe(ImportPagesPage::STEP_VALIDATE)
+        ->and($pageSummary['create'] ?? null)->toBe(1)
+        ->and($contentWrites)->toBe([]);
+    expect($queue->pushedJobs())->toBe($queuedBeforeImport);
+    Queue::assertNotPushed(ExecuteImportPlanJob::class);
+
+    $status = DispatchPageImportAction::run($validated->sessionId, $validated->validationSummary, $validated->confirmationExpected, $validated->confirmationExpected);
+    expect($status->sessionStatus)->toBe(ImportSessionStatus::Queued->value)
+        ->and($contentWrites)->toBe([]);
+    Queue::assertPushed(ExecuteImportPlanJob::class, 1);
+})->with(['page import' => false, 'site import' => true]);
+
+it('reloads queued and running progress from durable session state', function (ImportSessionStatus $sessionStatus): void {
+    [$state] = startActionImportWizard('reload.zip', 'Reload');
+    $session = actionImportSessionForState($state);
+    $session->forceFill(['status' => $sessionStatus, 'result_summary' => ['pages_imported' => 2]])->save();
+    $queue = Queue::getFacadeRoot();
+    throw_unless($queue instanceof QueueFake, RuntimeException::class, 'Expected the import queue to be faked.');
+    $queuedBeforeRefresh = $queue->pushedJobs();
+
+    $status = (new RefreshPageImportStatusAction)->handle($state->sessionId, null);
+
+    expect($status->step)->toBe(ImportPagesPage::STEP_EXECUTING)
+        ->and($status->sessionStatus)->toBe($sessionStatus->value)
+        ->and($status->resultSummary)->toBe(['pages_imported' => 2]);
+    expect($queue->pushedJobs())->toBe($queuedBeforeRefresh);
+    Queue::assertNotPushed(ExecuteImportPlanJob::class);
+})->with([ImportSessionStatus::Queued, ImportSessionStatus::Running]);

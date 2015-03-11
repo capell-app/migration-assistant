@@ -47,23 +47,157 @@ Screenshot contract: `docs/screenshots.json`.
 
 ## Technical Shape
 
-- Service providers: `Capell\MigrationAssistant\Providers\MigrationAssistantInstallServiceProvider`, `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`.
-- Config files: `packages/migration-assistant/config/migration-assistant.php`.
-- Migrations: `packages/migration-assistant/database/migrations/2026_05_10_190859_01_create_import_sessions_table.php`, `packages/migration-assistant/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php`, `packages/migration-assistant/database/migrations/2026_06_04_000001_rename_import_rollback_reports_table.php`, `packages/migration-assistant/database/migrations/2026_07_10_000002_encrypt_import_diagnostics.php`, `packages/migration-assistant/database/migrations/2026_07_10_120000_harden_import_rollback_provenance.php`.
-- Models: `ImportRollbackAudit`, `ImportRollbackReport`, `ImportSession`.
-- Filament classes: `ImportPagesPage`, `ImportSitesPage`, `ImportSessionResource`, `ListImportSessions`, `ViewImportSession`, `ImportSessionInfolist`, `ImportSessionsTable`.
-- Policies: `ImportSessionPolicy`.
-- Extension contracts: `ImportSessionExecutor`, `ImportSessionSubNavigationExtender`, `ImportSourceReader`, `MigrationAssistantContextResolver`, `MigrationAssistantRowContributor`, `NullMigrationAssistantContextResolver`, `NullMigrationAssistantRowContributor`, `NullPageCollisionDetector`, `NullPageImportTargetResolver`, `PageCollisionDetector`, `PageImportTargetResolver`, `PathAwareImportSourceReader`.
-- Events: `ImportCompleted`, `ImportCompleting`, `ImportFailed`.
-- Listeners: `SendImportSessionNotifications`.
-- Actions: `BuildImportRecoveryStatusAction`, `BuildImportValidationSummaryAction`, `BuildPageReviewRowsAction`, `BuildRelationResolveRowsAction`, `CancelImportSessionAction`, `ClaimImportSessionForExecutionAction`, `CreateImportRollbackReportAction`, `ExecuteImportRollbackAction`, `AdvancePageImportToValidationAction`, `AuthorizeExternalPageImportTargetAction`, `BindMigrationArchiveUploadAction`, `DispatchPageImportAction`, `and 11 more`.
-- Data objects: `DependencyGraph`, `ExportOptions`, `ExternalImportPreview`, `ExternalImportReadResult`, `ExternalPageImportTargetData`, `ImportRecoveryStatusData`, `ImportValidationSummary`, `ExternalPageImportExecutionResult`, `PageImportDecisionData`, `PageImportStatusData`, `PageImportWizardStateData`, `PackageManifest`, `and 4 more`.
-- Jobs: `ExecuteImportPlanJob`.
-- Command signatures: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
-- Scheduled commands: `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`.
-- Console command classes: `ExecuteMigrationAssistantRollbackCommand`, `ExportMigrationAssistantPackageCommand`, `ImportMigrationAssistantPackageCommand`, `ReclaimStaleImportSessionsCommand`, `ShowMigrationAssistantRollbackReportCommand`, `ShowMigrationAssistantStatusCommand`.
-- Manifest contributions: `admin-page: Capell\MigrationAssistant\Manifest\ImportPagesPageContribution`, `admin-page: Capell\MigrationAssistant\Manifest\ImportSitesPageContribution`, `admin-resource: Capell\MigrationAssistant\Manifest\ImportSessionResourceContribution`, `configurator: Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribution`, `health-check: Capell\MigrationAssistant\Manifest\MigrationAssistantHealthContribution`, `model: Capell\MigrationAssistant\Manifest\MigrationAssistantModelsContribution`, `permission: Capell\MigrationAssistant\Manifest\MigrationAssistantPermissionsContribution`, `scheduled-job: Capell\MigrationAssistant\Manifest\MigrationAssistantRecoveryScheduleContribution`.
-- Health checks: `Capell\MigrationAssistant\Health\MigrationAssistantHealthCheck`.
+### Service providers
+
+- `Capell\MigrationAssistant\Providers\MigrationAssistantInstallServiceProvider`
+- `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`
+
+### Config files
+
+- `packages/migration-assistant/config/migration-assistant.php`
+
+### Migrations
+
+- `packages/migration-assistant/database/migrations/2026_05_10_190859_01_create_import_sessions_table.php`
+- `packages/migration-assistant/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php`
+- `packages/migration-assistant/database/migrations/2026_06_04_000001_rename_import_rollback_reports_table.php`
+- `packages/migration-assistant/database/migrations/2026_07_10_000002_encrypt_import_diagnostics.php`
+- `packages/migration-assistant/database/migrations/2026_07_10_120000_harden_import_rollback_provenance.php`
+
+### Models
+
+- `ImportRollbackAudit`
+- `ImportRollbackReport`
+- `ImportSession`
+
+### Filament classes
+
+- `ImportPagesPage`
+- `ImportSitesPage`
+- `ImportSessionResource`
+- `ListImportSessions`
+- `ViewImportSession`
+- `ImportSessionInfolist`
+- `ImportSessionsTable`
+
+### Policies
+
+- `ImportSessionPolicy`
+
+### Extension contracts
+
+- `ImportSessionExecutor`
+- `ImportSessionSubNavigationExtender`
+- `ImportSourceReader`
+- `MigrationAssistantContextResolver`
+- `MigrationAssistantRowContributor`
+- `NullMigrationAssistantContextResolver`
+- `NullMigrationAssistantRowContributor`
+- `NullPageCollisionDetector`
+- `NullPageImportTargetResolver`
+- `PageCollisionDetector`
+- `PageImportTargetResolver`
+- `PathAwareImportSourceReader`
+
+### Events
+
+- `ImportCompleted`
+- `ImportCompleting`
+- `ImportFailed`
+
+### Listeners
+
+- `SendImportSessionNotifications`
+
+### Actions
+
+- `BuildImportRecoveryStatusAction`
+- `BuildImportValidationSummaryAction`
+- `BuildPageReviewRowsAction`
+- `BuildRelationResolveRowsAction`
+- `CancelImportSessionAction`
+- `ClaimImportSessionForExecutionAction`
+- `CreateImportRollbackReportAction`
+- `ExecuteImportRollbackAction`
+- `AdvancePageImportToValidationAction`
+- `AuthorizeExternalPageImportTargetAction`
+- `BindMigrationArchiveUploadAction`
+- `DispatchPageImportAction`
+- `ExecuteExternalPageImportAction`
+- `RefreshPageImportStatusAction`
+- `ResolvePageImportConfirmationTargetAction`
+- `ResolvePageImportSessionAction`
+- `StartPageImportAction`
+- `StartSiteImportAction`
+- `InstallMigrationAssistantPermissionsAction`
+- `ReauthorizeImportSessionActorAction`
+- `ReauthorizeImportSessionExecutionAction`
+- `ReclaimStaleImportSessionsAction`
+- `RetryImportSessionAction`
+
+### Data objects
+
+- `DependencyGraph`
+- `ExportOptions`
+- `ExternalImportPreview`
+- `ExternalImportReadResult`
+- `ExternalPageImportTargetData`
+- `ImportRecoveryStatusData`
+- `ImportValidationSummary`
+- `ExternalPageImportExecutionResult`
+- `PageImportDecisionData`
+- `PageImportStatusData`
+- `PageImportWizardStateData`
+- `PackageManifest`
+- `PageImportTargetData`
+- `PageReviewRow`
+- `RelationResolveRow`
+- `RollbackExecutionResultData`
+
+### Jobs
+
+- `ExecuteImportPlanJob`
+
+### Command signatures
+
+- `migration-assistant:export`
+- `migration-assistant:import`
+- `migration-assistant:rollback-execute`
+- `migration-assistant:rollback-report`
+- `migration-assistant:status`
+
+### Scheduled commands
+
+- `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`
+
+### Console command classes
+
+- `ExecuteMigrationAssistantRollbackCommand`
+- `ExportMigrationAssistantPackageCommand`
+- `ImportMigrationAssistantPackageCommand`
+- `ReclaimStaleImportSessionsCommand`
+- `ShowMigrationAssistantRollbackReportCommand`
+- `ShowMigrationAssistantStatusCommand`
+
+### Manifest contributions
+
+- `admin-page: Capell\MigrationAssistant\Manifest\ImportPagesPageContribution`
+- `admin-page: Capell\MigrationAssistant\Manifest\ImportSitesPageContribution`
+- `admin-resource: Capell\MigrationAssistant\Manifest\ImportSessionResourceContribution`
+- `configurator: Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribution`
+- `health-check: Capell\MigrationAssistant\Manifest\MigrationAssistantHealthContribution`
+- `model: Capell\MigrationAssistant\Manifest\MigrationAssistantModelsContribution`
+- `permission: Capell\MigrationAssistant\Manifest\MigrationAssistantPermissionsContribution`
+- `scheduled-job: Capell\MigrationAssistant\Manifest\MigrationAssistantRecoveryScheduleContribution`
+
+### Health checks
+
+- `Capell\MigrationAssistant\Health\MigrationAssistantHealthCheck`
+
+### Blade views
+
+- `packages/migration-assistant/resources/views/pages/import-pages.blade.php`
+
 
 ## Data Model
 
@@ -79,7 +213,7 @@ Screenshot contract: `docs/screenshots.json`.
 - Required packages: `capell-app/admin`, `capell-app/core`.
 - Admin navigation: declares `admin-page: ImportPagesPageContribution`, `admin-page: ImportSitesPageContribution`, `admin-resource: ImportSessionResourceContribution`; each Filament page or resource controls its own navigation visibility.
 - Admin/editor extensions: `configurator: MigrationAssistantConsoleCommandsContribution`.
-- Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`, `import-session.rollback`.
+- Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`, `import-session.rollback`; Shield-generated page permissions for `Capell\MigrationAssistant\Filament\Pages\ImportPagesPage` (names and grants depend on host Shield configuration); access also governed by package policies: `ImportSessionPolicy`.
 - Public routes: none declared.
 - Database changes: package migrations are declared.
 - Config: `config/migration-assistant.php`.
@@ -106,8 +240,7 @@ Screenshot contract: `docs/screenshots.json`.
 ## Quick Start
 
 1. Install the package: `composer require capell-app/migration-assistant`.
-2. Run the required setup: `php artisan migrate`.
-3. Open the package admin surface at `/migration-assistant/import-sessions` and confirm Migration Assistant is available.
+2. Open the package admin surface at `/migration-assistant/import-sessions` and confirm Migration Assistant is available.
 
 ## Next Steps
 

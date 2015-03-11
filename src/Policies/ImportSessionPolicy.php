@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Policies;
 
+use Capell\Admin\Support\SiteScope;
 use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -52,7 +53,7 @@ class ImportSessionPolicy
 
         if ($this->hasDeclaredPublicMethod($user, 'hasRole')) {
             try {
-                return $user->hasRole('super_admin') === true;
+                return SiteScope::isGlobalActor($user);
             } catch (Throwable) {
                 return false;
             }

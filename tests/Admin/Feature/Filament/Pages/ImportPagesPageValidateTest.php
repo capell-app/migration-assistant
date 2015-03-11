@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
@@ -71,6 +72,7 @@ beforeEach(function (): void {
 it('advances from review (trivial map) to validate and stores the summary', function (): void {
     $site = Site::factory()->create(['name' => 'Acme Site']);
     $uuid = (string) Str::uuid();
+    $pageCountBeforeValidation = Page::query()->withoutGlobalScopes()->count();
 
     stageValidatePackage('migration-assistant/imports/staged/validate-basic.zip', $uuid, (int) $site->getKey(), '/validate-basic');
 
@@ -90,7 +92,8 @@ it('advances from review (trivial map) to validate and stores the summary', func
     $session = ImportSession::query()->latest('id')->firstOrFail();
     expect($session->status)->toBe(ImportSessionStatus::Validated)
         ->and($session->validation_results)->toBeArray()
-        ->and($session->validation_results['pages'] ?? null)->toBeArray();
+        ->and($session->validation_results['pages'] ?? null)->toBeArray()
+        ->and(Page::query()->withoutGlobalScopes()->count())->toBe($pageCountBeforeValidation);
 });
 
 it('blocks dispatch without a matching confirmation string', function (): void {
