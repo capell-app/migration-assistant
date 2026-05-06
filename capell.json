@@ -8,6 +8,8 @@
     "contexts": ["admin", "console"],
     "requires": ["capell-app/admin", "capell-app/core"],
     "providers": {
-        "shared": ["Capell\\MigrationAssistant\\Providers\\MigrationAssistantServiceProvider"]
+        "shared": [
+            "Capell\\MigrationAssistant\\Providers\\MigrationAssistantServiceProvider"
+        ]
     }
 }
