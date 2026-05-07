@@ -18,12 +18,19 @@ beforeEach(function (): void {
     File::ensureDirectoryExists($exportDirectory);
     config()->set('migration-assistant.paths.exports', $relativeExportDirectory);
 
-    test()->exportDirectory = $exportDirectory;
 });
 
 afterEach(function (): void {
-    if (isset(test()->exportDirectory) && is_string(test()->exportDirectory) && File::isDirectory(test()->exportDirectory)) {
-        File::deleteDirectory(test()->exportDirectory);
+    $relativeExportDirectory = config('migration-assistant.paths.exports');
+
+    if (! is_string($relativeExportDirectory)) {
+        return;
+    }
+
+    $exportDirectory = storage_path('app/' . $relativeExportDirectory);
+
+    if (File::isDirectory($exportDirectory)) {
+        File::deleteDirectory($exportDirectory);
     }
 });
 

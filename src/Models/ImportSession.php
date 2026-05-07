@@ -21,6 +21,7 @@ use Illuminate\Foundation\Auth\User;
  * @property int $id
  * @property string $uuid
  * @property int|null $user_id
+ * @property int|null $workspace_id
  * @property ImportSessionKind $kind
  * @property ImportSessionStatus $status
  * @property string|null $source_environment
