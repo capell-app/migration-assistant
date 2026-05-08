@@ -138,7 +138,7 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
                 $capellAdminManager->contributeToAdminSurface(
                     AdminSurfaceContributionData::resource(ImportSessionResource::class, group: 'ImportSession'),
                 );
-                $capellAdminManager->contributeToAdminSurface(AdminSurfaceContributionData::page(ImportSitesPage::class));
+                $capellAdminManager->registerExtensionPage(self::$packageName, ImportSitesPage::class);
             };
 
             $this->app->afterResolving(CapellAdminManager::class, $registerImportSessionResource);
