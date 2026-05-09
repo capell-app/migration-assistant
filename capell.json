@@ -7,15 +7,9 @@
     "tier": "premium",
     "bundle": "operations",
     "description": "MigrationAssistant provides package import workflows, source reads, mapping, preview, validation, execution state, and rollback reports.",
-    "surfaces": [
-        "admin",
-        "console"
-    ],
+    "surfaces": ["admin", "console"],
     "dependencies": {
-        "requires": [
-            "capell-app/admin",
-            "capell-app/core"
-        ],
+        "requires": ["capell-app/admin", "capell-app/core"],
         "optional": [],
         "conflicts": []
     },
