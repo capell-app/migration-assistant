@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
+use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Spatie\Permission\Models\Permission;
 
 it('installs the full migration-assistant permission matrix', function (): void {
@@ -32,6 +33,20 @@ it('registers every permission listed in plan section 6.9', function (): void {
 
     expect(InstallMigrationAssistantPermissionsAction::permissionNames())
         ->toEqualCanonicalizing($expected);
+});
+
+it('uses the migration-assistant permission enum as the source of truth', function (): void {
+    expect(InstallMigrationAssistantPermissionsAction::permissionNames())
+        ->toEqualCanonicalizing(MigrationAssistantPermission::names());
+});
+
+it('keeps manifest permissions traceable to the enum', function (): void {
+    $manifest = json_decode(
+        file_get_contents(dirname(__DIR__, 3) . '/capell.json') ?: '{}',
+        true,
+    );
+
+    expect($manifest['permissions'] ?? [])->toEqualCanonicalizing(MigrationAssistantPermission::names());
 });
 
 it('is idempotent when invoked repeatedly', function (): void {

@@ -41,7 +41,17 @@
         "health": null
     },
     "settings": [],
-    "permissions": [],
+    "permissions": [
+        "page.export",
+        "site.export",
+        "page.import",
+        "site.import",
+        "page.import.update-shared-relations",
+        "page.import.publish-live",
+        "import-session.view",
+        "import-session.cancel",
+        "import-session.retry"
+    ],
     "capabilities": [],
     "assets": [],
     "healthChecks": []

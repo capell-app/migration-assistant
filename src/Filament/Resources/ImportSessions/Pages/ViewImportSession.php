@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Filament\Resources\ImportSessions\Pages;
 
 use Capell\MigrationAssistant\Actions\CancelImportSessionAction;
 use Capell\MigrationAssistant\Actions\RetryImportSessionAction;
+use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\Schemas\ImportSessionInfolist;
 use Capell\MigrationAssistant\Models\ImportSession;
@@ -83,7 +84,7 @@ class ViewImportSession extends ViewRecord
             ->requiresConfirmation()
             ->modalHeading(__('capell-admin::exchanger.cancel_session_confirm_title'))
             ->modalDescription(__('capell-admin::exchanger.cancel_session_confirm_body'))
-            ->visible(fn (): bool => (auth()->user()?->can('import-session.cancel') ?? false)
+            ->visible(fn (): bool => (auth()->user()?->can(MigrationAssistantPermission::ImportSessionCancel->value) ?? false)
                 && CancelImportSessionAction::isCancellable($this->record))
             ->action(function (): void {
                 try {
@@ -117,7 +118,7 @@ class ViewImportSession extends ViewRecord
             ->requiresConfirmation()
             ->modalHeading(__('capell-admin::exchanger.retry_session_confirm_title'))
             ->modalDescription(__('capell-admin::exchanger.retry_session_confirm_body'))
-            ->visible(fn (): bool => (auth()->user()?->can('import-session.retry') ?? false)
+            ->visible(fn (): bool => (auth()->user()?->can(MigrationAssistantPermission::ImportSessionRetry->value) ?? false)
                 && RetryImportSessionAction::canRetry($this->record))
             ->action(function (): void {
                 try {

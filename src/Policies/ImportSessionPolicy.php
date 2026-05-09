@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Policies;
 
-use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
+use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Foundation\Auth\User;
 
@@ -13,13 +13,13 @@ class ImportSessionPolicy
     public function viewAny(User $user): bool
     {
         return $this->isGlobalAdmin($user)
-            && $user->checkPermissionTo(InstallMigrationAssistantPermissionsAction::PERMISSION_IMPORT_SESSION_VIEW);
+            && $user->checkPermissionTo(MigrationAssistantPermission::ImportSessionView->value);
     }
 
     public function view(User $user, ImportSession $importSession): bool
     {
         return $this->isGlobalAdmin($user)
-            && $user->checkPermissionTo(InstallMigrationAssistantPermissionsAction::PERMISSION_IMPORT_SESSION_VIEW);
+            && $user->checkPermissionTo(MigrationAssistantPermission::ImportSessionView->value);
     }
 
     public function create(User $user): bool

@@ -53,7 +53,7 @@ class ImportSessionResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('capell-admin::navigation.group_administration');
+        return __('capell-admin::navigation.group_system');
     }
 
     public static function getPluralModelLabel(): string
