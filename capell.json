@@ -1,4 +1,5 @@
 {
+    "manifest-version": 2,
     "name": "capell-app/migration-assistant",
     "kind": "package",
     "capell-version": "^4.0",
@@ -6,11 +7,48 @@
     "tier": "premium",
     "bundle": "operations",
     "description": "MigrationAssistant provides package import workflows, source reads, mapping, preview, validation, execution state, and rollback reports.",
-    "contexts": ["admin", "console"],
-    "requires": ["capell-app/admin", "capell-app/core"],
+    "surfaces": [
+        "admin",
+        "console"
+    ],
+    "dependencies": {
+        "requires": [
+            "capell-app/admin",
+            "capell-app/core"
+        ],
+        "optional": [],
+        "conflicts": []
+    },
+    "lifecycle": {
+        "activation": "manual",
+        "defaultStatus": "available",
+        "requiresInstallCommand": false
+    },
     "providers": {
-        "shared": [
+        "metadata": [],
+        "install": [],
+        "runtime": [
             "Capell\\MigrationAssistant\\Providers\\MigrationAssistantServiceProvider"
-        ]
-    }
+        ],
+        "admin": [],
+        "frontend": []
+    },
+    "database": {
+        "migrations": true,
+        "settings": false,
+        "requiredTables": []
+    },
+    "commands": {
+        "install": null,
+        "setup": null,
+        "setupParams": [],
+        "demo": null,
+        "demoParams": [],
+        "health": null
+    },
+    "settings": [],
+    "permissions": [],
+    "capabilities": [],
+    "assets": [],
+    "healthChecks": []
 }
