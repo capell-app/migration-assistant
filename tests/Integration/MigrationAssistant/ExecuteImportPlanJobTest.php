@@ -9,6 +9,9 @@ use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\MediaIngestService;
 use Capell\MigrationAssistant\Services\Import\PackageReader;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
+use Capell\Tests\Fixtures\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
@@ -25,8 +28,14 @@ it('dispatches on the configured migration-assistant queue', function (): void {
 });
 
 it('marks the session failed when source path is empty', function (): void {
+    Notification::fake();
+
+    $initiator = User::factory()->create();
+    Auth::logout();
+
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),
+        'user_id' => $initiator->getKey(),
         'kind' => ImportSessionKind::PageImport,
         'status' => ImportSessionStatus::Queued,
         'source_package_path' => '',
@@ -40,5 +49,7 @@ it('marks the session failed when source path is empty', function (): void {
 
     $session->refresh();
     expect($session->status)->toBe(ImportSessionStatus::Failed)
-        ->and($session->failure_reason)->toContain('source package');
+        ->and($session->failure_reason)->toContain('source package')
+        ->and((int) $session->getAttribute('updated_by'))->toBe((int) $initiator->getKey())
+        ->and(Auth::id())->toBeNull();
 });

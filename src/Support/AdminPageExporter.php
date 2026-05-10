@@ -35,6 +35,9 @@ class AdminPageExporter implements PageExporter
             includeSharedRelations: (bool) ($options['include_shared_relations'] ?? true),
             includeAllContexts: (bool) ($options['include_all_contexts'] ?? false),
             note: $options['note'] ?? null,
+            sourceWorkspace: isset($options['source_workspace_id']) && is_numeric($options['source_workspace_id'])
+                ? (int) $options['source_workspace_id']
+                : null,
         );
     }
 }

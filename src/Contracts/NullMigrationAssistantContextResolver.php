@@ -8,8 +8,13 @@ use Closure;
 
 final class NullMigrationAssistantContextResolver implements MigrationAssistantContextResolver
 {
-    public function wrap(Closure $callback): mixed
+    public function wrap(Closure $callback, ?int $sourceWorkspaceId = null): mixed
     {
         return $callback();
+    }
+
+    public function resolvePageIds(array $pageIds, ?int $sourceWorkspaceId = null): array
+    {
+        return $pageIds;
     }
 }

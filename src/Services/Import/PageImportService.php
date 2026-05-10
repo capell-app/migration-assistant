@@ -33,6 +33,7 @@ final readonly class PageImportService
     public function import(
         PackageReadResult $package,
         ResolutionMap $resolutionMap,
+        ?int $targetWorkspaceId = null,
     ): ImportExecutionReport {
         $created = [];
         $skipped = 0;
@@ -114,7 +115,7 @@ final readonly class PageImportService
                 pageUrlsCreated: $urlsCreated,
                 mediaReassigned: $mediaReassigned,
             );
-        });
+        }, $targetWorkspaceId);
     }
 
     /**

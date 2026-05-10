@@ -275,6 +275,7 @@ it('adapts admin backup options when exporting pages and sites', function (): vo
         'include_shared_relations' => false,
         'include_all_contexts' => true,
         'note' => 'admin page export',
+        'source_workspace_id' => 123,
     ]);
 
     $pageEntries = readArchiveEntries($pageExportPath);
@@ -283,6 +284,7 @@ it('adapts admin backup options when exporting pages and sites', function (): vo
     expect($pageManifest)
         ->toHaveKey('package_type', 'page-export')
         ->toHaveKey('note', 'admin page export')
+        ->toHaveKey('source_workspace_id', 123)
         ->and($pageManifest['relation_counts'])->toBe([]);
 
     $siteExportPath = $exporter->exportSites([$site->getKey()], [

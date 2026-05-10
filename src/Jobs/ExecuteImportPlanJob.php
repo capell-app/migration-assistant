@@ -16,10 +16,12 @@ use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
@@ -56,19 +58,22 @@ final class ExecuteImportPlanJob implements ShouldQueue
     public function handle(PackageReader $reader, PageImportService $importer, MediaIngestService $mediaIngester): void
     {
         $session = ImportSession::query()->findOrFail($this->importSessionId);
+        $previousUser = Auth::user();
 
-        $archivePath = (string) $session->source_package_path;
-        if ($archivePath === '') {
-            $this->markFailed($session, 'Import session has no source package path.');
-
-            return;
-        }
-
-        $session->forceFill([
-            'status' => ImportSessionStatus::Running,
-        ])->save();
+        $this->authenticateSessionUser($session);
 
         try {
+            $archivePath = (string) $session->source_package_path;
+            if ($archivePath === '') {
+                $this->markFailed($session, 'Import session has no source package path.');
+
+                return;
+            }
+
+            $session->forceFill([
+                'status' => ImportSessionStatus::Running,
+            ])->save();
+
             $disk = config('migration-assistant.disk', 'local');
             $absolutePath = Storage::disk(is_string($disk) ? $disk : 'local')->path($archivePath);
             $package = $reader->read($absolutePath);
@@ -81,7 +86,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
                 'Refusing to execute import with unresolved references.',
             );
 
-            $report = $importer->import($package, $map);
+            $report = $importer->import($package, $map, $session->workspace_id);
 
             $failureReason = $report->isSuccess() ? null : implode(' / ', array_slice($report->errors, 0, 5));
 
@@ -102,6 +107,8 @@ final class ExecuteImportPlanJob implements ShouldQueue
             $this->markFailed($session, $throwable->getMessage());
 
             throw $throwable;
+        } finally {
+            $this->restoreAuthenticatedUser($previousUser);
         }
     }
 
@@ -217,5 +224,25 @@ final class ExecuteImportPlanJob implements ShouldQueue
         ])->save();
 
         event(new ImportFailed($session, $reason));
+    }
+
+    private function authenticateSessionUser(ImportSession $session): void
+    {
+        if ($session->user_id === null) {
+            return;
+        }
+
+        Auth::onceUsingId($session->user_id);
+    }
+
+    private function restoreAuthenticatedUser(?Authenticatable $previousUser): void
+    {
+        if ($previousUser instanceof Authenticatable) {
+            Auth::guard()->setUser($previousUser);
+
+            return;
+        }
+
+        Auth::forgetGuards();
     }
 }

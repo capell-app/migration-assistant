@@ -35,14 +35,16 @@ final readonly class PageExportService
     public function exportPages(array $pageIds, ExportOptions $options): string
     {
         return $this->runInContext(function () use ($pageIds, $options): string {
+            $resolvedPageIds = $this->contextResolver->resolvePageIds($pageIds, $options->sourceWorkspace);
+
             /** @var Collection<int, Page> $pages */
-            $pages = Page::query()->with(['site', 'pageUrls'])->whereIn('id', $pageIds)->get();
+            $pages = Page::query()->with(['site', 'pageUrls'])->whereIn('id', $resolvedPageIds)->get();
 
             /** @var Collection<int, Site> $sites */
             $sites = new Collection;
 
             return $this->write($pages, $sites, $options, PackageType::PageExport, prefix: 'pages');
-        });
+        }, $options);
     }
 
     /**
@@ -57,7 +59,7 @@ final readonly class PageExportService
             $pages = Page::query()->with(['site', 'pageUrls'])->whereIn('site_id', $siteIds)->get();
 
             return $this->write($pages, $sites, $options, PackageType::SiteExport, prefix: 'sites');
-        });
+        }, $options);
     }
 
     /**
@@ -79,6 +81,7 @@ final readonly class PageExportService
             exportedAt: CarbonImmutable::now('UTC'),
             sourceEnvironment: app()->environment(),
             sourceLiveVersionId: null,
+            sourceWorkspaceId: $options->sourceWorkspace,
             pageCount: $graph->pageCount(),
             siteCount: $graph->siteCount(),
             relationCounts: $graph->sharedRelationCounts(),
@@ -108,9 +111,9 @@ final readonly class PageExportService
      * @param  Closure(): TReturn  $callback
      * @return TReturn
      */
-    private function runInContext(Closure $callback): mixed
+    private function runInContext(Closure $callback, ExportOptions $options): mixed
     {
-        return $this->contextResolver->wrap($callback);
+        return $this->contextResolver->wrap($callback, $options->sourceWorkspace);
     }
 
     private function destinationPath(string $prefix): string

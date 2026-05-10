@@ -12,6 +12,7 @@ use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
+use Capell\Tests\Fixtures\Models\User;
 use Illuminate\Support\Str;
 
 /**
@@ -249,6 +250,42 @@ it('restores imported page urls onto the newly imported page', function (): void
         ->and((int) $pageUrl->getAttribute('pageable_id'))->not->toBe((int) $existingLocalPage->getKey())
         ->and($pageUrl->getAttribute('created_by'))->not->toBe(999)
         ->and($pageUrl->trashed())->toBeFalse();
+});
+
+it('stamps imported pages and page urls with the authenticated importer', function (): void {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $layout = Layout::factory()->create();
+    $type = Type::factory()->create();
+    $site = Site::factory()->withTranslations()->create();
+    $language = $site->language;
+
+    $descriptor = json_decode(makePageDescriptor($layout, $type, $site), true, 512, JSON_THROW_ON_ERROR);
+    $descriptor['owned_relations']['page_urls'] = [
+        [
+            'language_id' => $language->getKey(),
+            'url' => '/stamped-import',
+            'status' => true,
+        ],
+    ];
+
+    $package = new PackageReadResult(
+        archivePath: '',
+        manifest: [],
+        integrity: [],
+        payload: ['pages/stamped.json' => json_encode($descriptor, JSON_THROW_ON_ERROR)],
+    );
+
+    $report = (new PageImportService)->import($package, fullyResolvedMap($layout, $type, $site));
+
+    $page = Page::query()->withoutGlobalScopes()->whereKey($report->createdPageIds[0])->firstOrFail();
+    $pageUrl = PageUrl::query()->where('url', '/stamped-import')->firstOrFail();
+
+    expect((int) $page->getAttribute('created_by'))->toBe((int) $user->getKey())
+        ->and((int) $page->getAttribute('updated_by'))->toBe((int) $user->getKey())
+        ->and((int) $pageUrl->getAttribute('created_by'))->toBe((int) $user->getKey())
+        ->and((int) $pageUrl->getAttribute('updated_by'))->toBe((int) $user->getKey());
 });
 
 it('does not import internal page state from package attributes', function (): void {
