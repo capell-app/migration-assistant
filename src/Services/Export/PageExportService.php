@@ -81,11 +81,11 @@ final readonly class PageExportService
             exportedAt: CarbonImmutable::now('UTC'),
             sourceEnvironment: app()->environment(),
             sourceLiveVersionId: null,
-            sourceWorkspaceId: $options->sourceWorkspace,
             pageCount: $graph->pageCount(),
             siteCount: $graph->siteCount(),
             relationCounts: $graph->sharedRelationCounts(),
             note: $options->note,
+            sourceWorkspaceId: $options->sourceWorkspace,
         );
 
         $payload = $this->serializer->serialize($graph);
