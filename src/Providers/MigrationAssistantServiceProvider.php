@@ -60,14 +60,6 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
 
     public function packageRegistered(): void
     {
-        CapellCore::registerPackage(
-            static::$packageName,
-            serviceProviderClass: static::class,
-            path: realpath(__DIR__ . '/../..'),
-            version: CapellCore::getInstalledPrettyVersion(static::$packageName),
-            description: fn (): string => __('migration-assistant::package.description'),
-        );
-
         $this->registerAdminPanelExtensions();
 
         $this->app->booted(function (): void {
