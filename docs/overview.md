@@ -53,6 +53,12 @@ Supports controlled migration workflows where content, media, source files, and 
 - Rollback report view.
 - Package export intent screen.
 
+## Screenshots
+
+![Import batches admin index](../../../public/docs/screenshots/packages/migration-assistant/import-session-index-or-host-admin-surface.png)
+
+Validation, relation resolution, rollback, and export screenshots need seeded import sessions before they can show distinct workflow states.
+
 ## Pitfalls
 
 - Configure MIGRATOR_QUEUE and MIGRATOR_DISK before large imports.
