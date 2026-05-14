@@ -25,7 +25,7 @@ function makePageDescriptor(Layout $layout, Type $type, Site $site, int $sourceI
         'uuid' => (string) Str::uuid(),
         'name' => 'Imported Page ' . $sourceId,
         'layout_id' => $layout->getKey(),
-        'type_id' => $type->getKey(),
+        'blueprint_id' => $type->getKey(),
         'site_id' => $site->getKey(),
         'parent_id' => null,
     ], $overrides);

@@ -125,7 +125,7 @@ final class DependencyGraphBuilder
     private function collectTypes(Collection $pages, array &$shared): void
     {
         $typeIds = $pages
-            ->pluck('type_id')
+            ->pluck('blueprint_id')
             ->filter()
             ->unique()
             ->values()

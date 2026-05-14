@@ -36,7 +36,7 @@ it('imports a site package and delegates page writes through imported site refs'
                 'id' => $sourceSiteId,
                 'attributes' => [
                     'name' => 'Imported Site',
-                    'type_id' => $type->getKey(),
+                    'blueprint_id' => $type->getKey(),
                     'theme_id' => $theme->getKey(),
                     'language_id' => $language->getKey(),
                     'status' => true,
@@ -66,7 +66,7 @@ it('imports a site package and delegates page writes through imported site refs'
                     'uuid' => (string) Str::uuid(),
                     'name' => 'Imported Home',
                     'layout_id' => $layout->getKey(),
-                    'type_id' => $pageType->getKey(),
+                    'blueprint_id' => $pageType->getKey(),
                     'site_id' => $sourceSiteId,
                     'parent_id' => null,
                 ],
@@ -159,7 +159,7 @@ it('rejects imported site domains that conflict with existing public domains', f
                 'id' => $sourceSiteId,
                 'attributes' => [
                     'name' => 'Conflicting Imported Site',
-                    'type_id' => $type->getKey(),
+                    'blueprint_id' => $type->getKey(),
                     'theme_id' => $theme->getKey(),
                     'language_id' => $language->getKey(),
                     'status' => true,

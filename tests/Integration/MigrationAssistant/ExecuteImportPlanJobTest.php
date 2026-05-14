@@ -90,7 +90,7 @@ it('executes site import sessions with unresolved site refs that are created fro
             'id' => $sourceSiteId,
             'attributes' => [
                 'name' => 'Queued Imported Site',
-                'type_id' => $siteType->getKey(),
+                'blueprint_id' => $siteType->getKey(),
                 'theme_id' => $theme->getKey(),
                 'language_id' => $language->getKey(),
                 'status' => true,
@@ -120,7 +120,7 @@ it('executes site import sessions with unresolved site refs that are created fro
                 'uuid' => (string) Str::uuid(),
                 'name' => 'Queued Imported Page',
                 'layout_id' => $layout->getKey(),
-                'type_id' => $pageType->getKey(),
+                'blueprint_id' => $pageType->getKey(),
                 'site_id' => $sourceSiteId,
                 'parent_id' => null,
             ],

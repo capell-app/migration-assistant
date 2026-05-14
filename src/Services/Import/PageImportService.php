@@ -128,7 +128,7 @@ final readonly class PageImportService
 
         $rewrites = [
             'layout' => 'layout_id',
-            'type' => 'type_id',
+            'type' => 'blueprint_id',
             'site' => 'site_id',
         ];
 
@@ -185,7 +185,7 @@ final readonly class PageImportService
             'order',
             'parent_id',
             'site_id',
-            'type_id',
+            'blueprint_id',
             'visible_from',
             'visible_until',
         ];

@@ -135,7 +135,7 @@ final readonly class SiteImportService
             'order',
             'status',
             'theme_id',
-            'type_id',
+            'blueprint_id',
         ];
 
         return array_intersect_key($attributes, array_flip($allowed));

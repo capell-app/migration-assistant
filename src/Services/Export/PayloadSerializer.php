@@ -78,9 +78,9 @@ final readonly class PayloadSerializer
                 'layout' => $page->getAttribute('layout_id') === null
                     ? null
                     : ['ref' => 'layout:' . $page->getAttribute('layout_id')],
-                'type' => $page->getAttribute('type_id') === null
+                'type' => $page->getAttribute('blueprint_id') === null
                     ? null
-                    : ['ref' => 'type:' . $page->getAttribute('type_id')],
+                    : ['ref' => 'type:' . $page->getAttribute('blueprint_id')],
                 'site' => $page->getAttribute('site_id') === null
                     ? null
                     : ['ref' => 'site:' . $page->getAttribute('site_id')],
