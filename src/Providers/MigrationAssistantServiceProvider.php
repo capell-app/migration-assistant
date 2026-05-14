@@ -135,7 +135,7 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
     {
         $table = config('permission.table_names.permissions', 'permissions');
 
-        return is_string($table) && app(RuntimeSchemaState::class)->hasTable($table);
+        return is_string($table) && resolve(RuntimeSchemaState::class)->hasTable($table);
     }
 
     private function registerAdminPanelExtensions(): void
