@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Support;
 
+use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Page;
-use Capell\Core\Models\Type;
 
 final class ImportTargetRegistry
 {
     /** @var array<string, class-string> */
     private array $targets = [
         'page' => Page::class,
-        'type' => Type::class,
+        'type' => Blueprint::class,
         'collection' => Page::class,
     ];
 

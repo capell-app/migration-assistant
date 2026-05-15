@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Language;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
 use Capell\Core\Models\Theme;
-use Capell\Core\Models\Type;
 use Capell\MigrationAssistant\Data\DependencyGraph;
 use Capell\MigrationAssistant\Data\PackageManifest;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
@@ -74,10 +74,10 @@ it('executes site import sessions with unresolved site refs that are created fro
     Notification::fake();
 
     $language = Language::factory()->english()->create();
-    $siteType = Type::factory()->site()->create();
+    $siteType = Blueprint::factory()->site()->create();
     $theme = Theme::factory()->create();
     $layout = Layout::factory()->create();
-    $pageType = Type::factory()->page()->create();
+    $pageType = Blueprint::factory()->page()->create();
     $sourceSiteId = 991;
     $sourcePageId = 992;
     $archiveRelativePath = 'migration-assistant/imports/site-job-test.zip';

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Services\Export;
 
+use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Media;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
-use Capell\Core\Models\Type;
 use Capell\MigrationAssistant\Data\DependencyGraph;
 use Capell\MigrationAssistant\Data\ExportOptions;
 use Illuminate\Database\Eloquent\Collection;
@@ -135,10 +135,10 @@ final class DependencyGraphBuilder
             return;
         }
 
-        $types = Type::query()->whereIn('id', $typeIds)->get();
+        $types = Blueprint::query()->whereIn('id', $typeIds)->get();
 
         foreach ($types as $type) {
-            $shared[Type::class][$this->refFor(Type::class, $type)] = $type;
+            $shared[Blueprint::class][$this->refFor(Blueprint::class, $type)] = $type;
         }
     }
 
@@ -189,7 +189,7 @@ final class DependencyGraphBuilder
             Site::class => 'site',
             SiteDomain::class => 'site-domain',
             Layout::class => 'layout',
-            Type::class => 'type',
+            Blueprint::class => 'type',
             Media::class => 'media',
             default => strtolower(class_basename($class)),
         };

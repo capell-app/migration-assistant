@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Media;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\PageUrl;
 use Capell\Core\Models\Site;
-use Capell\Core\Models\Type;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 /**
  * @param  array<string, mixed>  $overrides
  */
-function makePageDescriptor(Layout $layout, Type $type, Site $site, int $sourceId = 9001, array $overrides = []): string
+function makePageDescriptor(Layout $layout, Blueprint $type, Site $site, int $sourceId = 9001, array $overrides = []): string
 {
     $attributes = array_merge([
         'id' => $sourceId,
@@ -47,7 +47,7 @@ function makePageDescriptor(Layout $layout, Type $type, Site $site, int $sourceI
     return (string) json_encode($descriptor);
 }
 
-function fullyResolvedMap(Layout $layout, Type $type, Site $site): ResolutionMap
+function fullyResolvedMap(Layout $layout, Blueprint $type, Site $site): ResolutionMap
 {
     return new ResolutionMap(
         resolved: [
@@ -61,7 +61,7 @@ function fullyResolvedMap(Layout $layout, Type $type, Site $site): ResolutionMap
 
 it('imports a page and rewrites shared refs', function (): void {
     $layout = Layout::factory()->create();
-    $type = Type::factory()->create();
+    $type = Blueprint::factory()->create();
     $site = Site::factory()->create();
 
     $package = new PackageReadResult(
@@ -86,7 +86,7 @@ it('imports a page and rewrites shared refs', function (): void {
 
 it('remaps parent_id to the local id when both parent and child are imported', function (): void {
     $layout = Layout::factory()->create();
-    $type = Type::factory()->create();
+    $type = Blueprint::factory()->create();
     $site = Site::factory()->create();
 
     $parentJson = makePageDescriptor($layout, $type, $site, sourceId: 501);
@@ -118,7 +118,7 @@ it('remaps parent_id to the local id when both parent and child are imported', f
 
 it('skips pages whose shared relations are unresolved', function (): void {
     $layout = Layout::factory()->create();
-    $type = Type::factory()->create();
+    $type = Blueprint::factory()->create();
     $site = Site::factory()->create();
 
     $package = new PackageReadResult(
@@ -138,7 +138,7 @@ it('skips pages whose shared relations are unresolved', function (): void {
 
 it('rebinds media owners to the newly imported page', function (): void {
     $layout = Layout::factory()->create();
-    $type = Type::factory()->create();
+    $type = Blueprint::factory()->create();
     $site = Site::factory()->create();
 
     $holder = Page::factory()->create();
@@ -193,7 +193,7 @@ it('rebinds media owners to the newly imported page', function (): void {
 
 it('restores imported page urls onto the newly imported page', function (): void {
     $layout = Layout::factory()->create();
-    $type = Type::factory()->create();
+    $type = Blueprint::factory()->create();
     $site = Site::factory()->withTranslations()->create();
     $otherSite = Site::factory()->withTranslations()->create();
     $language = $site->language;
@@ -257,7 +257,7 @@ it('stamps imported pages and page urls with the authenticated importer', functi
     $this->actingAs($user);
 
     $layout = Layout::factory()->create();
-    $type = Type::factory()->create();
+    $type = Blueprint::factory()->create();
     $site = Site::factory()->withTranslations()->create();
     $language = $site->language;
 
@@ -290,7 +290,7 @@ it('stamps imported pages and page urls with the authenticated importer', functi
 
 it('does not import internal page state from package attributes', function (): void {
     $layout = Layout::factory()->create();
-    $type = Type::factory()->create();
+    $type = Blueprint::factory()->create();
     $site = Site::factory()->create();
 
     $package = new PackageReadResult(

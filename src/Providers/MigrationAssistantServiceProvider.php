@@ -8,9 +8,9 @@ use Capell\Admin\Contracts\Backup\PageExporter;
 use Capell\Admin\Data\AdminSurfaceContributionData;
 use Capell\Admin\Support\CapellAdminManager;
 use Capell\Core\Facades\CapellCore;
+use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Site;
-use Capell\Core\Models\Type;
 use Capell\Core\Support\Database\RuntimeSchemaState;
 use Capell\Core\Support\Packages\AbstractPackageServiceProvider;
 use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
@@ -102,8 +102,8 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
                 $registry = new RelationMatchResolverRegistry;
                 $registry->register('layouts', new KeyedMatchResolver(Layout::class));
                 $registry->register('layouts', new FingerprintMatchResolver(Layout::class));
-                $registry->register('types', new KeyedMatchResolver(Type::class));
-                $registry->register('types', new FingerprintMatchResolver(Type::class));
+                $registry->register('types', new KeyedMatchResolver(Blueprint::class));
+                $registry->register('types', new FingerprintMatchResolver(Blueprint::class));
                 $registry->register('sites', new KeyedMatchResolver(Site::class, keyColumn: 'slug'));
                 $registry->register('media', new MediaMatchResolver);
 

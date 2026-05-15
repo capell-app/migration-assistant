@@ -6,13 +6,13 @@ This page is the consolidated implementation overview for the MigrationAssistant
 
 ## What This Package Adds
 
-MigrationAssistant provides the Capell Migration AIOrchestrator: package export/import, CSV/XML source reads, source contracts for add-on importers, field mapping, preview, validation, dependency graph review, relation resolution, media ingest, queued execution, and rollback dashboard-dashboard_reports.
+MigrationAssistant provides the Capell Migration AIOrchestrator: package export/import, CSV/XML source reads, source contracts for add-on importers, field mapping, preview, validation, dependency graph review, relation resolution, media ingest, queued execution, and rollback reports.
 
 - Import source contracts expose rows, columns, metadata, and a suggested target.
 - Native CSV and XML readers cover common flat-file migrations without extra Composer dependencies.
 - Field mapping targets Capell pages and types. Collection-like imports resolve through the same target registry until another package registers a concrete collection target.
 - Preview output separates creates, skips, warnings, and blocking errors before execution.
-- Rollback dashboard-dashboard_reports capture created model class/id pairs, imported URL/media counts, source filename/checksum, executing user/time, and manual rollback instructions.
+- Rollback reports capture created model class/id pairs, imported URL/media counts, source filename/checksum, executing user/time, and manual rollback instructions.
 - Import session tracking, retry/cancel flow, notifications, and queued execution.
 - Package reader/writer services.
 - Import validation, relation resolution, dependency graph, and media ingest services.
@@ -26,7 +26,7 @@ Separates migration work into services, actions, DTOs, jobs, events, source read
 - Migrations create import_rollback_dashboard-dashboard_reports and import_sessions.
 - Jobs execute import plans.
 - Events report import completed or failed.
-- Services cover package reading, writing, CSV/XML reading, mapping, preview, validation, relation resolution, media ingest, and rollback dashboard-dashboard_reports.
+- Services cover package reading, writing, CSV/XML reading, mapping, preview, validation, relation resolution, media ingest, and rollback reports.
 - WordPress WXR support lives in `capell-app/wordpress-importer`, which depends on this package and registers its reader through the source registry.
 
 ## Operational Notes

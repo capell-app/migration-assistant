@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Services\Export;
 
+use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Media;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
-use Capell\Core\Models\Type;
 use Capell\Core\Support\Json\JsonCodec;
 use Capell\MigrationAssistant\Contracts\MigrationAssistantRowContributor;
 use Capell\MigrationAssistant\Contracts\NullMigrationAssistantRowContributor;
@@ -130,7 +130,7 @@ final readonly class PayloadSerializer
             Site::class => 'sites',
             SiteDomain::class => 'site-domains',
             Layout::class => 'layouts',
-            Type::class => 'types',
+            Blueprint::class => 'types',
             Media::class => 'media',
             default => strtolower(class_basename($class)) . 's',
         };
@@ -145,7 +145,7 @@ final readonly class PayloadSerializer
             Site::class => 'site',
             SiteDomain::class => 'site-domain',
             Layout::class => 'layout',
-            Type::class => 'type',
+            Blueprint::class => 'type',
             Media::class => 'media',
             default => strtolower(class_basename($class)),
         };

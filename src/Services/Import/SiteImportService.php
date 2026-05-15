@@ -27,8 +27,8 @@ final readonly class SiteImportService
         ?int $targetWorkspaceId = null,
     ): ImportExecutionReport {
         return DB::transaction(function () use ($package, $resolutionMap, $targetWorkspaceId): ImportExecutionReport {
-            $createdSiteIds = [];
-            $createdSiteDomainIds = [];
+            $createdSiteIds = $this->emptyCreatedIds();
+            $createdSiteDomainIds = $this->emptyCreatedIds();
             $map = $this->materialiseSiteRelations($package, $resolutionMap, $createdSiteIds, $createdSiteDomainIds);
             $report = $this->pageImporter->import($package, $map, $targetWorkspaceId);
 
@@ -81,7 +81,7 @@ final readonly class SiteImportService
             $site->forceFill($this->siteAttributes($descriptor));
             $site->save();
 
-            $createdSiteIds[] = $site->getKey();
+            $createdSiteIds[] = (int) $site->getKey();
             $resolved[$ref] = new MatchResolution(localId: (int) $site->getKey(), strategy: 'imported');
             $resolvedSiteIdsByRef[$ref] = (int) $site->getKey();
 
@@ -108,7 +108,7 @@ final readonly class SiteImportService
             $siteDomain = new SiteDomain;
             $siteDomain->forceFill($attributes);
             $siteDomain->save();
-            $createdSiteDomainIds[] = $siteDomain->getKey();
+            $createdSiteDomainIds[] = (int) $siteDomain->getKey();
         }
 
         $unresolved = array_values(array_filter(
@@ -257,5 +257,13 @@ final readonly class SiteImportService
         $decoded = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
 
         return $decoded;
+    }
+
+    /**
+     * @return array<int, int|string>
+     */
+    private function emptyCreatedIds(): array
+    {
+        return [];
     }
 }

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Policy;
 
+use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Media;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\PageUrl;
 use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
-use Capell\Core\Models\Type;
 use Capell\MigrationAssistant\Enums\RelationOwnership;
 use RuntimeException;
 
@@ -33,7 +33,7 @@ final class OwnershipMap
         Site::class => RelationOwnership::Shared,
         SiteDomain::class => RelationOwnership::Shared,
         Layout::class => RelationOwnership::Shared,
-        Type::class => RelationOwnership::Shared,
+        Blueprint::class => RelationOwnership::Shared,
         Media::class => RelationOwnership::Shared,
     ];
 

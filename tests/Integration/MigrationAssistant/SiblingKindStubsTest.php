@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Language;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
 use Capell\Core\Models\Theme;
-use Capell\Core\Models\Type;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
@@ -17,10 +17,10 @@ use Illuminate\Support\Str;
 
 it('imports a site package and delegates page writes through imported site refs', function (): void {
     $language = Language::factory()->english()->create();
-    $type = Type::factory()->site()->create();
+    $type = Blueprint::factory()->site()->create();
     $theme = Theme::factory()->create();
     $layout = Layout::factory()->create();
-    $pageType = Type::factory()->page()->create();
+    $pageType = Blueprint::factory()->page()->create();
     $sourceSiteId = 901;
     $sourceDomainId = 902;
     $sourcePageId = 903;
@@ -137,7 +137,7 @@ it('does not import site domains with unmapped source site ids', function (): vo
 
 it('rejects imported site domains that conflict with existing public domains', function (): void {
     $language = Language::factory()->english()->create();
-    $type = Type::factory()->site()->create();
+    $type = Blueprint::factory()->site()->create();
     $theme = Theme::factory()->create();
     $existingSite = Site::factory()->create();
     SiteDomain::factory()->create([
