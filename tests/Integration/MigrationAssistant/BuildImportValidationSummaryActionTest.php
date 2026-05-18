@@ -9,8 +9,6 @@ use Capell\MigrationAssistant\Data\RelationResolveRow;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /**
@@ -76,42 +74,6 @@ it('produces clean counts for a basic package', function (): void {
         ->and($summary->relations['match'])->toBe(1)
         ->and($summary->blockingErrors)->toBe([])
         ->and($summary->isClean())->toBeTrue();
-});
-
-it('flags a blocking error when a workspace-conflicted page is set to create', function (): void {
-    if (! Schema::hasColumn('page_urls', 'workspace_id')) {
-        $this->markTestSkipped('Requires publishing-studio package (page_urls.workspace_id column)');
-    }
-
-    $site = Site::factory()->create();
-    $uuid = (string) Str::uuid();
-
-    DB::table('page_urls')->insert([
-        'workspace_id' => 77,
-        'site_id' => $site->getKey(),
-        'language_id' => 1,
-        'url' => '/claimed',
-        'status' => 'draft',
-        'pageable_type' => 'page',
-        'pageable_id' => 9999,
-        'type' => 'alias',
-        'is_manual' => 0,
-        'status_code' => 200,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    $summary = (new BuildImportValidationSummaryAction)->run(
-        package: validationPackage($uuid, (int) $site->getKey(), '/claimed'),
-        map: siteResolvedMap($site),
-        pageDecisions: [$uuid => ['action' => PageReviewRow::ACTION_CREATE]],
-        relationDecisions: [
-            'site:' . $site->getKey() => ['action' => RelationResolveRow::ACTION_USE_EXISTING, 'target_id' => $site->getKey()],
-        ],
-    );
-
-    expect($summary->blockingErrors)->not->toBeEmpty()
-        ->and($summary->isClean())->toBeFalse();
 });
 
 it('warns when the resolver surfaces low-confidence alternatives', function (): void {

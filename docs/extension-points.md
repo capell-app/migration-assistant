@@ -12,6 +12,7 @@ Migration Assistant imports, exports, reviews, and rolls back content moves betw
 | Contribute review rows     | `MigrationAssistantRowContributor`                        |
 | Resolve package context    | `MigrationAssistantContextResolver`                       |
 | Detect URL/page collisions | `PageCollisionDetector`                                   |
+| Resolve page import target | `PageImportTargetResolver`                                |
 | Mark relation ownership    | `OwnershipMap::register()`                                |
 
 The package ships CSV and XML readers, default targets for `page`, `type`, and `collection`, and relation resolvers for layouts, types, sites, and media.

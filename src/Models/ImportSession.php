@@ -23,6 +23,10 @@ use Override;
  * @property string $uuid
  * @property int|null $user_id
  * @property int|null $workspace_id
+ * @property string|null $target_type
+ * @property int|null $target_id
+ * @property string|null $target_label
+ * @property string|null $target_url
  * @property ImportSessionKind $kind
  * @property ImportSessionStatus $status
  * @property string|null $source_environment
@@ -57,6 +61,10 @@ class ImportSession extends Model implements Userstampable
     protected $fillable = [
         'uuid',
         'user_id',
+        'target_type',
+        'target_id',
+        'target_label',
+        'target_url',
         'kind',
         'status',
         'source_environment',
@@ -103,6 +111,7 @@ class ImportSession extends Model implements Userstampable
         return [
             'kind' => ImportSessionKind::class,
             'status' => ImportSessionStatus::class,
+            'target_id' => 'integer',
             'manifest' => 'array',
             'resolution_map' => 'array',
             'page_decisions' => 'array',

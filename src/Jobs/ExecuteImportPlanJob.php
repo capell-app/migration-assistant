@@ -89,7 +89,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
             $this->assertNoBlockingUnresolvedReferences($package, $map, $session->kind);
 
             $report = $this->importerFor($session->kind, $pageImporter, $siteImporter)
-                ->import($package, $map, $this->targetWorkspaceId($session));
+                ->import($package, $map, $this->targetContextId($session));
 
             $failureReason = $report->isSuccess() ? null : implode(' / ', array_slice($report->errors, 0, 5));
 
@@ -115,8 +115,13 @@ final class ExecuteImportPlanJob implements ShouldQueue
         }
     }
 
-    private function targetWorkspaceId(ImportSession $session): ?int
+    private function targetContextId(ImportSession $session): ?int
     {
+        $targetId = $session->getRawOriginal('target_id');
+        if (is_numeric($targetId)) {
+            return (int) $targetId;
+        }
+
         $workspaceId = $session->getRawOriginal('workspace_id');
 
         return is_numeric($workspaceId) ? (int) $workspaceId : null;

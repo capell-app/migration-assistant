@@ -8,6 +8,7 @@ This page is the consolidated implementation overview for the MigrationAssistant
 
 MigrationAssistant provides the Capell Migration AIOrchestrator: package export/import, CSV/XML source reads, source contracts for add-on importers, field mapping, preview, validation, dependency graph review, relation resolution, media ingest, queued execution, and rollback reports.
 
+- Page imports are owned here: the Recovery Center page upload, review, relation resolution, validation, dispatch, and status polling flow lives in MigrationAssistant.
 - Import source contracts expose rows, columns, metadata, and a suggested target.
 - Native CSV and XML readers cover common flat-file migrations without extra Composer dependencies.
 - Field mapping targets Capell pages and types. Collection-like imports resolve through the same target registry until another package registers a concrete collection target.
@@ -23,7 +24,7 @@ Separates migration work into services, actions, DTOs, jobs, events, source read
 
 - MigrationAssistantServiceProvider registers the package.
 - Config file: migration-assistant.php.
-- Migrations create import_rollback_dashboard-dashboard_reports and import_sessions.
+- Migrations create import_rollback_dashboard-dashboard_reports and import_sessions, including generic target fields.
 - Jobs execute import plans.
 - Events report import completed or failed.
 - Services cover package reading, writing, CSV/XML reading, mapping, preview, validation, relation resolution, media ingest, and rollback reports.
@@ -42,12 +43,13 @@ Supports controlled migration workflows where content, media, source files, and 
 ## Data And Retention
 
 - import_rollback_dashboard-dashboard_reports stores import session, created model ids, source filename/checksum, summary counts, executing user/time, and manual rollback instructions.
-- import_sessions stores import kind, status, manifest, and result summary.
+- import_sessions stores import kind, generic target type/id, status, manifest, decisions, validation state, and result summary.
 - Retention and deletion rules should be verified against the host application policy.
 
 ## Screenshot Plan
 
 - Import session index or host admin surface.
+- Page import upload and validation workflow.
 - Import validation summary.
 - Relation resolution review.
 - Rollback report view.
@@ -85,7 +87,9 @@ Validation, relation resolution, rollback, and export screenshots need seeded im
 
 ## Admin Surfaces
 
-- None proven in this package directory.
+- ImportPagesPage (packages/migration-assistant/src/Filament/Pages/ImportPagesPage.php, slug `recovery-center/import-pages`)
+- ImportSitesPage (packages/migration-assistant/src/Filament/Pages/ImportSitesPage.php, slug `recovery-center/import-sites`)
+- ImportSessionResource (packages/migration-assistant/src/Filament/Resources/ImportSessions/ImportSessionResource.php)
 
 ## Commands
 
@@ -103,6 +107,7 @@ Validation, relation resolution, rollback, and export screenshots need seeded im
 
 - Migration: create_import_rollback_dashboard-dashboard_reports_table.php
 - Migration: create_import_sessions_table.php
+- Migration: add_target_columns_to_import_sessions_table.php
 
 ## ERD Excerpt
 

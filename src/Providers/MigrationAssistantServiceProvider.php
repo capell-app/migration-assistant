@@ -18,10 +18,12 @@ use Capell\MigrationAssistant\Contracts\MigrationAssistantContextResolver;
 use Capell\MigrationAssistant\Contracts\MigrationAssistantRowContributor;
 use Capell\MigrationAssistant\Contracts\NullMigrationAssistantContextResolver;
 use Capell\MigrationAssistant\Contracts\NullMigrationAssistantRowContributor;
-use Capell\MigrationAssistant\Contracts\NullPageCollisionDetector;
+use Capell\MigrationAssistant\Contracts\NullPageImportTargetResolver;
 use Capell\MigrationAssistant\Contracts\PageCollisionDetector;
+use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Events\ImportCompleted;
 use Capell\MigrationAssistant\Events\ImportFailed;
+use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
 use Capell\MigrationAssistant\Listeners\SendImportSessionNotifications;
@@ -29,6 +31,7 @@ use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Policies\ImportSessionPolicy;
 use Capell\MigrationAssistant\Services\Import\CsvReader;
+use Capell\MigrationAssistant\Services\Import\PageUrlCollisionDetector;
 use Capell\MigrationAssistant\Services\Import\Resolvers\FingerprintMatchResolver;
 use Capell\MigrationAssistant\Services\Import\Resolvers\KeyedMatchResolver;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MediaMatchResolver;
@@ -39,6 +42,7 @@ use Capell\MigrationAssistant\Support\ImportSourceRegistry;
 use Capell\MigrationAssistant\Support\ImportTargetRegistry;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Spatie\LaravelPackageTools\Package;
 
 class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
@@ -55,6 +59,7 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
             ->hasMigrations([
                 '2026_05_10_190859_01_create_import_sessions_table',
                 '2026_05_10_190859_02_create_import_rollback_dashboard-dashboard_reports_table',
+                '2026_05_18_000001_add_target_columns_to_import_sessions_table',
             ]);
     }
 
@@ -85,7 +90,8 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
 
         $this->app->singletonIf(MigrationAssistantContextResolver::class, NullMigrationAssistantContextResolver::class);
         $this->app->singletonIf(MigrationAssistantRowContributor::class, NullMigrationAssistantRowContributor::class);
-        $this->app->singletonIf(PageCollisionDetector::class, NullPageCollisionDetector::class);
+        $this->app->singletonIf(PageImportTargetResolver::class, NullPageImportTargetResolver::class);
+        $this->app->singletonIf(PageCollisionDetector::class, PageUrlCollisionDetector::class);
 
         $this->app->singleton(ImportTargetRegistry::class);
         $this->app->singleton(ImportSourceRegistry::class, static function (): ImportSourceRegistry {
@@ -135,7 +141,15 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
     {
         $table = config('permission.table_names.permissions', 'permissions');
 
-        return is_string($table) && resolve(RuntimeSchemaState::class)->hasTable($table);
+        if (! is_string($table)) {
+            return false;
+        }
+
+        if (class_exists(RuntimeSchemaState::class)) {
+            return resolve(RuntimeSchemaState::class)->hasTable($table);
+        }
+
+        return Schema::hasTable($table);
     }
 
     private function registerAdminPanelExtensions(): void
@@ -154,7 +168,8 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
                 $capellAdminManager->contributeToAdminSurface(
                     AdminSurfaceContributionData::resource(ImportSessionResource::class, group: 'ImportSession'),
                 );
-                $capellAdminManager->registerExtensionPage(self::$packageName, ImportSitesPage::class);
+                $capellAdminManager->contributeToAdminSurface(AdminSurfaceContributionData::page(ImportPagesPage::class));
+                $capellAdminManager->contributeToAdminSurface(AdminSurfaceContributionData::page(ImportSitesPage::class));
             };
 
             $this->app->afterResolving(CapellAdminManager::class, $registerImportSessionResource);

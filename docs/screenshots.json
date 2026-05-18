@@ -26,6 +26,16 @@
             "notes": "Resolved by the deployment screenshot runner after the package is installed and demo data is prepared."
         },
         {
+            "id": "recovery-page-imports",
+            "title": "Recovery page imports.",
+            "package": "migration-assistant",
+            "surface": "admin",
+            "targetType": "admin-surface",
+            "target": "ImportPagesPage",
+            "required": true,
+            "notes": "Show recovery-center page import validation, relation resolution, execution state, and rollback reporting."
+        },
+        {
             "id": "relation-resolution-review",
             "title": "Relation resolution review.",
             "package": "migration-assistant",

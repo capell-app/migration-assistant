@@ -8,6 +8,7 @@ use BackedEnum;
 use Capell\Admin\Filament\Concerns\HasConfiguredTable;
 use Capell\Admin\Filament\Concerns\HasNavigationBadge;
 use Capell\MigrationAssistant\Contracts\ImportSessionSubNavigationExtender;
+use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\Pages\ListImportSessions;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\Pages\ViewImportSession;
@@ -96,6 +97,14 @@ class ImportSessionResource extends Resource
         foreach (app()->tagged(ImportSessionSubNavigationExtender::TAG) as $extender) {
             /** @var ImportSessionSubNavigationExtender $extender */
             $items = array_merge($items, $extender->getItems());
+        }
+
+        if (Route::has(ImportPagesPage::getRouteName())) {
+            $items[] = NavigationItem::make()
+                ->label(__('capell-admin::exchanger.import_pages'))
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->url(ImportPagesPage::getUrl())
+                ->isActiveWhen(fn (): bool => request()->is('*/recovery-center/import-pages*'));
         }
 
         if (Route::has(ImportSitesPage::getRouteName())) {

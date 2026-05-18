@@ -9,6 +9,7 @@ use Capell\Admin\Facades\CapellAdmin;
 use Capell\Admin\Providers\AdminServiceProvider;
 use Capell\Admin\Providers\Filament\AdminPanelProvider;
 use Capell\Core\Facades\CapellCore;
+use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
 use Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider;
@@ -56,6 +57,7 @@ abstract class MigrationAssistantTestCase extends AbstractTestCase
         CapellAdmin::contributeToAdminSurface(
             AdminSurfaceContributionData::resource(ImportSessionResource::class, group: 'ImportSession'),
         );
+        CapellAdmin::contributeToAdminSurface(AdminSurfaceContributionData::page(ImportPagesPage::class));
         CapellAdmin::contributeToAdminSurface(AdminSurfaceContributionData::page(ImportSitesPage::class));
     }
 }

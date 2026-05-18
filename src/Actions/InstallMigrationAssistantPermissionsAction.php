@@ -21,23 +21,23 @@ class InstallMigrationAssistantPermissionsAction
 {
     use AsAction;
 
-    public const PERMISSION_PAGE_EXPORT = 'page.export';
+    public const string PERMISSION_PAGE_EXPORT = 'page.export';
 
-    public const PERMISSION_SITE_EXPORT = 'site.export';
+    public const string PERMISSION_SITE_EXPORT = 'site.export';
 
-    public const PERMISSION_PAGE_IMPORT = 'page.import';
+    public const string PERMISSION_PAGE_IMPORT = 'page.import';
 
-    public const PERMISSION_SITE_IMPORT = 'site.import';
+    public const string PERMISSION_SITE_IMPORT = 'site.import';
 
-    public const PERMISSION_PAGE_IMPORT_UPDATE_SHARED = 'page.import.update-shared-relations';
+    public const string PERMISSION_PAGE_IMPORT_UPDATE_SHARED = 'page.import.update-shared-relations';
 
-    public const PERMISSION_PAGE_IMPORT_PUBLISH_LIVE = 'page.import.publish-live';
+    public const string PERMISSION_PAGE_IMPORT_PUBLISH_LIVE = 'page.import.publish-live';
 
-    public const PERMISSION_IMPORT_SESSION_VIEW = 'import-session.view';
+    public const string PERMISSION_IMPORT_SESSION_VIEW = 'import-session.view';
 
-    public const PERMISSION_IMPORT_SESSION_CANCEL = 'import-session.cancel';
+    public const string PERMISSION_IMPORT_SESSION_CANCEL = 'import-session.cancel';
 
-    public const PERMISSION_IMPORT_SESSION_RETRY = 'import-session.retry';
+    public const string PERMISSION_IMPORT_SESSION_RETRY = 'import-session.retry';
 
     /**
      * @return list<string>

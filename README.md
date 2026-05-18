@@ -15,6 +15,7 @@ MigrationAssistant export, import, and rollback report workflows for Capell.
 
 - MigrationAssistant export, import, and rollback report workflows for Capell.
 - Admin resources: `ImportSessionResource`.
+- Recovery Center page import workflow: upload, review, resolve relations, validate, queue execution, and inspect rollback evidence.
 
 ## Why It Matters
 
@@ -47,6 +48,7 @@ This package makes its Composer dependencies visible because they are part of th
 Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) during package deployment.
 
 - Import session index or host admin surface.
+- Page import upload and validation workflow.
 - Import validation summary.
 - Relation resolution review.
 - Rollback report view.
@@ -56,7 +58,7 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 
 - MigrationAssistantServiceProvider registers the package.
 - Config file: migration-assistant.php.
-- Migrations create import_rollback_dashboard-dashboard_reports and import_sessions.
+- Migrations create import_rollback_dashboard-dashboard_reports and import_sessions, including generic import target columns.
 - Jobs execute import plans.
 - Events report import completed or failed.
 - Services cover package reading, writing, CSV/XML reading, mapping, validation, relation resolution, media ingest, preview, and rollback reporting.
@@ -81,7 +83,7 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 ## Admin Surface
 
 - Resources: `ImportSessionResource`.
-- Pages: `ImportSitesPage`, `ListImportSessions`, `ViewImportSession`.
+- Pages: `ImportPagesPage`, `ImportSitesPage`, `ListImportSessions`, `ViewImportSession`.
 
 ## Runtime Surface
 
@@ -90,17 +92,17 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 ## Data And Persistence
 
 - import_rollback_dashboard-dashboard_reports stores the import session, created model ids, source filename/checksum, summary counts, executing user/time, and manual rollback instructions.
-- import_sessions stores import kind, status, manifest, and result summary.
+- import_sessions stores import kind, generic target type/id, status, manifest, decisions, validation state, and result summary.
 - Retention and deletion rules should be verified against the host application policy.
 
 - Models: `ImportRollbackReport`, `ImportSession`.
-- Migrations: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_dashboard-dashboard_reports_table.php`.
+- Migrations: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_dashboard-dashboard_reports_table.php`, `2026_05_18_000001_add_target_columns_to_import_sessions_table.php`.
 - Config: `packages/migration-assistant/config/migration-assistant.php`.
 - Data objects live in `src/Data/`; use them for payloads, form state, and view models.
 
 ## Extension Points
 
-- Contracts: `ImportSessionSubNavigationExtender`, `ImportSourceReader`, `MigrationAssistantContextResolver`, `MigrationAssistantRowContributor`, `NullMigrationAssistantContextResolver`, `NullMigrationAssistantRowContributor`, `NullPageCollisionDetector`, `PageCollisionDetector`.
+- Contracts: `ImportSessionSubNavigationExtender`, `ImportSourceReader`, `MigrationAssistantContextResolver`, `MigrationAssistantRowContributor`, `PageCollisionDetector`, `PageImportTargetResolver`.
 - Events: `ImportCompleted`, `ImportFailed`.
 - Listeners: `SendImportSessionNotifications`.
 - Register Capell extension points, routes, migrations, settings, render hooks, and resources from service providers.

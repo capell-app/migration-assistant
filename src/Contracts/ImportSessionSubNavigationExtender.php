@@ -8,8 +8,7 @@ use Filament\Navigation\NavigationItem;
 
 interface ImportSessionSubNavigationExtender
 {
-    /** @var string */
-    public const TAG = 'capell-admin:import-session-sub-navigation-extender';
+    public const string TAG = 'capell-admin:import-session-sub-navigation-extender';
 
     /** @return array<int, NavigationItem> */
     public function getItems(): array;
