@@ -18,23 +18,23 @@ namespace Capell\MigrationAssistant\Data;
  */
 final readonly class RelationResolveRow
 {
-    public const ACTION_USE_EXISTING = 'use_existing';
+    public const string ACTION_USE_EXISTING = 'use_existing';
 
-    public const ACTION_CREATE_NEW = 'create_new';
+    public const string ACTION_CREATE_NEW = 'create_new';
 
-    public const ACTION_CLONE_IMPORTED = 'clone_imported';
+    public const string ACTION_CLONE_IMPORTED = 'clone_imported';
 
-    public const ACTION_UPDATE_EXISTING = 'update_existing';
+    public const string ACTION_UPDATE_EXISTING = 'update_existing';
 
-    public const ACTION_SKIP = 'skip';
+    public const string ACTION_SKIP = 'skip';
 
-    public const GROUP_LAYOUTS = 'layouts';
+    public const string GROUP_LAYOUTS = 'layouts';
 
-    public const GROUP_TYPES = 'types';
+    public const string GROUP_TYPES = 'types';
 
-    public const GROUP_SITES = 'sites';
+    public const string GROUP_SITES = 'sites';
 
-    public const GROUP_MEDIA = 'media';
+    public const string GROUP_MEDIA = 'media';
 
     /**
      * @param  array{local_id: int|string, strategy: string, confidence: float, reason: string}|null  $topMatch

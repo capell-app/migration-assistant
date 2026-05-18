@@ -14,23 +14,17 @@ namespace Capell\MigrationAssistant\Data;
  */
 final readonly class PageReviewRow
 {
-    /** @var string */
-    public const COLLISION_NONE = 'none';
+    public const string COLLISION_NONE = 'none';
 
-    /** @var string */
-    public const COLLISION_URL_LIVE = 'url_conflict_live';
+    public const string COLLISION_URL_LIVE = 'url_conflict_live';
 
-    /** @var string */
-    public const COLLISION_URL_WORKSPACE = 'url_conflict_workspace';
+    public const string COLLISION_URL_WORKSPACE = 'url_conflict_workspace';
 
-    /** @var string */
-    public const ACTION_CREATE = 'create';
+    public const string ACTION_CREATE = 'create';
 
-    /** @var string */
-    public const ACTION_UPDATE = 'update';
+    public const string ACTION_UPDATE = 'update';
 
-    /** @var string */
-    public const ACTION_SKIP = 'skip';
+    public const string ACTION_SKIP = 'skip';
 
     /**
      * @param  list<array{site_id: int|null, language_id: int|null, url: string}>  $urls

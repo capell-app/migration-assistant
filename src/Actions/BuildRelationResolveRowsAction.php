@@ -26,7 +26,7 @@ class BuildRelationResolveRowsAction
      *
      * @var array<string, string>
      */
-    private const PREFIX_TO_GROUP = [
+    private const array PREFIX_TO_GROUP = [
         'layout' => RelationResolveRow::GROUP_LAYOUTS,
         'type' => RelationResolveRow::GROUP_TYPES,
         'site' => RelationResolveRow::GROUP_SITES,

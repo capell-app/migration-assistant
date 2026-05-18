@@ -47,6 +47,7 @@ class ViewImportSession extends ViewRecord
     /**
      * @return array<int, Action>
      */
+    #[Override]
     protected function getHeaderActions(): array
     {
         return [

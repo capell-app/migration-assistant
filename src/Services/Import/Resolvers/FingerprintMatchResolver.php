@@ -25,9 +25,9 @@ use Illuminate\Database\Eloquent\Model;
  */
 final readonly class FingerprintMatchResolver implements MatchResolver
 {
-    private const CONFIDENCE = 0.7;
+    private const float CONFIDENCE = 0.7;
 
-    private const VOLATILE_KEYS = [
+    private const array VOLATILE_KEYS = [
         'id',
         'uuid',
         'created_at',

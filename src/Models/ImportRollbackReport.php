@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Override;
 
 /**
  * @property int $id
@@ -45,6 +46,7 @@ class ImportRollbackReport extends Model
     ];
 
     /** @return array<int, string> */
+    #[Override]
     public function uniqueIds(): array
     {
         return ['uuid'];
@@ -55,6 +57,7 @@ class ImportRollbackReport extends Model
         return $this->belongsTo(ImportSession::class);
     }
 
+    #[Override]
     protected function casts(): array
     {
         return [

@@ -24,7 +24,7 @@ use RuntimeException;
 final class OwnershipMap
 {
     /** @var array<class-string, RelationOwnership> */
-    private const DEFAULTS = [
+    private const array DEFAULTS = [
         // Owned — travel inline under their parent page/site.
         PageUrl::class => RelationOwnership::Owned,
 

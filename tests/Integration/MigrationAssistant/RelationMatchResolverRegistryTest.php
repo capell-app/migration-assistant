@@ -8,9 +8,9 @@ use Capell\MigrationAssistant\Services\Import\Resolvers\RelationMatchResolverReg
 
 function stubResolverForRegistryTest(?MatchResolution $result): MatchResolver
 {
-    return new class($result) implements MatchResolver
+    return new readonly class($result) implements MatchResolver
     {
-        public function __construct(private readonly ?MatchResolution $result) {}
+        public function __construct(private ?MatchResolution $result) {}
 
         public function resolve(array $descriptor): ?MatchResolution
         {

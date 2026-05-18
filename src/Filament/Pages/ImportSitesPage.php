@@ -45,6 +45,7 @@ class ImportSitesPage extends Page
     }
 
     /** @return array<NavigationItem> */
+    #[Override]
     public function getSubNavigation(): array
     {
         return [];

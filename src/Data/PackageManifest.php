@@ -25,8 +25,7 @@ use Carbon\CarbonImmutable;
  */
 final readonly class PackageManifest
 {
-    /** @var int */
-    public const SCHEMA_VERSION = 1;
+    public const int SCHEMA_VERSION = 1;
 
     /**
      * @param  array<string, int>  $relationCounts

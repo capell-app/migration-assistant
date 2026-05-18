@@ -8,9 +8,9 @@ use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolver;
 
 function makeResolver(?MatchResolution $resolution): MatchResolver
 {
-    return new class($resolution) implements MatchResolver
+    return new readonly class($resolution) implements MatchResolver
     {
-        public function __construct(private readonly ?MatchResolution $resolution) {}
+        public function __construct(private ?MatchResolution $resolution) {}
 
         public function resolve(array $descriptor): ?MatchResolution
         {

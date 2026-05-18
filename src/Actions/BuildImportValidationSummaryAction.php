@@ -27,8 +27,7 @@ final readonly class BuildImportValidationSummaryAction
      * Alternatives below this confidence trigger a warning so the user
      * knows the resolver wasn't sure about the top match either.
      */
-    /** @var float */
-    private const LOW_CONFIDENCE_THRESHOLD = 0.5;
+    private const float LOW_CONFIDENCE_THRESHOLD = 0.5;
 
     public function __construct(private BuildPageReviewRows $buildPageReviewRows = new BuildPageReviewRows) {}
 

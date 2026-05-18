@@ -47,36 +47,43 @@ class ImportSessionResource extends Resource
         return $schema;
     }
 
+    #[Override]
     public static function getNavigationLabel(): string
     {
         return (string) __('capell-admin::exchanger.import_sessions');
     }
 
+    #[Override]
     public static function getNavigationGroup(): ?string
     {
         return __('capell-admin::navigation.group_system');
     }
 
+    #[Override]
     public static function getPluralModelLabel(): string
     {
         return (string) __('capell-admin::exchanger.import_sessions');
     }
 
+    #[Override]
     public static function getModelLabel(): string
     {
         return (string) __('capell-admin::exchanger.import_session');
     }
 
+    #[Override]
     public static function canCreate(): bool
     {
         return false;
     }
 
+    #[Override]
     public static function canAccess(): bool
     {
         return static::shouldRegisterWithPanel() && parent::canAccess();
     }
 
+    #[Override]
     public static function canGloballySearch(): bool
     {
         return SchemaFacade::hasTable('import_sessions') && parent::canGloballySearch();
@@ -102,6 +109,7 @@ class ImportSessionResource extends Resource
         return $items;
     }
 
+    #[Override]
     public static function getPages(): array
     {
         return [

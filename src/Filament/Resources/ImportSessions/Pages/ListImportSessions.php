@@ -18,6 +18,7 @@ class ListImportSessions extends ListRecords
         return ImportSessionResource::class;
     }
 
+    #[Override]
     public function getSubheading(): string|Htmlable|null
     {
         return __('capell-admin::hints.import_sessions');
@@ -29,6 +30,7 @@ class ListImportSessions extends ListRecords
         return ImportSessionResource::getSubNavigation();
     }
 
+    #[Override]
     protected function getActions(): array
     {
         return [];

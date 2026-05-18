@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User;
+use Override;
 
 /**
  * @property int $id
@@ -80,6 +81,7 @@ class ImportSession extends Model implements Userstampable
         'status' => 'draft',
     ];
 
+    #[Override]
     public function uniqueIds(): array
     {
         return ['uuid'];
@@ -95,6 +97,7 @@ class ImportSession extends Model implements Userstampable
         return $this->hasMany(ImportRollbackReport::class);
     }
 
+    #[Override]
     protected function casts(): array
     {
         return [
