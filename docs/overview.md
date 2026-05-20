@@ -82,7 +82,7 @@ Validation, relation resolution, rollback, and export screenshots need seeded im
 - Tier: premium
 - Bundle: operations
 - Contexts: `admin`, `console`
-- Requires: `capell-app/core`
+- Requires: `capell-app/admin`, `capell-app/core`
 - Optional dependencies: None listed.
 
 ## Admin Surfaces

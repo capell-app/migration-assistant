@@ -13,7 +13,9 @@
             "targetType": "admin-surface",
             "target": null,
             "required": true,
-            "notes": "Resolved by the deployment screenshot runner after the package is installed and demo data is prepared."
+            "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
+            "useCase": "An administrator reviews import sessions and their current migration state.",
+            "screenshotPath": "public/docs/screenshots/packages/migration-assistant/import-session-index-or-host-admin-surface.png"
         },
         {
             "id": "import-validation-summary",
@@ -23,7 +25,9 @@
             "targetType": "admin-surface",
             "target": null,
             "required": true,
-            "notes": "Resolved by the deployment screenshot runner after the package is installed and demo data is prepared."
+            "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
+            "useCase": "An operator reviews validation errors and warnings before executing an import.",
+            "screenshotPath": "public/docs/screenshots/packages/migration-assistant/import-validation-summary.png"
         },
         {
             "id": "recovery-page-imports",
@@ -33,7 +37,9 @@
             "targetType": "admin-surface",
             "target": "ImportPagesPage",
             "required": true,
-            "notes": "Show recovery-center page import validation, relation resolution, execution state, and rollback reporting."
+            "notes": "Show recovery-center page import validation, relation resolution, execution state, and rollback reporting.",
+            "useCase": "An operator imports pages through Recovery Center and reviews validation, relation resolution, execution, and rollback state.",
+            "screenshotPath": "public/docs/screenshots/packages/migration-assistant/recovery-page-imports.png"
         },
         {
             "id": "relation-resolution-review",
@@ -43,7 +49,9 @@
             "targetType": "admin-surface",
             "target": null,
             "required": true,
-            "notes": "Resolved by the deployment screenshot runner after the package is installed and demo data is prepared."
+            "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
+            "useCase": "An operator maps imported references to existing Capell records before execution.",
+            "screenshotPath": "public/docs/screenshots/packages/migration-assistant/relation-resolution-review.png"
         },
         {
             "id": "import-rollback-report-view",
@@ -53,7 +61,9 @@
             "targetType": "admin-surface",
             "target": null,
             "required": true,
-            "notes": "Resolved by the deployment screenshot runner after the package is installed and demo data is prepared."
+            "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
+            "useCase": "An operator reviews what rollback changed and what manual cleanup remains.",
+            "screenshotPath": "public/docs/screenshots/packages/migration-assistant/import-rollback-report-view.png"
         },
         {
             "id": "package-export-intent-screen",
@@ -63,7 +73,9 @@
             "targetType": "admin-surface",
             "target": null,
             "required": true,
-            "notes": "Resolved by the deployment screenshot runner after the package is installed and demo data is prepared."
+            "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
+            "useCase": "An operator prepares an export package and confirms included resources before download.",
+            "screenshotPath": "public/docs/screenshots/packages/migration-assistant/package-export-intent-screen.png"
         }
     ]
 }
