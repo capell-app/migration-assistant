@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Services\Import;
 
 use Capell\MigrationAssistant\Contracts\ImportSourceReader;
 use Capell\MigrationAssistant\Data\ExternalImportReadResult;
+use Capell\MigrationAssistant\Support\Xml\SafeXmlLoader;
 use RuntimeException;
 use SimpleXMLElement;
 
@@ -22,7 +23,7 @@ final class XmlReader implements ImportSourceReader
             throw new RuntimeException(sprintf('XML import source [%s] is not readable.', $path));
         }
 
-        $xml = simplexml_load_file($path, SimpleXMLElement::class, LIBXML_NONET);
+        $xml = SafeXmlLoader::loadFile($path, LIBXML_NONET);
         if (! $xml instanceof SimpleXMLElement) {
             throw new RuntimeException(sprintf('XML import source [%s] could not be parsed.', $path));
         }
