@@ -66,9 +66,7 @@ final class SafeXmlLoader
         }
 
         // Lexical DOCTYPE check — reject any declared DTD outright so libxml never sees it.
-        if (self::containsDoctype($contents)) {
-            throw new RuntimeException('XML payload contains a DOCTYPE declaration which is not permitted.');
-        }
+        throw_if(self::containsDoctype($contents), RuntimeException::class, 'XML payload contains a DOCTYPE declaration which is not permitted.');
 
         // LIBXML_NONET disables network access; LIBXML_NOENT (entity substitution)
         // is deliberately NOT added so external/internal entities never expand.
@@ -79,10 +77,10 @@ final class SafeXmlLoader
 
         try {
             $xml = new SimpleXMLElement($contents, $options);
-        } catch (Throwable $exception) {
-            throw new RuntimeException('XML payload could not be parsed safely: ' . $exception->getMessage(), 0, $exception);
+        } catch (Throwable $throwable) {
+            throw new RuntimeException('XML payload could not be parsed safely: ' . $throwable->getMessage(), 0, $throwable);
         } finally {
-            libxml_set_external_entity_loader($previousLoader);
+            libxml_set_external_entity_loader(is_callable($previousLoader) ? $previousLoader : null);
             libxml_clear_errors();
             libxml_use_internal_errors($previousErrorState);
         }

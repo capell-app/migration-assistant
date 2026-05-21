@@ -24,9 +24,6 @@ final class XmlReader implements ImportSourceReader
         }
 
         $xml = SafeXmlLoader::loadFile($path, LIBXML_NONET);
-        if (! $xml instanceof SimpleXMLElement) {
-            throw new RuntimeException(sprintf('XML import source [%s] could not be parsed.', $path));
-        }
 
         $items = $this->itemElements($xml);
         $rows = array_map(fn (SimpleXMLElement $item): array => $this->flatten($item), $items);

@@ -215,7 +215,6 @@ it('exposes null import target and collision defaults', function (): void {
 
 it('declares import session table columns and summary formatting', function (): void {
     $reflection = new ReflectionMethod(ImportSessionsTable::class, 'getTableColumns');
-    $reflection->setAccessible(true);
 
     $columns = collect($reflection->invoke(null));
     $summaryColumn = $columns->first(
@@ -425,7 +424,6 @@ it('covers remaining migration assistant support adapters and admin page accesso
     $invalidReport = new ManifestValidationReport(errors: ['Schema version is unsupported.']);
     $listPage = new ListImportSessions;
     $getActions = new ReflectionMethod(ListImportSessions::class, 'getActions');
-    $getActions->setAccessible(true);
 
     expect($contributor->extraAttributes($site))->toBe([])
         ->and($contributor->normalizeIncomingRow(['name' => 'Imported']))->toBe(['name' => 'Imported'])

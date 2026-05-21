@@ -19,10 +19,7 @@ use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
 
 function migrationAssistantReflectionMethod(string $className, string $methodName): ReflectionMethod
 {
-    $method = new ReflectionMethod($className, $methodName);
-    $method->setAccessible(true);
-
-    return $method;
+    return new ReflectionMethod($className, $methodName);
 }
 
 it('keeps import pages page local wizard state transitions deterministic', function (): void {
@@ -74,7 +71,6 @@ it('applies import wizard and status DTOs to the page state', function (): void 
     $page = new ImportPagesPage;
 
     $applyWizardState = new ReflectionMethod(ImportPagesPage::class, 'applyWizardState');
-    $applyWizardState->setAccessible(true);
     $applyWizardState->invoke($page, new PageImportWizardStateData(
         step: ImportPagesPage::STEP_VALIDATE,
         sessionId: 123,
@@ -97,7 +93,6 @@ it('applies import wizard and status DTOs to the page state', function (): void 
         ->and($page->confirmation)->toBe('');
 
     $applyStatus = new ReflectionMethod(ImportPagesPage::class, 'applyStatus');
-    $applyStatus->setAccessible(true);
     $applyStatus->invoke($page, new PageImportStatusData(
         step: ImportPagesPage::STEP_COMPLETED,
         sessionStatus: ImportSessionStatus::Completed->value,
@@ -187,11 +182,10 @@ it('covers advance-to-validation decision sanitizers and guard branches', functi
     expect($missingSessionState->step)->toBe(ImportPagesPage::STEP_UPLOAD);
 
     $sanitizedPageDecisions = new ReflectionMethod(AdvancePageImportToValidationAction::class, 'sanitizedPageDecisions');
-    $sanitizedPageDecisions->setAccessible(true);
+
     $sanitizedRelations = new ReflectionMethod(AdvancePageImportToValidationAction::class, 'sanitizedRelationDecisions');
-    $sanitizedRelations->setAccessible(true);
+
     $hydrateResolutionMap = new ReflectionMethod(AdvancePageImportToValidationAction::class, 'hydrateResolutionMap');
-    $hydrateResolutionMap->setAccessible(true);
 
     expect($sanitizedPageDecisions->invoke($action, [
         'page-one' => ['action' => PageReviewRow::ACTION_UPDATE, 'notes' => 'Keep copy'],
