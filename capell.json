@@ -13,9 +13,15 @@
         "bundle": "operations"
     },
     "namespace": "Capell\\MigrationAssistant",
-    "surfaces": ["admin", "console"],
+    "surfaces": [
+        "admin",
+        "console"
+    ],
     "dependencies": {
-        "requires": ["capell-app/admin", "capell-app/core"],
+        "requires": [
+            "capell-app/admin",
+            "capell-app/core"
+        ],
         "optional": [],
         "conflicts": []
     },
@@ -107,8 +113,18 @@
     },
     "marketplace": {
         "summary": "MigrationAssistant provides package import workflows, source reads, mapping, preview, validation, execution state, and rollback reports.",
-        "screenshots": [],
-        "categories": ["admin", "console", "operations"]
+        "screenshots": [
+            {
+                "path": "docs/assets/marketplace/extension-card.jpg",
+                "alt": "Migration Assistant extension preview image",
+                "caption": "Migration Assistant extension preview"
+            }
+        ],
+        "categories": [
+            "admin",
+            "console",
+            "operations"
+        ]
     },
     "contributionTraceability": {
         "deferredContributions": [
