@@ -92,6 +92,7 @@ class ImportSession extends Model implements Userstampable
         'status' => 'draft',
     ];
 
+    /** @return array<int, string> */
     #[Override]
     public function uniqueIds(): array
     {

@@ -30,8 +30,10 @@ interface MigrationAssistantRowContributor
      * to rows that should be exportable. Core calls this and does not
      * describe what the contributor should filter by.
      *
-     * @param  Builder<Model>  $query
-     * @return Builder<Model>
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
      */
     public function scopeExportable(Builder $query): Builder;
 }

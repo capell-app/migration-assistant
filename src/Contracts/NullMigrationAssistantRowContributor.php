@@ -20,8 +20,10 @@ final class NullMigrationAssistantRowContributor implements MigrationAssistantRo
     }
 
     /**
-     * @param  Builder<Model>  $query
-     * @return Builder<Model>
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
      */
     public function scopeExportable(Builder $query): Builder
     {

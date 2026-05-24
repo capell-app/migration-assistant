@@ -23,7 +23,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 use RuntimeException;
 
 /**
- * @method static PageImportWizardStateData run(array $state)
+ * @method static PageImportWizardStateData run(array<string, mixed> $state)
  */
 final class StartPageImportAction
 {

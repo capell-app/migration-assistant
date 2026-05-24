@@ -220,7 +220,7 @@ it('exposes null import target and collision defaults', function (): void {
 it('declares import session table columns and summary formatting', function (): void {
     $reflection = new ReflectionMethod(ImportSessionsTable::class, 'getTableColumns');
 
-    $columns = collect($reflection->invoke(null));
+    $columns = capell_test_collect($reflection->invoke(null));
     $summaryColumn = $columns->first(
         fn (mixed $column): bool => $column instanceof TextColumn && $column->getName() === 'result_summary',
     );
