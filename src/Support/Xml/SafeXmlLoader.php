@@ -73,14 +73,14 @@ final class SafeXmlLoader
         $options = ($libxmlOptions | LIBXML_NONET) & ~LIBXML_NOENT & ~LIBXML_DTDLOAD & ~LIBXML_DTDATTR;
 
         $previousErrorState = libxml_use_internal_errors(true);
-        $previousLoader = libxml_set_external_entity_loader(static fn (?string $publicId, ?string $systemId, array $context): ?string => null);
+        libxml_set_external_entity_loader(static fn (?string $publicId, ?string $systemId, array $context): ?string => null);
 
         try {
             $xml = new SimpleXMLElement($contents, $options);
         } catch (Throwable $throwable) {
             throw new RuntimeException('XML payload could not be parsed safely: ' . $throwable->getMessage(), 0, $throwable);
         } finally {
-            libxml_set_external_entity_loader(is_callable($previousLoader) ? $previousLoader : null);
+            libxml_set_external_entity_loader(null);
             libxml_clear_errors();
             libxml_use_internal_errors($previousErrorState);
         }

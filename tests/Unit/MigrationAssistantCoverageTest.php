@@ -209,7 +209,11 @@ it('exposes null import target and collision defaults', function (): void {
     expect($target->type)->toBe('live')
         ->and($target->label)->toBeNull()
         ->and($resolver->resolve($session)->type)->toBe('live')
-        ->and((new NullPageCollisionDetector)->detect(['/demo'], null))
+        ->and((new NullPageCollisionDetector)->detect([[
+            'site_id' => null,
+            'language_id' => null,
+            'url' => '/demo',
+        ]], null))
         ->toBe([PageReviewRow::COLLISION_NONE, [], PageReviewRow::ACTION_CREATE]);
 });
 

@@ -39,15 +39,6 @@ class ImportSessionPolicy
 
     private function isGlobalAdmin(User $user): bool
     {
-        if (method_exists($user, 'isGlobalAdmin')) {
-            return $user->isGlobalAdmin();
-        }
-
-        $superAdminRole = config('capell.roles.super_admin', 'super_admin');
-
-        return is_string($superAdminRole)
-            && $superAdminRole !== ''
-            && method_exists($user, 'hasRole')
-            && $user->hasRole($superAdminRole);
+        return $user->isGlobalAdmin();
     }
 }
