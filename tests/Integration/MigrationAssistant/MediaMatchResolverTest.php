@@ -6,6 +6,9 @@ use Capell\Core\Models\Media;
 use Capell\Core\Models\Page;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MediaMatchResolver;
 
+/**
+ * @param  array<array-key, mixed>  $overrides
+ */
 function createMigrationAssistantMedia(Page $owner, array $overrides = []): Media
 {
     $media = new Media;

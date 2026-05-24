@@ -102,6 +102,9 @@ function stageActionImportPackage(
     writeActionImportPackage($absolutePath, $pageUuid, $siteId, $url, $layoutId);
 }
 
+/**
+ * @return array<array-key, mixed>
+ */
 function startActionImportWizard(string $archiveName, string $workspaceName, ?int $layoutId = null): array
 {
     $site = Site::factory()->create(['name' => 'Action Site']);

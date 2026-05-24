@@ -29,6 +29,9 @@ interface MigrationAssistantRowContributor
      * Apply any filtering the contributor requires to restrict the query
      * to rows that should be exportable. Core calls this and does not
      * describe what the contributor should filter by.
+     *
+     * @param  Builder<Model>  $query
+     * @return Builder<Model>
      */
     public function scopeExportable(Builder $query): Builder;
 }
