@@ -43,6 +43,7 @@ use Capell\MigrationAssistant\Support\ImportTargetRegistry;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use Override;
 use Spatie\LaravelPackageTools\Package;
 
 class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
@@ -76,6 +77,7 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
         });
     }
 
+    #[Override]
     protected function isPackageInstalled(): bool
     {
         return CapellCore::isPackageInstalled(static::$packageName);
