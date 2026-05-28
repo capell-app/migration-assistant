@@ -14,6 +14,7 @@ use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
 use Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider;
 use Capell\Tests\AbstractTestCase;
+use Composer\InstalledVersions;
 use Livewire\LivewireServiceProvider;
 use Override;
 
@@ -44,7 +45,7 @@ abstract class MigrationAssistantTestCase extends AbstractTestCase
 
         CapellCore::registerPackage(
             AdminServiceProvider::$packageName,
-            path: realpath(__DIR__ . '/../../../../capell-4/packages/admin'),
+            path: InstalledVersions::getInstallPath('capell-app/admin'),
         );
         CapellCore::forcePackageInstalled(AdminServiceProvider::$packageName);
 
