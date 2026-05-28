@@ -51,7 +51,7 @@ abstract class MigrationAssistantTestCase extends AbstractTestCase
 
         CapellCore::registerPackage(
             MigrationAssistantServiceProvider::$packageName,
-            path: realpath(__DIR__ . '/../'),
+            path: realpath(__DIR__ . '/../') ?: null,
         );
         CapellCore::forcePackageInstalled(MigrationAssistantServiceProvider::$packageName);
 

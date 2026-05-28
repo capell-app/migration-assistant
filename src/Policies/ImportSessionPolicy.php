@@ -39,6 +39,10 @@ class ImportSessionPolicy
 
     private function isGlobalAdmin(User $user): bool
     {
-        return $user->isGlobalAdmin();
+        if (method_exists($user, 'isGlobalAdmin')) {
+            return $user->isGlobalAdmin();
+        }
+
+        return method_exists($user, 'hasRole') && $user->hasRole('super_admin');
     }
 }

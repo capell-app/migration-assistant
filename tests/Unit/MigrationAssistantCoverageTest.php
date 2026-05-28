@@ -420,6 +420,26 @@ it('requires global admin status and import-session permission for policy reads'
         ->and($policy->delete($allowedUser, $session))->toBeFalse();
 });
 
+it('falls back to the super admin role when host users do not expose global admin helpers', function (): void {
+    $policy = new ImportSessionPolicy;
+    $user = new MigrationAssistantRoleOnlyUserForPolicyTest;
+
+    expect($policy->viewAny($user))->toBeTrue();
+});
+
+class MigrationAssistantRoleOnlyUserForPolicyTest extends Illuminate\Foundation\Auth\User
+{
+    public function hasRole($roles, ?string $guard = null): bool
+    {
+        return $roles === 'super_admin';
+    }
+
+    public function checkPermissionTo($permission, $guardName = null): bool
+    {
+        return $permission === MigrationAssistantPermission::ImportSessionView->value;
+    }
+}
+
 it('covers remaining migration assistant support adapters and admin page accessors', function (): void {
     $site = Site::factory()->create(['name' => 'Scoped Site']);
     $contributor = new NullMigrationAssistantRowContributor;
