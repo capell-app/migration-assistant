@@ -41,6 +41,8 @@ use Capell\MigrationAssistant\Support\ImportTargetRegistry;
 use Capell\Tests\Fixtures\Models\User;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 
 uses(CreatesAdminUser::class);
@@ -429,12 +431,22 @@ it('falls back to the super admin role when host users do not expose global admi
 
 class MigrationAssistantRoleOnlyUserForPolicyTest extends Illuminate\Foundation\Auth\User
 {
-    public function hasRole($roles, ?string $guard = null): bool
+    /** @use HasFactory<Factory<static>> */
+    use HasFactory;
+
+    /**
+     * @param  list<string>|string  $roles
+     */
+    public function hasRole(array|string $roles, ?string $guard = null): bool
     {
+        if (is_array($roles)) {
+            return in_array('super_admin', $roles, true);
+        }
+
         return $roles === 'super_admin';
     }
 
-    public function checkPermissionTo($permission, $guardName = null): bool
+    public function checkPermissionTo(string $permission, ?string $guardName = null): bool
     {
         return $permission === MigrationAssistantPermission::ImportSessionView->value;
     }
