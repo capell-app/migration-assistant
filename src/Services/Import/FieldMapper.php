@@ -23,10 +23,6 @@ final class FieldMapper
 
         foreach ($row as $source => $value) {
             $targetPath = $mapping[$source] ?? $this->defaultTargetPath($source, $target);
-            if ($targetPath === null) {
-                continue;
-            }
-
             Arr::set($attributes, $targetPath, $value);
         }
 

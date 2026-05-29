@@ -11,6 +11,18 @@ MigrationAssistant export, import, and rollback report workflows for Capell.
 - Capell dependencies: `capell-app/admin`, `capell-app/core`
 - Third-party dependencies: `lorisleiva/laravel-actions`, `spatie/laravel-package-tools`
 
+## Why It Helps Your Capell Workflow
+
+- Provides import workflows, source readers, mapping, preview, validation, execution state, and rollback reports for content moves.
+- Helps owners de-risk migrations by showing what will change before import and what changed afterwards.
+- Gives developers extension points for sources, targets, relations, row contributors, collision detection, and rollback behavior.
+
+## Best Used With
+
+- [WordPress Importer](../wordpress-importer/README.md)
+- [Media Library](../media-library/README.md)
+- [Diagnostics](../diagnostics/README.md)
+
 ## What It Adds
 
 - MigrationAssistant export, import, and rollback report workflows for Capell.
@@ -136,6 +148,7 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 
 ## Docs
 
+- [docs index](docs/README.md)
 - [credits-and-acknowledgements.md](docs/credits-and-acknowledgements.md)
 - [extension-points.md](docs/extension-points.md)
 - [import-export-workflow.md](docs/import-export-workflow.md)

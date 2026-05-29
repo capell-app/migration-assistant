@@ -12,7 +12,7 @@ use Capell\MigrationAssistant\Models\ImportSession;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
- * @method static PageImportStatusData run(?int $sessionId, array $validationSummary, string $confirmation, string $confirmationExpected)
+ * @method static PageImportStatusData run(?int $sessionId, array<string, mixed> $validationSummary, string $confirmation, string $confirmationExpected)
  */
 final class DispatchPageImportAction
 {

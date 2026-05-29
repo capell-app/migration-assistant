@@ -130,7 +130,7 @@ final readonly class PayloadSerializer
             Site::class => 'sites',
             SiteDomain::class => 'site-domains',
             Layout::class => 'layouts',
-            Blueprint::class => 'types',
+            Blueprint::class => 'blueprints',
             Media::class => 'media',
             default => strtolower(class_basename($class)) . 's',
         };

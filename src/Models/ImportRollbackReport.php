@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Models;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,7 +20,7 @@ use Override;
  * @property string|null $source_filename
  * @property string|null $source_package_checksum
  * @property array<int, array{class: string, id: int|string}>|null $created_models
- * @property array<string, mixed>|null $summary
+ * @property array<array-key, mixed>|null $summary
  * @property string $manual_instructions
  * @property CarbonImmutable|null $executed_at
  * @property CarbonImmutable|null $created_at
@@ -28,7 +29,9 @@ use Override;
  */
 class ImportRollbackReport extends Model
 {
+    /** @use HasFactory<Factory<static>> */
     use HasFactory;
+
     use HasUuids;
 
     protected $table = 'import_rollback_dashboard-dashboard_reports';
@@ -52,6 +55,9 @@ class ImportRollbackReport extends Model
         return ['uuid'];
     }
 
+    /**
+     * @return BelongsTo<ImportSession, $this>
+     */
     public function importSession(): BelongsTo
     {
         return $this->belongsTo(ImportSession::class);

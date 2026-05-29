@@ -14,6 +14,10 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('target_type', 64)->nullable()->index();
+            $table->unsignedBigInteger('target_id')->nullable()->index();
+            $table->string('target_label')->nullable();
+            $table->string('target_url')->nullable();
             $table->string('kind', 32)->index();
             $table->string('status', 32)->default('draft')->index();
             $table->string('source_environment')->nullable();

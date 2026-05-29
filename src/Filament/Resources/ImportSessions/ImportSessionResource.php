@@ -90,6 +90,9 @@ class ImportSessionResource extends Resource
         return SchemaFacade::hasTable('import_sessions') && parent::canGloballySearch();
     }
 
+    /**
+     * @return array<array-key, mixed>
+     */
     public static function getSubNavigation(): array
     {
         $items = [];

@@ -30,7 +30,7 @@ it('registers default relation resolver groups', function (): void {
     $registry = resolve(RelationMatchResolverRegistry::class);
 
     expect($registry->hasGroup('layouts'))->toBeTrue()
-        ->and($registry->hasGroup('types'))->toBeTrue()
+        ->and($registry->hasGroup('blueprints'))->toBeTrue()
         ->and($registry->hasGroup('sites'))->toBeTrue()
         ->and($registry->hasGroup('media'))->toBeTrue();
 });

@@ -6,8 +6,10 @@ namespace Capell\MigrationAssistant\Tests\Unit\Data;
 
 use Capell\MigrationAssistant\Data\Imports\PageImportStatusData;
 use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
+/** @extends TestCase<MockObject> */
 final class PageImportValueDataTest extends TestCase
 {
     public function test_page_import_status_exposes_stable_notice_constants_and_payload_state(): void

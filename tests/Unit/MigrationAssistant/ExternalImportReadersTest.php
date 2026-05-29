@@ -38,6 +38,21 @@ XML);
         ->and($result->rows[0]['meta.slug'])->toBe('about');
 });
 
+it('rejects XML imports with doctype declarations', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-xml-');
+    file_put_contents($path, <<<'XML'
+<?xml version="1.0"?>
+<!DOCTYPE items [
+    <!ENTITY laugh "laugh">
+]>
+<items>
+    <item><title>&laugh;</title></item>
+</items>
+XML);
+
+    (new XmlReader)->read($path);
+})->throws(RuntimeException::class, 'DOCTYPE');
+
 it('maps external rows and builds a preview summary', function (): void {
     $mapped = (new FieldMapper)->map([
         'post_title' => 'Imported page',

@@ -9,13 +9,14 @@ use Capell\Core\Models\Contracts\Userstampable;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User;
+use Illuminate\Support\Collection;
 use Override;
 
 /**
@@ -34,12 +35,12 @@ use Override;
  * @property string|null $source_package_path
  * @property string|null $source_package_checksum
  * @property string|null $working_dir
- * @property array<string, mixed>|null $manifest
- * @property array<string, mixed>|null $resolution_map
- * @property array<string, mixed>|null $page_decisions
- * @property array<string, mixed>|null $relation_decisions
- * @property array<string, mixed>|null $validation_results
- * @property array<string, mixed>|null $result_summary
+ * @property array<array-key, mixed>|null $manifest
+ * @property array<array-key, mixed>|null $resolution_map
+ * @property array<array-key, mixed>|null $page_decisions
+ * @property array<array-key, mixed>|null $relation_decisions
+ * @property array<array-key, mixed>|null $validation_results
+ * @property array<array-key, mixed>|null $result_summary
  * @property string|null $failure_reason
  * @property CarbonImmutable|null $reviewed_at
  * @property CarbonImmutable|null $resolved_at
@@ -52,7 +53,9 @@ use Override;
  */
 class ImportSession extends Model implements Userstampable
 {
+    /** @use HasFactory<Factory<static>> */
     use HasFactory;
+
     use HasUserstamps;
     use HasUuids;
 
@@ -89,17 +92,24 @@ class ImportSession extends Model implements Userstampable
         'status' => 'draft',
     ];
 
+    /** @return array<int, string> */
     #[Override]
     public function uniqueIds(): array
     {
         return ['uuid'];
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return HasMany<ImportRollbackReport, $this>
+     */
     public function rollbackDashboardReports(): HasMany
     {
         return $this->hasMany(ImportRollbackReport::class);

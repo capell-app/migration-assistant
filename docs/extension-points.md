@@ -78,7 +78,7 @@ $this->app->afterResolving(RelationMatchResolverRegistry::class, static function
 });
 ```
 
-Use package-specific group names unless the resolver intentionally contributes to a core group such as `layouts`, `types`, `sites`, or `media`.
+Use package-specific group names unless the resolver intentionally contributes to a core group such as `layouts`, `blueprints`, `sites`, or `media`.
 
 ## Config Keys
 

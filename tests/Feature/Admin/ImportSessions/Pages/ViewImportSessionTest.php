@@ -38,6 +38,9 @@ beforeEach(function (): void {
     test()->actingAs($adminUser);
 });
 
+/**
+ * @param  array<array-key, mixed>  $overrides
+ */
 function makeImportSession(array $overrides = []): ImportSession
 {
     return ImportSession::query()->create(array_merge([

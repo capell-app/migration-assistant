@@ -43,6 +43,7 @@ use Capell\MigrationAssistant\Support\ImportTargetRegistry;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use Override;
 use Spatie\LaravelPackageTools\Package;
 
 class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
@@ -76,7 +77,8 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
         });
     }
 
-    private function isPackageInstalled(): bool
+    #[Override]
+    protected function isPackageInstalled(): bool
     {
         return CapellCore::isPackageInstalled(static::$packageName);
     }
@@ -108,8 +110,8 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
                 $registry = new RelationMatchResolverRegistry;
                 $registry->register('layouts', new KeyedMatchResolver(Layout::class));
                 $registry->register('layouts', new FingerprintMatchResolver(Layout::class));
-                $registry->register('types', new KeyedMatchResolver(Blueprint::class));
-                $registry->register('types', new FingerprintMatchResolver(Blueprint::class));
+                $registry->register('blueprints', new KeyedMatchResolver(Blueprint::class));
+                $registry->register('blueprints', new FingerprintMatchResolver(Blueprint::class));
                 $registry->register('sites', new KeyedMatchResolver(Site::class, keyColumn: 'slug'));
                 $registry->register('media', new MediaMatchResolver);
 

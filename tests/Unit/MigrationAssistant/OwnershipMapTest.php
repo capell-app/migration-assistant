@@ -19,14 +19,14 @@ it('classifies built-in models out of the box', function (): void {
 });
 
 it('throws when asked about an unregistered model', function (): void {
-    expect(fn (): RelationOwnership => OwnershipMap::for('App\\Unknown\\Model'))
+    expect(fn (): RelationOwnership => OwnershipMap::for(stdClass::class))
         ->toThrow(RuntimeException::class);
 });
 
 it('allows packages to register their own ownership rules', function (): void {
-    OwnershipMap::register('App\\Package\\Article', RelationOwnership::Owned);
+    OwnershipMap::register(stdClass::class, RelationOwnership::Owned);
 
-    expect(OwnershipMap::for('App\\Package\\Article'))->toBe(RelationOwnership::Owned);
+    expect(OwnershipMap::for(stdClass::class))->toBe(RelationOwnership::Owned);
 });
 
 it('lets overrides win over defaults', function (): void {

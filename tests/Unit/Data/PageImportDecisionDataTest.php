@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Tests\Unit\Data;
 
 use Capell\MigrationAssistant\Data\Imports\PageImportDecisionData;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
+/** @extends TestCase<MockObject> */
 final class PageImportDecisionDataTest extends TestCase
 {
     public function test_it_skips_resolve_when_no_relation_rows_exist(): void

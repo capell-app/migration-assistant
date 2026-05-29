@@ -45,6 +45,9 @@ class ImportSessionsTable implements TableConfigurator
             ->emptyStateIcon('heroicon-o-arrow-down-tray');
     }
 
+    /**
+     * @return array<array-key, mixed>
+     */
     protected static function getTableColumns(): array
     {
         return [

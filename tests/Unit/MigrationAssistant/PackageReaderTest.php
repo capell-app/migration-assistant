@@ -15,6 +15,9 @@ afterEach(function (): void {
     }
 });
 
+/**
+ * @param  array<array-key, mixed>  $entries
+ */
 function writeArchive(string $path, array $entries): void
 {
     $zip = new ZipArchive;
