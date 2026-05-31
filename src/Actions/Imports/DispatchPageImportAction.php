@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Actions\Imports;
 
+use Capell\MigrationAssistant\Actions\ClaimImportSessionForExecutionAction;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Data\Imports\PageImportStatusData;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
@@ -61,9 +62,19 @@ final class DispatchPageImportAction
             );
         }
 
-        $session->forceFill([
-            'status' => ImportSessionStatus::Queued,
-        ])->save();
+        $session = ClaimImportSessionForExecutionAction::run(
+            $session,
+            ImportSessionStatus::Queued,
+            [ImportSessionStatus::Validated],
+        );
+
+        if (! $session instanceof ImportSession) {
+            return new PageImportStatusData(
+                step: 'executing',
+                sessionStatus: ImportSessionStatus::Queued->value,
+                notice: PageImportStatusData::NOTICE_IMPORT_QUEUED,
+            );
+        }
 
         dispatch(new ExecuteImportPlanJob((int) $session->getKey()));
 

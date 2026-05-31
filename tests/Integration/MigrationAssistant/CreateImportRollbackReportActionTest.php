@@ -43,14 +43,15 @@ it('includes created site and domain records in rollback reports', function (): 
     );
 
     $rollbackReport = CreateImportRollbackReportAction::run($session, $report);
+    $summary = migrationAssistantSummary($rollbackReport->summary);
 
     expect($rollbackReport->created_models)->toBe([
         ['class' => Page::class, 'id' => 123],
         ['class' => Site::class, 'id' => 456],
         ['class' => SiteDomain::class, 'id' => 789],
     ])
-        ->and($rollbackReport->summary['created_site_ids'])->toBe([456])
-        ->and($rollbackReport->summary['created_site_domain_ids'])->toBe([789]);
+        ->and($summary['created_site_ids'] ?? null)->toBe([456])
+        ->and($summary['created_site_domain_ids'] ?? null)->toBe([789]);
 });
 
 it('creates an import rollback report from an execution report', function (): void {
@@ -73,12 +74,13 @@ it('creates an import rollback report from an execution report', function (): vo
     );
 
     $rollbackReport = CreateImportRollbackReportAction::run($session, $report);
+    $summary = migrationAssistantSummary($rollbackReport->summary);
 
     expect($rollbackReport->import_session_id)->toBe($session->getKey())
         ->and($rollbackReport->source_filename)->toBe('pages.zip')
         ->and($rollbackReport->created_models)->toBe([
             ['class' => Page::class, 'id' => 123],
         ])
-        ->and($rollbackReport->summary['page_urls_created'])->toBe(2)
+        ->and($summary['page_urls_created'] ?? null)->toBe(2)
         ->and($rollbackReport->manual_instructions)->toContain('roll back');
 });

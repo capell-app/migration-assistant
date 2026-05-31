@@ -8,8 +8,8 @@ use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\RefreshPageImportStatusAction;
 use Capell\MigrationAssistant\Actions\Imports\ResolvePageImportSessionAction;
 use Capell\MigrationAssistant\Actions\Imports\StartPageImportAction;
-use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
 use Capell\MigrationAssistant\Data\Imports\PageImportDecisionData;
+use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
 use Capell\MigrationAssistant\Data\PageReviewRow;
 use Capell\MigrationAssistant\Data\RelationResolveRow;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
@@ -21,7 +21,6 @@ use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Spatie\Permission\Models\Permission;
 
 uses(CreatesAdminUser::class)
     ->group('page-import-actions');
@@ -103,7 +102,7 @@ function stageActionImportPackage(
 }
 
 /**
- * @return array<array-key, mixed>
+ * @return array{PageImportWizardStateData, string, Site}
  */
 function startActionImportWizard(string $archiveName, string $workspaceName, ?int $layoutId = null): array
 {
@@ -128,7 +127,7 @@ function startActionImportWizard(string $archiveName, string $workspaceName, ?in
     return [$state, $pageUuid, $site];
 }
 
-function actionDecisionDataFromState(object $state, bool $canUpdateSharedRelations = true): PageImportDecisionData
+function actionDecisionDataFromState(PageImportWizardStateData $state, bool $canUpdateSharedRelations = true): PageImportDecisionData
 {
     return new PageImportDecisionData(
         sessionId: $state->sessionId,
@@ -140,11 +139,19 @@ function actionDecisionDataFromState(object $state, bool $canUpdateSharedRelatio
     );
 }
 
+function actionImportSessionForState(PageImportWizardStateData $state): ImportSession
+{
+    $sessionId = $state->sessionId;
+
+    throw_if($sessionId === null, RuntimeException::class, 'Expected import wizard state to have a session id.');
+
+    return ImportSession::query()
+        ->whereKey($sessionId)
+        ->firstOrFail();
+}
+
 beforeEach(function (): void {
-    Permission::findOrCreate('View:ImportPagesPage', 'web');
-    InstallMigrationAssistantPermissionsAction::run();
-    test()->actingAsAdmin();
-    auth()->user()->givePermissionTo('View:ImportPagesPage');
+    migrationAssistantActingAsImportPagesUser();
     Storage::fake('local');
     Queue::fake();
 });
@@ -157,7 +164,7 @@ it('moves upload state to review state after parsing a package', function (): vo
         ->and($state->reviewRows[0]['uuid'] ?? null)->toBe($pageUuid)
         ->and($state->pageDecisions[$pageUuid]['action'] ?? null)->toBe(PageReviewRow::ACTION_CREATE);
 
-    $session = ImportSession::query()->findOrFail($state->sessionId);
+    $session = actionImportSessionForState($state);
     expect($session->status)->toBe(ImportSessionStatus::Parsed);
 
     Queue::assertNotPushed(ExecuteImportPlanJob::class);
@@ -228,11 +235,16 @@ it('moves resolve state to validate after decisions are sanitized and summarized
         ->and($nextState->validationSummary['pages'] ?? null)->toBeArray()
         ->and($nextState->confirmationExpected)->toBe('Action Validate');
 
-    $session = ImportSession::query()->findOrFail($state->sessionId);
+    $session = actionImportSessionForState($state);
+    $relationDecisions = $session->relation_decisions ?? [];
+    $layoutDecision = $relationDecisions['layout:888'] ?? null;
+
+    throw_unless(is_array($layoutDecision), RuntimeException::class, 'Expected layout relation decision.');
+
     expect($session->status)->toBe(ImportSessionStatus::Validated)
         ->and($session->page_decisions[$pageUuid]['action'] ?? null)->toBe(PageReviewRow::ACTION_CREATE)
-        ->and($session->relation_decisions['layout:888']['action'] ?? null)->toBe(RelationResolveRow::ACTION_CREATE_NEW)
-        ->and($session->relation_decisions['layout:888'])->not->toHaveKey('notes');
+        ->and($layoutDecision['action'] ?? null)->toBe(RelationResolveRow::ACTION_CREATE_NEW)
+        ->and($layoutDecision)->not->toHaveKey('notes');
 });
 
 it('moves validate state to executing and queues the import job', function (): void {
@@ -253,6 +265,35 @@ it('moves validate state to executing and queues the import job', function (): v
     expect($status->step)->toBe(ImportPagesPage::STEP_EXECUTING)
         ->and($status->sessionStatus)->toBe(ImportSessionStatus::Queued->value)
         ->and($status->targetId)->toBeNull();
+
+    Queue::assertPushed(ExecuteImportPlanJob::class, 1);
+});
+
+it('does not queue duplicate import jobs when dispatch is submitted twice', function (): void {
+    [$state] = startActionImportWizard('action-dispatch-once.zip', 'Action Dispatch Once');
+
+    $validatedState = AdvancePageImportToValidationAction::run(
+        actionDecisionDataFromState($state),
+        false,
+    );
+
+    DispatchPageImportAction::run(
+        sessionId: $validatedState->sessionId,
+        validationSummary: $validatedState->validationSummary,
+        confirmation: $validatedState->confirmationExpected,
+        confirmationExpected: $validatedState->confirmationExpected,
+    );
+
+    $secondStatus = DispatchPageImportAction::run(
+        sessionId: $validatedState->sessionId,
+        validationSummary: $validatedState->validationSummary,
+        confirmation: $validatedState->confirmationExpected,
+        confirmationExpected: $validatedState->confirmationExpected,
+    );
+
+    expect($secondStatus->step)->toBe(ImportPagesPage::STEP_EXECUTING)
+        ->and($secondStatus->sessionStatus)->toBe(ImportSessionStatus::Queued->value)
+        ->and(actionImportSessionForState($validatedState)->status)->toBe(ImportSessionStatus::Queued);
 
     Queue::assertPushed(ExecuteImportPlanJob::class, 1);
 });
@@ -286,7 +327,7 @@ it('stores the derived dispatch confirmation target with validation results', fu
         false,
     );
 
-    $session = ImportSession::query()->findOrFail($validatedState->sessionId);
+    $session = actionImportSessionForState($validatedState);
 
     expect($session->validation_results['confirmation_expected'] ?? null)
         ->toBe($validatedState->confirmationExpected);
@@ -300,8 +341,7 @@ it('uses stored validation blockers when dispatching an import', function (): vo
         false,
     );
 
-    ImportSession::query()
-        ->findOrFail($validatedState->sessionId)
+    actionImportSessionForState($validatedState)
         ->forceFill([
             'validation_results' => [
                 'blocking_errors' => ['Stored blocker'],
@@ -326,7 +366,7 @@ it('uses stored validation blockers when dispatching an import', function (): vo
 it('moves executing state to completed when the session completes', function (): void {
     [$state] = startActionImportWizard('action-completed.zip', 'Action Completed');
 
-    $session = ImportSession::query()->findOrFail($state->sessionId);
+    $session = actionImportSessionForState($state);
     $session->forceFill([
         'status' => ImportSessionStatus::Completed,
         'result_summary' => [
@@ -345,7 +385,7 @@ it('moves executing state to completed when the session completes', function ():
 it('moves executing state to failed when the session fails', function (): void {
     [$state] = startActionImportWizard('action-failed.zip', 'Action Failed');
 
-    $session = ImportSession::query()->findOrFail($state->sessionId);
+    $session = actionImportSessionForState($state);
     $session->forceFill([
         'status' => ImportSessionStatus::Failed,
         'failure_reason' => 'import execution failed',

@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
-use Spatie\Permission\Models\Permission;
 
 uses(CreatesAdminUser::class)
     ->group('import-pages-page-resolve');
@@ -113,10 +112,7 @@ function stageResolvePackage(string $relativePath, string $pageUuid, int $siteId
 }
 
 beforeEach(function (): void {
-    Permission::findOrCreate('View:ImportPagesPage', 'web');
-    InstallMigrationAssistantPermissionsAction::run();
-    test()->actingAsAdmin();
-    auth()->user()->givePermissionTo('View:ImportPagesPage');
+    migrationAssistantActingAsImportPagesUser();
     Storage::fake('local');
     Queue::fake();
 });
@@ -170,7 +166,7 @@ it('hides update_existing when the user lacks the permission', function (): void
 });
 
 it('exposes update_existing once the permission is granted', function (): void {
-    auth()->user()->givePermissionTo(InstallMigrationAssistantPermissionsAction::PERMISSION_PAGE_IMPORT_UPDATE_SHARED);
+    migrationAssistantAdminUser()->givePermissionTo(InstallMigrationAssistantPermissionsAction::PERMISSION_PAGE_IMPORT_UPDATE_SHARED);
 
     expect((new ImportPagesPage)->canUpdateSharedRelations())->toBeTrue();
 });
@@ -182,7 +178,7 @@ it('denies publish-live when the user lacks page.import.publish-live', function 
 });
 
 it('allows publish-live once page.import.publish-live is granted', function (): void {
-    auth()->user()->givePermissionTo(InstallMigrationAssistantPermissionsAction::PERMISSION_PAGE_IMPORT_PUBLISH_LIVE);
+    migrationAssistantAdminUser()->givePermissionTo(InstallMigrationAssistantPermissionsAction::PERMISSION_PAGE_IMPORT_PUBLISH_LIVE);
 
     expect((new ImportPagesPage)->canPublishLive())->toBeTrue();
 });

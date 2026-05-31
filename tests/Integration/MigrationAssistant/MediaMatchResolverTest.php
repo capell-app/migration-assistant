@@ -48,6 +48,7 @@ it('matches media by checksum before falling back to file name', function (): vo
         'checksum' => 'sha256-checksum-match',
         'file_name' => 'shared-file-name.png',
     ]);
+    $resolution = migrationAssistantMatchResolution($resolution);
 
     expect($resolution)->not->toBeNull()
         ->and($resolution->localId)->toBe($checksumMedia->getKey())
@@ -60,6 +61,7 @@ it('falls back to a lower confidence file name match when checksum is missing', 
     $media = createMigrationAssistantMedia($owner, ['file_name' => 'fallback.jpg']);
 
     $resolution = (new MediaMatchResolver)->resolve(['file_name' => 'fallback.jpg']);
+    $resolution = migrationAssistantMatchResolution($resolution);
 
     expect($resolution)->not->toBeNull()
         ->and($resolution->localId)->toBe($media->getKey())

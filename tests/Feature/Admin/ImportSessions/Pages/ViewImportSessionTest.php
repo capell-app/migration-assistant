@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
+use Capell\MigrationAssistant\Actions\RetryImportSessionAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
@@ -141,6 +142,27 @@ it('retries a failed session, clearing the failure reason and dispatching the ex
 
     expect($session->status)->toBe(ImportSessionStatus::Queued)
         ->and($session->failure_reason)->toBeNull();
+
+    Queue::assertPushed(ExecuteImportPlanJob::class, 1);
+});
+
+it('does not queue duplicate retry jobs from stale failed session models', function (): void {
+    $session = makeImportSession([
+        'status' => ImportSessionStatus::Failed,
+        'failure_reason' => 'previous failure',
+        'resolution_map' => ['resolved' => [], 'unresolved' => []],
+        'page_decisions' => ['uuid-1' => ['action' => 'create']],
+        'relation_decisions' => ['site:1' => ['action' => 'use_existing']],
+    ]);
+    Storage::disk('local')->put((string) $session->source_package_path, 'zip-bytes');
+
+    $staleSession = ImportSession::query()->findOrFail($session->getKey());
+
+    RetryImportSessionAction::run($session);
+    $secondResult = RetryImportSessionAction::run($staleSession);
+
+    expect($secondResult->status)->toBe(ImportSessionStatus::Queued)
+        ->and($secondResult->failure_reason)->toBeNull();
 
     Queue::assertPushed(ExecuteImportPlanJob::class, 1);
 });

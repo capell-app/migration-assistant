@@ -81,6 +81,7 @@ it('returns the existing media id on checksum match (idempotent)', function (): 
         'responsive_images' => [],
         'order_column' => 1,
     ])->save();
+    Storage::disk('public')->put($existing->getPathRelativeToRoot(), $bytes);
 
     $descriptor = [
         'ref' => 'media:1',
@@ -93,6 +94,84 @@ it('returns the existing media id on checksum match (idempotent)', function (): 
 
     expect($resolvedId)->toBe($existing->getKey())
         ->and(Media::query()->count())->toBe(1);
+
+    @unlink($archivePath);
+});
+
+it('does not reuse checksum matches whose stored file is missing', function (): void {
+    Storage::fake('public');
+
+    $bytes = 'orphaned-media-recovery-bytes';
+    $hex = hash('sha256', $bytes);
+    $archivePath = makeMediaArchive($hex, 'recovered.jpg', $bytes);
+    $owner = Page::factory()->create();
+
+    $existing = new Media;
+    $existing->forceFill([
+        'model_type' => $owner->getMorphClass(),
+        'model_id' => $owner->getKey(),
+        'collection_name' => 'default',
+        'name' => 'missing',
+        'file_name' => 'missing.jpg',
+        'mime_type' => 'image/jpeg',
+        'disk' => 'public',
+        'conversions_disk' => 'public',
+        'size' => strlen($bytes),
+        'manipulations' => [],
+        'custom_properties' => ['checksum' => 'sha256-' . $hex],
+        'generated_conversions' => [],
+        'responsive_images' => [],
+        'order_column' => 1,
+    ])->save();
+
+    $descriptor = [
+        'ref' => 'media:missing-file',
+        'checksum' => 'sha256-' . $hex,
+        'file_name' => 'recovered.jpg',
+        'mime_type' => 'image/jpeg',
+    ];
+
+    $resolvedId = (new MediaIngestService)->ingest($archivePath, $descriptor, $owner);
+
+    expect($resolvedId)->not->toBe($existing->getKey())
+        ->and(Media::query()->count())->toBe(2);
+
+    $row = Media::query()->whereKey($resolvedId)->firstOrFail();
+    Storage::disk('public')->assertExists($row->getPathRelativeToRoot());
+
+    @unlink($archivePath);
+});
+
+it('removes the media row when the disk write fails', function (): void {
+    config()->set('media-library.disk_name', 'broken');
+
+    $bytes = 'unstored-media-bytes';
+    $hex = hash('sha256', $bytes);
+    $archivePath = makeMediaArchive($hex, 'broken.png', $bytes);
+    $owner = Page::factory()->create();
+
+    Storage::shouldReceive('disk')
+        ->once()
+        ->with('broken')
+        ->andReturn(new class
+        {
+            public function put(string $path, mixed $contents): bool
+            {
+                return false;
+            }
+        });
+
+    $descriptor = [
+        'ref' => 'media:broken-disk',
+        'checksum' => 'sha256-' . $hex,
+        'file_name' => 'broken.png',
+        'mime_type' => 'image/png',
+    ];
+
+    expect(fn (): int|string => (new MediaIngestService)->ingest($archivePath, $descriptor, $owner))
+        ->toThrow(RuntimeException::class, 'Failed to store media binary');
+
+    expect(Media::query()->count())->toBe(0);
 
     @unlink($archivePath);
 });

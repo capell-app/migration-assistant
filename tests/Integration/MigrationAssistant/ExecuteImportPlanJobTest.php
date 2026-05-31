@@ -70,6 +70,49 @@ it('marks the session failed when source path is empty', function (): void {
         ->and(Auth::id())->toBeNull();
 });
 
+it('marks running sessions failed when the worker reports a job failure', function (): void {
+    Notification::fake();
+
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Running,
+        'source_package_path' => 'migration-assistant/imports/running.zip',
+    ]);
+
+    (new ExecuteImportPlanJob((int) $session->getKey()))->failed(new RuntimeException('worker timed out'));
+
+    $session->refresh();
+
+    expect($session->status)->toBe(ImportSessionStatus::Failed)
+        ->and($session->failure_reason)->toBe('worker timed out');
+});
+
+it('does not execute sessions that are no longer queued', function (): void {
+    Notification::fake();
+
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Completed,
+        'source_package_path' => '',
+        'result_summary' => ['pages_imported' => 1],
+    ]);
+
+    (new ExecuteImportPlanJob((int) $session->getKey()))->handle(
+        resolve(PackageReader::class),
+        resolve(PageImportService::class),
+        resolve(MediaIngestService::class),
+        resolve(SiteImportService::class),
+    );
+
+    $session->refresh();
+
+    expect($session->status)->toBe(ImportSessionStatus::Completed)
+        ->and($session->failure_reason)->toBeNull()
+        ->and($session->result_summary['pages_imported'] ?? null)->toBe(1);
+});
+
 it('executes site import sessions with unresolved site refs that are created from the package', function (): void {
     Notification::fake();
 

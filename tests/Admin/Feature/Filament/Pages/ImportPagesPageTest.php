@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
-use Spatie\Permission\Models\Permission;
 
 uses(CreatesAdminUser::class)
     ->group('import-pages-page');
@@ -53,9 +52,7 @@ function writeImportPackage(string $absolutePath, string $uuid, int $siteId, str
 }
 
 beforeEach(function (): void {
-    Permission::findOrCreate('View:ImportPagesPage', 'web');
-    test()->actingAsAdmin();
-    auth()->user()->givePermissionTo('View:ImportPagesPage');
+    migrationAssistantActingAsImportPagesUser();
     Storage::fake('local');
     Queue::fake();
 });
@@ -73,8 +70,8 @@ it('transitions to review step after parsing a package', function (): void {
     writeImportPackage($absolutePath, $uuid, (int) $site->getKey(), '/hello-world');
 
     Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', $relativePath)
-        ->set('data.archive_filename', 'test-package.zip')
+        ->set('data.archive', [$relativePath])
+        ->set('data.archive_filename', [$relativePath => 'test-package.zip'])
         ->set('data.workspace_name', 'Import test')
         ->call('parseAndAdvance')
         ->assertSet('step', ImportPagesPage::STEP_REVIEW)

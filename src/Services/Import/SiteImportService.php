@@ -207,7 +207,7 @@ final readonly class SiteImportService
                 continue;
             }
 
-            $siteIds[$ref] = $resolution->localId;
+            $siteIds[$ref] = (int) $resolution->localId;
         }
 
         return $siteIds;

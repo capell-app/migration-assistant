@@ -43,6 +43,11 @@ final readonly class PayloadSerializer
         }
 
         foreach ($graph->sharedRelations as $class => $models) {
+            if (! class_exists($class)) {
+                continue;
+            }
+
+            /** @var class-string $class */
             $folder = $this->folderFor($class);
 
             foreach ($models as $ref => $model) {

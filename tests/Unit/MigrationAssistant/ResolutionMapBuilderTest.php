@@ -19,13 +19,21 @@ function makeResolver(?MatchResolution $resolution): MatchResolver
     };
 }
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
+function migrationAssistantResolutionPayload(array $payload): string
+{
+    return json_encode($payload, JSON_THROW_ON_ERROR);
+}
+
 it('resolves refs that a matching resolver handles', function (): void {
     $builder = new ResolutionMapBuilder([
         'layouts' => makeResolver(new MatchResolution(localId: 42, strategy: 'key')),
     ]);
 
     $map = $builder->build([
-        'relations/layouts/abc.json' => json_encode(['type' => 'layout', 'ref' => 'layout:1', 'key' => 'home']),
+        'relations/layouts/abc.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:1', 'key' => 'home']),
     ]);
 
     expect($map->hasUnresolved())->toBeFalse()
@@ -36,7 +44,7 @@ it('records refs with no matching resolver as unresolved', function (): void {
     $builder = new ResolutionMapBuilder(resolvers: []);
 
     $map = $builder->build([
-        'relations/layouts/abc.json' => json_encode(['type' => 'layout', 'ref' => 'layout:1']),
+        'relations/layouts/abc.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:1']),
     ]);
 
     expect($map->hasUnresolved())->toBeTrue()
@@ -49,7 +57,7 @@ it('records refs the resolver rejects as unresolved', function (): void {
     ]);
 
     $map = $builder->build([
-        'relations/layouts/abc.json' => json_encode(['type' => 'layout', 'ref' => 'layout:1']),
+        'relations/layouts/abc.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:1']),
     ]);
 
     expect($map->unresolved)->toBe(['layout:1']);
@@ -61,7 +69,7 @@ it('skips non-relation entries', function (): void {
     ]);
 
     $map = $builder->build([
-        'pages/p.json' => json_encode(['type' => 'page']),
+        'pages/p.json' => migrationAssistantResolutionPayload(['type' => 'page']),
     ]);
 
     expect($map->resolved)->toBe([])

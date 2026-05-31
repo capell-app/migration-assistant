@@ -8,6 +8,7 @@ use Capell\Core\Models\Media;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Throwable;
 use ZipArchive;
 
 /**
@@ -83,7 +84,8 @@ final class MediaIngestService
         $existing = Media::query()
             ->where('custom_properties->checksum', $checksum)
             ->first();
-        if ($existing instanceof Media) {
+
+        if ($existing instanceof Media && $this->mediaFileExists($existing)) {
             return $existing->getKey();
         }
 
@@ -121,7 +123,16 @@ final class MediaIngestService
 
         try {
             rewind($mediaStream);
-            Storage::disk($disk)->put($media->getPathRelativeToRoot(), $mediaStream);
+            $stored = Storage::disk($disk)->put($media->getPathRelativeToRoot(), $mediaStream);
+
+            throw_unless($stored === true, RuntimeException::class, sprintf(
+                'Failed to store media binary [%s].',
+                $entryPath,
+            ));
+        } catch (Throwable $throwable) {
+            $media->deleteQuietly();
+
+            throw $throwable;
         } finally {
             if (is_resource($mediaStream)) {
                 fclose($mediaStream);
@@ -140,6 +151,15 @@ final class MediaIngestService
         }
 
         return $archive;
+    }
+
+    private function mediaFileExists(Media $media): bool
+    {
+        $disk = $media->getAttribute('disk');
+        $disk = is_string($disk) && $disk !== '' ? $disk : config('media-library.disk_name', 'public');
+        $disk = is_string($disk) && $disk !== '' ? $disk : 'public';
+
+        return Storage::disk($disk)->exists($media->getPathRelativeToRoot());
     }
 
     /**
@@ -220,7 +240,7 @@ final class MediaIngestService
     {
         $maxBytesConfig = config($key, $default);
 
-        return is_numeric($maxBytesConfig) ? $maxBytesConfig : $default;
+        return is_numeric($maxBytesConfig) ? (int) $maxBytesConfig : $default;
     }
 
     private function safeFileName(string $fileName, string $hex, string $extension): string

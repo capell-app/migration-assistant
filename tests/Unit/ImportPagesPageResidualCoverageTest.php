@@ -286,6 +286,10 @@ it('derives start page import helper values from upload state and review rows', 
         ),
     ];
 
+    $defaultWorkspaceName = (string) __('capell-admin::exchanger.import_workspace_default_name');
+
+    throw_if($defaultWorkspaceName === '', RuntimeException::class, 'Expected default import workspace translation to be non-empty.');
+
     expect($archiveDiskPathFrom->invoke($action, ['archive' => ['first' => 'exchanger/imports/pages.zip']]))
         ->toBe('exchanger/imports/pages.zip')
         ->and($archiveDiskPathFrom->invoke($action, ['archive' => 'exchanger/imports/direct.zip']))
@@ -301,7 +305,7 @@ it('derives start page import helper values from upload state and review rows', 
         ->and($workspaceNameFrom->invoke($action, ['workspace_name' => 'Imported Workspace']))
         ->toBe('Imported Workspace')
         ->and($workspaceNameFrom->invoke($action, ['workspace_name' => '']))
-        ->toStartWith((string) __('capell-admin::exchanger.import_workspace_default_name'))
+        ->toStartWith($defaultWorkspaceName)
         ->and($pageDecisionsFromReviewRows->invoke($action, $reviewRows))
         ->toBe([
             'page-home' => ['action' => PageReviewRow::ACTION_CREATE],

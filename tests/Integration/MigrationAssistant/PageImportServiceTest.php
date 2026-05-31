@@ -79,6 +79,8 @@ it('imports a page and rewrites shared refs', function (): void {
         ->and($report->pagesSkipped)->toBe(0);
 
     $page = Page::query()->withoutGlobalScopes()->whereKey($report->createdPageIds[0])->first();
+    $page = migrationAssistantImportedPage($page);
+
     expect($page)->not->toBeNull()
         ->and((int) $page->getAttribute('layout_id'))->toBe((int) $layout->getKey())
         ->and((int) $page->getAttribute('site_id'))->toBe((int) $site->getKey());
@@ -110,6 +112,8 @@ it('remaps parent_id to the local id when both parent and child are imported', f
 
     $child = $pages->first(fn (Page $page): bool => $page->getAttribute('parent_id') !== null);
     $parent = $pages->first(fn (Page $page): bool => $page->getAttribute('parent_id') === null);
+    $child = migrationAssistantImportedPage($child);
+    $parent = migrationAssistantImportedPage($parent);
 
     expect($child)->not->toBeNull()
         ->and($parent)->not->toBeNull()

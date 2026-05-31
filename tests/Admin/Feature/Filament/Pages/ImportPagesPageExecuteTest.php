@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Capell\Core\Models\Site;
-use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
@@ -15,7 +14,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
-use Spatie\Permission\Models\Permission;
 
 uses(CreatesAdminUser::class)
     ->group('import-pages-page-execute');
@@ -66,10 +64,7 @@ function stageExecutePackage(string $relativePath, string $uuid, int $siteId, st
 }
 
 beforeEach(function (): void {
-    Permission::findOrCreate('View:ImportPagesPage', 'web');
-    InstallMigrationAssistantPermissionsAction::run();
-    test()->actingAsAdmin();
-    auth()->user()->givePermissionTo('View:ImportPagesPage');
+    migrationAssistantActingAsImportPagesUser();
     Storage::fake('local');
     Queue::fake();
 });
@@ -118,7 +113,11 @@ it('transitions to completed step with result_summary surfaced', function (): vo
     $component = bootExecuteWizardToDispatch('execute-complete.zip', 'Complete WS');
 
     $sessionId = $component->get('sessionId');
-    $session = ImportSession::query()->findOrFail($sessionId);
+    throw_unless(is_numeric($sessionId), RuntimeException::class, 'Expected import session id to be numeric.');
+
+    $session = ImportSession::query()
+        ->whereKey((int) $sessionId)
+        ->firstOrFail();
     $session->forceFill([
         'status' => ImportSessionStatus::Completed,
         'result_summary' => [
@@ -142,7 +141,11 @@ it('transitions to failed step when the session status is Failed', function (): 
     $component = bootExecuteWizardToDispatch('execute-fail.zip', 'Failing WS');
 
     $sessionId = $component->get('sessionId');
-    $session = ImportSession::query()->findOrFail($sessionId);
+    throw_unless(is_numeric($sessionId), RuntimeException::class, 'Expected import session id to be numeric.');
+
+    $session = ImportSession::query()
+        ->whereKey((int) $sessionId)
+        ->firstOrFail();
     $session->forceFill([
         'status' => ImportSessionStatus::Failed,
         'failure_reason' => 'something went wrong inside the job',
