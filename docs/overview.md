@@ -57,7 +57,7 @@ Supports controlled migration workflows where content, media, source files, and 
 
 ## Screenshots
 
-![Import batches admin index](../../../public/docs/screenshots/packages/migration-assistant/import-session-index-or-host-admin-surface.png)
+![Import batches admin index](screenshots/import-session-index-or-host-admin-surface.png)
 
 Validation, relation resolution, rollback, and export screenshots need seeded import sessions before they can show distinct workflow states.
 
@@ -143,7 +143,7 @@ erDiagram
 
 ## Screenshot Automation
 
-Deployment should read [screenshots.json](screenshots.json), install the package with demo data, resolve each admin surface or frontend URL, and write images to `public/docs/screenshots/packages/migration-assistant`.
+Deployment should read [screenshots.json](screenshots.json), install the package with demo data, resolve each admin surface or frontend URL, and write images to `packages/migration-assistant/docs/screenshots`.
 
 - Import session index or host admin surface.
 - Import validation summary.
