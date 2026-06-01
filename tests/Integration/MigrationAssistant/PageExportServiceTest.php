@@ -112,7 +112,11 @@ it('exports pages to a zip archive with expected manifest and page payloads', fu
 
     expect($pageEntries)->toHaveCount(2);
 
-    $firstPagePayload = json_decode(reset($pageEntries), associative: true, flags: JSON_THROW_ON_ERROR);
+    $firstPageJson = reset($pageEntries);
+
+    throw_unless(is_string($firstPageJson), RuntimeException::class, 'Expected at least one exported page payload.');
+
+    $firstPagePayload = json_decode($firstPageJson, associative: true, flags: JSON_THROW_ON_ERROR);
 
     expect($firstPagePayload)
         ->toHaveKey('type', 'page')

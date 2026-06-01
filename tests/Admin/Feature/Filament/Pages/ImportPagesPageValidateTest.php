@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Capell\Core\Models\Site;
-use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
@@ -14,7 +13,6 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
-use Spatie\Permission\Models\Permission;
 
 uses(CreatesAdminUser::class)
     ->group('import-pages-page-validate');
@@ -65,10 +63,7 @@ function stageValidatePackage(string $relativePath, string $uuid, int $siteId, s
 }
 
 beforeEach(function (): void {
-    Permission::findOrCreate('View:ImportPagesPage', 'web');
-    InstallMigrationAssistantPermissionsAction::run();
-    test()->actingAsAdmin();
-    auth()->user()->givePermissionTo('View:ImportPagesPage');
+    migrationAssistantActingAsImportPagesUser();
     Storage::fake('local');
     Queue::fake();
 });

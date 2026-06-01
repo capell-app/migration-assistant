@@ -34,6 +34,7 @@ it('registers a resolver and makes it available to the chain', function (): void
     ));
 
     $match = $registry->resolve('layouts', ['ref' => 'layout:1']);
+    $match = migrationAssistantMatchResolution($match);
 
     expect($match)->not->toBeNull()
         ->and($match->localId)->toBe(1)
@@ -50,6 +51,7 @@ it('picks the highest-confidence match and exposes the rest as alternatives', fu
     ));
 
     $match = $registry->resolve('layouts', []);
+    $match = migrationAssistantMatchResolution($match);
 
     expect($match)->not->toBeNull()
         ->and($match->localId)->toBe(2)

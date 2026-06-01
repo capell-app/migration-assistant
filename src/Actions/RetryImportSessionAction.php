@@ -48,14 +48,19 @@ final class RetryImportSessionAction
         $archivePath = (string) $session->source_package_path;
         throw_if($archivePath === '' || ! self::archiveDisk()->exists($archivePath), RuntimeException::class, 'Source archive is no longer present on disk.');
 
-        $session->forceFill([
-            'status' => ImportSessionStatus::Queued,
-            'failure_reason' => null,
-        ])->save();
+        $claimedSession = ClaimImportSessionForExecutionAction::run(
+            $session,
+            ImportSessionStatus::Queued,
+            [ImportSessionStatus::Failed],
+        );
 
-        dispatch(new ExecuteImportPlanJob((int) $session->getKey()));
+        if (! $claimedSession instanceof ImportSession) {
+            return $session->refresh();
+        }
 
-        return $session->refresh();
+        dispatch(new ExecuteImportPlanJob((int) $claimedSession->getKey()));
+
+        return $claimedSession->refresh();
     }
 
     private static function archiveDisk(): Filesystem

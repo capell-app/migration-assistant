@@ -83,10 +83,10 @@ final class StartPageImportAction
                 $reviewRows,
             ),
             pageDecisions: $this->pageDecisionsFromReviewRows($reviewRows),
-            resolveRows: array_map(
+            resolveRows: array_values(array_map(
                 static fn (RelationResolveRow $row): array => $row->toArray(),
                 $resolveRows,
-            ),
+            )),
             relationDecisions: $this->relationDecisionsFromResolveRows($resolveRows),
             notice: $resolutionMap->hasUnresolved()
                 ? PageImportWizardStateData::NOTICE_UNRESOLVED_REFERENCES

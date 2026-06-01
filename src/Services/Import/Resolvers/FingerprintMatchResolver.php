@@ -59,8 +59,14 @@ final readonly class FingerprintMatchResolver implements MatchResolver
             return null;
         }
 
+        $model = new $this->modelClass;
+        $keyName = $model->getKeyName();
+
         /** @var iterable<Model> $candidates */
-        $candidates = $this->modelClass::query()->get();
+        $candidates = $this->modelClass::query()
+            ->select(array_values(array_unique([$keyName, ...$this->schemaColumns])))
+            ->orderBy($keyName)
+            ->cursor();
 
         foreach ($candidates as $candidate) {
             $localAttributes = $candidate->attributesToArray();

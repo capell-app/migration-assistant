@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Jobs;
 
+use Capell\MigrationAssistant\Actions\ClaimImportSessionForExecutionAction;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
@@ -22,6 +23,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -64,6 +66,16 @@ final class ExecuteImportPlanJob implements ShouldQueue
         ?SiteImportService $siteImporter = null,
     ): void {
         $session = ImportSession::query()->findOrFail($this->importSessionId);
+        $session = ClaimImportSessionForExecutionAction::run(
+            $session,
+            ImportSessionStatus::Running,
+            [ImportSessionStatus::Queued],
+        );
+
+        if (! $session instanceof ImportSession) {
+            return;
+        }
+
         $previousUser = Auth::user();
 
         $this->authenticateSessionUser($session);
@@ -75,10 +87,6 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
                 return;
             }
-
-            $session->forceFill([
-                'status' => ImportSessionStatus::Running,
-            ])->save();
 
             $disk = config('migration-assistant.disk', 'local');
             $absolutePath = Storage::disk(is_string($disk) ? $disk : 'local')->path($archivePath);
@@ -113,6 +121,28 @@ final class ExecuteImportPlanJob implements ShouldQueue
         } finally {
             $this->restoreAuthenticatedUser($previousUser);
         }
+    }
+
+    /**
+     * @return list<object>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping('migration-assistant:import-session:' . $this->importSessionId))
+                ->dontRelease(),
+        ];
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $session = ImportSession::query()->find($this->importSessionId);
+
+        if (! $session instanceof ImportSession || ! in_array($session->status, [ImportSessionStatus::Queued, ImportSessionStatus::Running], true)) {
+            return;
+        }
+
+        $this->markFailed($session, $exception->getMessage());
     }
 
     private function targetContextId(ImportSession $session): ?int

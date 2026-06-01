@@ -59,7 +59,7 @@ final class PageImportValueDataTest extends TestCase
         $this->assertCount(1, $state->reviewRows);
         $this->assertSame('create', $state->pageDecisions['page-1']['action']);
         $this->assertCount(1, $state->resolveRows);
-        $this->assertSame(9, $state->relationDecisions['author:ben']['target_id']);
+        $this->assertSame(9, $state->relationDecisions['author:ben']['target_id'] ?? null);
         $this->assertSame(['warnings' => 1], $state->validationSummary);
         $this->assertSame('IMPORT 1 PAGE', $state->confirmationExpected);
         $this->assertSame('unresolved_references', $state->notice);

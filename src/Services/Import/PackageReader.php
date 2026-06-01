@@ -196,7 +196,7 @@ final class PackageReader
     {
         $maxBytesConfig = config($key, $default);
 
-        return is_numeric($maxBytesConfig) ? $maxBytesConfig : $default;
+        return is_numeric($maxBytesConfig) ? (int) $maxBytesConfig : $default;
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Capell\Core\Models\Layout;
 use Capell\MigrationAssistant\Services\Import\Resolvers\FingerprintMatchResolver;
+use Illuminate\Support\Facades\DB;
 
 it('matches a layout with an identical normalised schema', function (): void {
     $layout = Layout::factory()->create([
@@ -24,6 +25,7 @@ it('matches a layout with an identical normalised schema', function (): void {
     ];
 
     $match = $resolver->resolve($descriptor);
+    $match = migrationAssistantMatchResolution($match);
 
     expect($match)->not->toBeNull()
         ->and($match->localId)->toBe($layout->getKey())
@@ -76,4 +78,29 @@ it('returns null when the descriptor carries no schema content', function (): vo
 
     expect($resolver->resolve(['ref' => 'layout:1', 'attributes' => ['admin' => null, 'meta' => null]]))
         ->toBeNull();
+});
+
+it('streams only the fingerprint columns when scanning local candidates', function (): void {
+    Layout::factory()->create([
+        'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+        'meta' => ['cache_time' => 'hour'],
+    ]);
+
+    DB::enableQueryLog();
+
+    $resolver = new FingerprintMatchResolver(Layout::class);
+    $resolver->resolve([
+        'ref' => 'layout:999',
+        'attributes' => [
+            'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+            'meta' => ['cache_time' => 'hour'],
+        ],
+    ]);
+
+    $candidateQuery = collect(DB::getQueryLog())
+        ->pluck('query')
+        ->first(fn (string $query): bool => str_contains($query, 'layouts'));
+
+    expect($candidateQuery)->not->toBeNull()
+        ->and(strtolower((string) $candidateQuery))->not->toContain('select *');
 });

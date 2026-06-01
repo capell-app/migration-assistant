@@ -144,7 +144,6 @@ class ImportPagesPage extends Page implements HasForms
                             ->disk('local')
                             ->directory('exchanger/imports')
                             ->acceptedFileTypes(['application/zip', 'application/x-zip-compressed'])
-                            ->preserveFilenames()
                             ->required()
                             ->storeFileNamesIn('archive_filename'),
                         TextInput::make('workspace_name')
