@@ -6,7 +6,7 @@ This page is the consolidated implementation overview for the MigrationAssistant
 
 ## What This Package Adds
 
-MigrationAssistant provides the Capell Migration AIOrchestrator: package export/import, CSV/XML source reads, source contracts for add-on importers, field mapping, preview, validation, dependency graph review, relation resolution, media ingest, queued execution, and rollback reports.
+MigrationAssistant provides the Capell Migration Assistant: package export/import, CSV/XML source reads, source contracts for add-on importers, field mapping, preview, validation, dependency graph review, relation resolution, media ingest, queued execution, and rollback reports.
 
 - Page imports are owned here: the Recovery Center page upload, review, relation resolution, validation, dispatch, and status polling flow lives in MigrationAssistant.
 - Import source contracts expose rows, columns, metadata, and a suggested target.
@@ -115,7 +115,7 @@ Validation, relation resolution, rollback, and export screenshots need seeded im
 erDiagram
     USERS ||--o{ IMPORT_SESSIONS : starts
     USERS ||--o{ IMPORT_ROLLBACK_REPORTS : executes
-    IMPORT_SESSIONS ||--o{ IMPORT_ROLLBACK_REPORTS : dashboard-dashboard_reports
+    IMPORT_SESSIONS ||--o{ IMPORT_ROLLBACK_REPORTS : reports
 
     IMPORT_ROLLBACK_REPORTS {
         bigint id PK

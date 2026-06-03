@@ -8,6 +8,4 @@ enum ImportSessionKind: string
 {
     case PageImport = 'page-import';
     case SiteImport = 'site-import';
-    case WordPressImport = 'wordpress-import';
-    case SpreadsheetImport = 'spreadsheet-import';
 }

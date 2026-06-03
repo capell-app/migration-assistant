@@ -17,7 +17,7 @@ use JsonException;
  *
  * Core is collision-agnostic — it extracts URL/site data and defers to an
  * injected {@see PageCollisionDetector} to compute collision state. The
- * default {@see NullPageCollisionDetector} dashboard-dashboard_reports no collisions; packages
+ * default {@see NullPageCollisionDetector} reports no collisions; packages
  * that care about live/draft overlap bind their own detector.
  *
  * The incoming site is looked up via the shared-relation ref in the

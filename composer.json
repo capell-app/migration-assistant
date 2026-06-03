@@ -1,6 +1,6 @@
 {
     "name": "capell-app/migration-assistant",
-    "description": "MigrationAssistant export, import, and rollback report workflows for Capell.",
+    "description": "Safely move pages, sites, and media into Capell — preview every change, validate before you write, and keep a rollback report for every import.",
     "type": "library",
     "license": "proprietary",
     "require": {

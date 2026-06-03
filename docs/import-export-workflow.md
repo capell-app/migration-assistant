@@ -26,7 +26,7 @@ MigrationAssistant separates export, package validation, flat-file source readin
 
 ## Source Packages
 
-Source packages register an implementation of `ImportSourceReader`. A reader provides rows, columns, metadata, and a suggested target. `capell-app/wordpress-importer` uses this extension point for WordPress WXR exports, keeping WordPress parsing out of MigrationAssistant while still appearing inside the Migration AIOrchestrator.
+Source packages register an implementation of `ImportSourceReader`. A reader provides rows, columns, metadata, and a suggested target. `capell-app/wordpress-importer` uses this extension point for WordPress WXR exports, keeping WordPress parsing out of MigrationAssistant while still appearing inside the Migration Assistant.
 
 ## Pitfalls
 
