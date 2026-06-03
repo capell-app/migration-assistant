@@ -38,11 +38,10 @@ use Capell\MigrationAssistant\Services\Import\ManifestValidationReport;
 use Capell\MigrationAssistant\Services\Import\Resolvers\KeyedMatchResolver;
 use Capell\MigrationAssistant\Services\Import\SpreadsheetReader;
 use Capell\MigrationAssistant\Support\ImportTargetRegistry;
+use Capell\MigrationAssistant\Tests\Fixtures\MigrationAssistantRoleOnlyUserForPolicyTest;
 use Capell\Tests\Fixtures\Models\User;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 
 uses(CreatesAdminUser::class);
@@ -428,29 +427,6 @@ it('falls back to the super admin role when host users do not expose global admi
 
     expect($policy->viewAny($user))->toBeTrue();
 });
-
-class MigrationAssistantRoleOnlyUserForPolicyTest extends Illuminate\Foundation\Auth\User
-{
-    /** @use HasFactory<Factory<static>> */
-    use HasFactory;
-
-    /**
-     * @param  list<string>|string  $roles
-     */
-    public function hasRole(array|string $roles, ?string $guard = null): bool
-    {
-        if (is_array($roles)) {
-            return in_array('super_admin', $roles, true);
-        }
-
-        return $roles === 'super_admin';
-    }
-
-    public function checkPermissionTo(string $permission, ?string $guardName = null): bool
-    {
-        return $permission === MigrationAssistantPermission::ImportSessionView->value;
-    }
-}
 
 it('covers remaining migration assistant support adapters and admin page accessors', function (): void {
     $site = Site::factory()->create(['name' => 'Scoped Site']);
