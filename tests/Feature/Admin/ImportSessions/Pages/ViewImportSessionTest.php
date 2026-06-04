@@ -26,7 +26,8 @@ beforeEach(function (): void {
 
     Permission::findOrCreate('View:ImportSessionResource', 'web');
     InstallMigrationAssistantPermissionsAction::run();
-    Storage::fake('local');
+    config()->set('migration-assistant.disk', 'local');
+    Storage::fake(migrationAssistantArchiveDisk());
     Queue::fake();
 
     $adminUser = test()->createUserWithRole('super_admin');
@@ -54,9 +55,18 @@ function makeImportSession(array $overrides = []): ImportSession
     ], $overrides));
 }
 
+function migrationAssistantArchiveDisk(): string
+{
+    $diskName = config('migration-assistant.disk', 'local');
+
+    return is_string($diskName) ? $diskName : 'local';
+}
+
 it('shows the download archive action when the source archive exists on disk', function (): void {
     $session = makeImportSession();
-    Storage::disk('local')->put((string) $session->source_package_path, 'zip-bytes');
+    Storage::disk(migrationAssistantArchiveDisk())->put((string) $session->source_package_path, 'zip-bytes');
+
+    Storage::disk(migrationAssistantArchiveDisk())->assertExists((string) $session->source_package_path);
 
     Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
         ->assertActionVisible('downloadArchive');
@@ -118,7 +128,7 @@ it('hides the retry action when a failed session is missing its decisions', func
         'page_decisions' => null,
         'relation_decisions' => null,
     ]);
-    Storage::disk('local')->put((string) $session->source_package_path, 'zip-bytes');
+    Storage::disk(migrationAssistantArchiveDisk())->put((string) $session->source_package_path, 'zip-bytes');
 
     Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
         ->assertActionHidden('retrySession');
@@ -132,7 +142,7 @@ it('retries a failed session, clearing the failure reason and dispatching the ex
         'page_decisions' => ['uuid-1' => ['action' => 'create']],
         'relation_decisions' => ['site:1' => ['action' => 'use_existing']],
     ]);
-    Storage::disk('local')->put((string) $session->source_package_path, 'zip-bytes');
+    Storage::disk(migrationAssistantArchiveDisk())->put((string) $session->source_package_path, 'zip-bytes');
 
     Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
         ->assertActionVisible('retrySession')
@@ -154,7 +164,7 @@ it('does not queue duplicate retry jobs from stale failed session models', funct
         'page_decisions' => ['uuid-1' => ['action' => 'create']],
         'relation_decisions' => ['site:1' => ['action' => 'use_existing']],
     ]);
-    Storage::disk('local')->put((string) $session->source_package_path, 'zip-bytes');
+    Storage::disk(migrationAssistantArchiveDisk())->put((string) $session->source_package_path, 'zip-bytes');
 
     $staleSession = ImportSession::query()->findOrFail($session->getKey());
 
