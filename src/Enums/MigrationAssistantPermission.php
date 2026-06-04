@@ -7,9 +7,7 @@ namespace Capell\MigrationAssistant\Enums;
 enum MigrationAssistantPermission: string
 {
     case PageExport = 'page.export';
-    case SiteExport = 'site.export';
     case PageImport = 'page.import';
-    case SiteImport = 'site.import';
     case PageImportUpdateSharedRelations = 'page.import.update-shared-relations';
     case PageImportPublishLive = 'page.import.publish-live';
     case ImportSessionView = 'import-session.view';

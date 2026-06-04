@@ -1,10 +1,10 @@
-# MigrationAssistant Import Export Workflow
+# Migration Assistant Import Export Workflow
 
-This focused guide extends [Overview](overview.md) for the MigrationAssistant package.
+This focused guide extends [Overview](overview.md) for the Migration Assistant package.
 
 ## Purpose
 
-MigrationAssistant separates export, package validation, flat-file source reading, field mapping, preview, dependency graph review, relation resolution, import execution, and rollback reporting.
+Migration Assistant separates export, package validation, flat-file source reading, field mapping, preview, dependency graph review, relation resolution, import execution, and rollback reporting.
 
 ## Export Workflow
 
@@ -24,9 +24,15 @@ MigrationAssistant separates export, package validation, flat-file source readin
 7. Review the rollback report for created model class/id pairs, imported URL/media counts, source filename/checksum, executing user/time, and manual rollback instructions.
 8. Keep source archives until the import result summary and rollback report are accepted.
 
+## Console Workflow
+
+- `migration-assistant:status {session?} --json` gives operators and CI jobs a headless status view for recent imports or one import session.
+- `migration-assistant:rollback-report {session} --json` returns the rollback report payload for audit and scripted sign-off.
+- Headless package import/export commands are still future work; admin upload/export flows remain the execution surface today.
+
 ## Source Packages
 
-Source packages register an implementation of `ImportSourceReader`. A reader provides rows, columns, metadata, and a suggested target. `capell-app/wordpress-importer` uses this extension point for WordPress WXR exports, keeping WordPress parsing out of MigrationAssistant while still appearing inside the Migration Assistant.
+Source packages register an implementation of `ImportSourceReader`. A reader provides rows, columns, metadata, and a suggested target. `capell-app/wordpress-importer` uses this extension point for WordPress WXR exports, keeping WordPress parsing out of Migration Assistant while still appearing inside the Migration Assistant.
 
 ## Pitfalls
 

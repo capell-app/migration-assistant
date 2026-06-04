@@ -23,11 +23,7 @@ class InstallMigrationAssistantPermissionsAction
 
     public const string PERMISSION_PAGE_EXPORT = 'page.export';
 
-    public const string PERMISSION_SITE_EXPORT = 'site.export';
-
     public const string PERMISSION_PAGE_IMPORT = 'page.import';
-
-    public const string PERMISSION_SITE_IMPORT = 'site.import';
 
     public const string PERMISSION_PAGE_IMPORT_UPDATE_SHARED = 'page.import.update-shared-relations';
 

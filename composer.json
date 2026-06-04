@@ -1,6 +1,6 @@
 {
     "name": "capell-app/migration-assistant",
-    "description": "Safely move pages, sites, and media into Capell — preview every change, validate before you write, and keep a rollback report for every import.",
+    "description": "Safely move pages and media into Capell — preview every change, validate before you write, and keep a rollback report for every import.",
     "type": "library",
     "license": "proprietary",
     "require": {
@@ -39,7 +39,17 @@
         "capell",
         "cms",
         "laravel",
-        "migration"
+        "migration",
+        "import",
+        "export",
+        "wordpress-migration",
+        "content-migration",
+        "csv-import",
+        "xml-import",
+        "rollback",
+        "dry-run-validation",
+        "media-migration",
+        "cms-migration"
     ],
     "authors": [
         {

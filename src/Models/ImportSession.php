@@ -49,7 +49,7 @@ use Override;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read User|null $user
- * @property-read Collection<int, ImportRollbackReport> $rollbackDashboardReports
+ * @property-read Collection<int, ImportRollbackReport> $rollbackReports
  */
 class ImportSession extends Model implements Userstampable
 {
@@ -110,7 +110,7 @@ class ImportSession extends Model implements Userstampable
     /**
      * @return HasMany<ImportRollbackReport, $this>
      */
-    public function rollbackDashboardReports(): HasMany
+    public function rollbackReports(): HasMany
     {
         return $this->hasMany(ImportRollbackReport::class);
     }

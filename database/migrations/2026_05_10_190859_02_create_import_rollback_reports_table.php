@@ -10,7 +10,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('import_rollback_dashboard-dashboard_reports', function (Blueprint $table): void {
+        if (Schema::hasTable('import_rollback_reports')) {
+            return;
+        }
+
+        if (Schema::hasTable('import_rollback_dashboard-dashboard_reports')) {
+            Schema::rename('import_rollback_dashboard-dashboard_reports', 'import_rollback_reports');
+
+            return;
+        }
+
+        Schema::create('import_rollback_reports', function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();
             $table->foreignId('import_session_id')
@@ -34,6 +44,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('import_rollback_dashboard-dashboard_reports');
+        Schema::dropIfExists('import_rollback_reports');
     }
 };

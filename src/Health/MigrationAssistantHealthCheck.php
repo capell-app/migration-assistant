@@ -142,10 +142,15 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
      */
     public function missingTables(): array
     {
-        return collect($this->requiredTableNames())
-            ->reject(static fn (string $tableName): bool => Schema::hasTable($tableName))
-            ->values()
-            ->all();
+        $missingTables = [];
+
+        foreach ($this->requiredTableNames() as $tableName) {
+            if (! Schema::hasTable($tableName)) {
+                $missingTables[] = $tableName;
+            }
+        }
+
+        return $missingTables;
     }
 
     /**
@@ -153,11 +158,15 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
      */
     public function unregisteredMorphAliases(): array
     {
-        return collect(self::MODELS_BY_MORPH_ALIAS)
-            ->reject(static fn (string $modelClass, string $morphAlias): bool => Relation::getMorphedModel($morphAlias) === $modelClass)
-            ->keys()
-            ->values()
-            ->all();
+        $unregisteredAliases = [];
+
+        foreach (self::MODELS_BY_MORPH_ALIAS as $morphAlias => $modelClass) {
+            if (Relation::getMorphedModel($morphAlias) !== $modelClass) {
+                $unregisteredAliases[] = $morphAlias;
+            }
+        }
+
+        return $unregisteredAliases;
     }
 
     /**

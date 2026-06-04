@@ -1,9 +1,9 @@
 ---
 name: capell-migration-assistant-development
-description: Use when editing Capell MigrationAssistant exports, imports, package readers.
+description: Use when editing Capell Migration Assistant exports, imports, package readers.
 ---
 
-# Capell MigrationAssistant
+# Capell Migration Assistant
 
 Export, import, dependency graph, and validation workflows.
 

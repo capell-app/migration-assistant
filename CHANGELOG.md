@@ -4,7 +4,10 @@ All notable changes to `capell-app/migration-assistant` will be documented in th
 
 ## Unreleased
 
-- Prepared package metadata and documentation for ongoing Capell 4.x package work.
+- Corrected rollback report storage from `import_rollback_rollback-report` to `import_rollback_reports`, including a safe rename migration for existing installs.
+- Added `migration-assistant:status` and `migration-assistant:rollback-report` console commands for headless status and rollback-report audits.
+- Scoped manifest permissions and health checks to shipped page-import behavior while site import remains a hidden placeholder.
+- Moved rollback instructions into package translations.
 
 ## 2026-06-03
 
@@ -12,4 +15,4 @@ All notable changes to `capell-app/migration-assistant` will be documented in th
 - Promoted the existing desktop hero plus session-index, validation-summary, relation-resolution, rollback-report, and package-export screenshots into the marketplace manifest.
 - Replaced the stub `MigrationAssistantHealthCheck` with real diagnostics covering storage tables, model morph aliases, source readers, and the media ingest limit.
 - Removed the unused `WordPressImport` and `SpreadsheetImport` import-session kinds that were never assigned to a session.
-- Repaired garbled prose ("dashboard-dashboard_reports", "Migration AIOrchestrator") in the collision-detector contract, review-row builder, overview/workflow docs, and the boost guideline.
+- Repaired garbled prose ("rollback-report", "Migration Assistant") in the collision-detector contract, review-row builder, overview/workflow docs, and the boost guideline.

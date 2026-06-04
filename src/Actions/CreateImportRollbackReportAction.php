@@ -33,9 +33,9 @@ final class CreateImportRollbackReportAction
     private function instructionsFor(ImportExecutionReport $report): string
     {
         if ($report->createdModels() === []) {
-            return 'No records were created. Review the import session summary before taking further action.';
+            return (string) __('migration-assistant::rollback.none_created');
         }
 
-        return 'To roll back this import manually, review each created model listed in this report, remove any records that were not edited after import, then clear related URLs and media assignments recorded in the summary.';
+        return (string) __('migration-assistant::rollback.manual');
     }
 }

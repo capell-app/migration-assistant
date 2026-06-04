@@ -34,7 +34,7 @@ class ImportRollbackReport extends Model
 
     use HasUuids;
 
-    protected $table = 'import_rollback_dashboard-dashboard_reports';
+    protected $table = 'import_rollback_reports';
 
     protected $fillable = [
         'uuid',

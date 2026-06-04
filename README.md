@@ -1,6 +1,6 @@
 # Migration Assistant
 
-MigrationAssistant export, import, and rollback report workflows for Capell.
+Migration Assistant export, import, and rollback report workflows for Capell.
 
 ## At A Glance
 
@@ -25,7 +25,7 @@ MigrationAssistant export, import, and rollback report workflows for Capell.
 
 ## What It Adds
 
-- MigrationAssistant export, import, and rollback report workflows for Capell.
+- Migration Assistant export, import, and rollback report workflows for Capell.
 - Admin resources: `ImportSessionResource`.
 - Recovery Center page import workflow: upload, review, resolve relations, validate, queue execution, and inspect rollback evidence.
 
@@ -68,13 +68,13 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 
 ## Technical Shape
 
-- MigrationAssistantServiceProvider registers the package.
+- `MigrationAssistantServiceProvider` registers the package.
 - Config file: migration-assistant.php.
-- Migrations create import_rollback_dashboard-dashboard_reports and import_sessions, including generic import target columns.
+- Migrations create import_rollback_reports and import_sessions, including generic import target columns.
 - Jobs execute import plans.
 - Events report import completed or failed.
 - Services cover package reading, writing, CSV/XML reading, mapping, validation, relation resolution, media ingest, preview, and rollback reporting.
-- WordPress WXR support is intentionally provided by the separate `capell-app/wordpress-importer` package, which registers a source reader with MigrationAssistant.
+- WordPress WXR support is intentionally provided by the separate `capell-app/wordpress-importer` package, which registers a source reader with Migration Assistant.
 
 ## Code Map
 
@@ -95,20 +95,21 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 ## Admin Surface
 
 - Resources: `ImportSessionResource`.
-- Pages: `ImportPagesPage`, `ImportSitesPage`, `ListImportSessions`, `ViewImportSession`.
+- Pages: `ImportPagesPage`, `ListImportSessions`, `ViewImportSession`. `ImportSitesPage` remains a hidden placeholder until the site-import wizard ships.
 
 ## Runtime Surface
 
 - Jobs: `ExecuteImportPlanJob`.
+- Commands: `migration-assistant:status`, `migration-assistant:rollback-report`.
 
 ## Data And Persistence
 
-- import_rollback_dashboard-dashboard_reports stores the import session, created model ids, source filename/checksum, summary counts, executing user/time, and manual rollback instructions.
+- import_rollback_reports stores the import session, created model ids, source filename/checksum, summary counts, executing user/time, and manual rollback instructions.
 - import_sessions stores import kind, generic target type/id, status, manifest, decisions, validation state, and result summary.
 - Retention and deletion rules should be verified against the host application policy.
 
 - Models: `ImportRollbackReport`, `ImportSession`.
-- Migrations: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_dashboard-dashboard_reports_table.php`, `2026_05_18_000001_add_target_columns_to_import_sessions_table.php`.
+- Migrations: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`.
 - Config: `packages/migration-assistant/config/migration-assistant.php`.
 - Data objects live in `src/Data/`; use them for payloads, form state, and view models.
 
@@ -121,7 +122,7 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 
 ## Install Impact
 
-- Adds import_rollback_dashboard-dashboard_reports and import_sessions tables.
+- Adds import_rollback_reports and import_sessions tables.
 - Adds migration-assistant queue configuration.
 - Uses disk and path config for imports, exports, and working files.
 - May require queue workers for long-running imports.
@@ -135,9 +136,8 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 
 ## Admin And Access
 
-- None proven in this package directory.
-
-- Policy: OwnershipMap (packages/migration-assistant/src/Policy/OwnershipMap.php)
+- Import session access is guarded by `ImportSessionPolicy`.
+- Policy support: OwnershipMap (packages/migration-assistant/src/Policy/OwnershipMap.php)
 
 ## Common Pitfalls
 
@@ -145,6 +145,7 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 - Check upload and package size limits before importing client archives.
 - Run queue workers before testing async import jobs.
 - Review relation resolution before applying imported data.
+- Use `migration-assistant:status --json` and `migration-assistant:rollback-report {session} --json` for headless CI or migration audit checks.
 
 ## Docs
 
