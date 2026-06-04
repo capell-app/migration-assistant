@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Console\Commands;
 
 use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Console\Command;
+use Override;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 final class ShowMigrationAssistantStatusCommand extends Command
@@ -16,6 +17,7 @@ final class ShowMigrationAssistantStatusCommand extends Command
 
     protected $description = 'Show Migration Assistant import session status.';
 
+    #[Override]
     public function getDescription(): string
     {
         return (string) __('migration-assistant::commands.status.description');
@@ -47,7 +49,7 @@ final class ShowMigrationAssistantStatusCommand extends Command
         }
 
         if ((bool) $this->option('json')) {
-            $this->output->writeln((string) json_encode($rows, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+            $this->output->writeln(json_encode($rows, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
             return SymfonyCommand::SUCCESS;
         }

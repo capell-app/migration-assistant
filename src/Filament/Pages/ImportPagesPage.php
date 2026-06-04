@@ -122,7 +122,7 @@ class ImportPagesPage extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->getForm('form')?->fill();
+        $this->getSchema('form')?->fill();
     }
 
     #[Override]

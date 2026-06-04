@@ -8,6 +8,7 @@ use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Override;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 final class ShowMigrationAssistantRollbackReportCommand extends Command
@@ -18,6 +19,7 @@ final class ShowMigrationAssistantRollbackReportCommand extends Command
 
     protected $description = 'Show the rollback report for a Migration Assistant import session.';
 
+    #[Override]
     public function getDescription(): string
     {
         return (string) __('migration-assistant::commands.rollback_report.description');
@@ -44,7 +46,7 @@ final class ShowMigrationAssistantRollbackReportCommand extends Command
         $payload = $this->payloadForReport($report);
 
         if ((bool) $this->option('json')) {
-            $this->output->writeln((string) json_encode($payload, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+            $this->output->writeln(json_encode($payload, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
             return SymfonyCommand::SUCCESS;
         }

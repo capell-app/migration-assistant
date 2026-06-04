@@ -235,7 +235,7 @@ it('blocks dispatch when a relation decision is invalid and persists decisions w
     // Dispatch from validate requires confirmation.
     $component->set('confirmation', 'Relations');
     $component->call('dispatchImport')
-        ->assertSet('step', ImportPagesPage::STEP_DISPATCHED);
+        ->assertSet('step', ImportPagesPage::STEP_EXECUTING);
 
     Queue::assertPushed(ExecuteImportPlanJob::class, 1);
 

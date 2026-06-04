@@ -121,7 +121,7 @@ it('blocks dispatch without a matching confirmation string', function (): void {
     // Correct confirmation (workspace-name fallback, case-insensitive)
     $component->set('confirmation', 'confirm ws');
     $component->call('dispatchImport')
-        ->assertSet('step', ImportPagesPage::STEP_DISPATCHED);
+        ->assertSet('step', ImportPagesPage::STEP_EXECUTING);
     Queue::assertPushed(ExecuteImportPlanJob::class, 1);
 });
 
@@ -162,7 +162,7 @@ it('blocks dispatch while blocking_errors present and succeeds when clean', func
     ])->save();
 
     $component->call('dispatchImport')
-        ->assertSet('step', ImportPagesPage::STEP_DISPATCHED);
+        ->assertSet('step', ImportPagesPage::STEP_EXECUTING);
 
     Queue::assertPushed(ExecuteImportPlanJob::class, 1);
 
