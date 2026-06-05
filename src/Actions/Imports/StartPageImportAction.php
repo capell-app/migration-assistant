@@ -12,6 +12,7 @@ use Capell\MigrationAssistant\Data\PageReviewRow;
 use Capell\MigrationAssistant\Data\RelationResolveRow;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
+use Capell\MigrationAssistant\Enums\PackageType;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ManifestValidator;
 use Capell\MigrationAssistant\Services\Import\PackageReader;
@@ -23,7 +24,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 use RuntimeException;
 
 /**
- * @method static PageImportWizardStateData run(array<string, mixed> $state)
+ * @method static PageImportWizardStateData run(array<string, mixed> $state, ImportSessionKind $kind = ImportSessionKind::PageImport)
  */
 final class StartPageImportAction
 {
@@ -34,7 +35,7 @@ final class StartPageImportAction
     /**
      * @param  array<string, mixed>  $state
      */
-    public function handle(array $state): PageImportWizardStateData
+    public function handle(array $state, ImportSessionKind $kind = ImportSessionKind::PageImport): PageImportWizardStateData
     {
         $archiveDiskPath = $this->archiveDiskPathFrom($state);
         throw_if($archiveDiskPath === '', RuntimeException::class, self::ERROR_UPLOAD_REQUIRED);
@@ -45,6 +46,8 @@ final class StartPageImportAction
         if (! $validation->isValid()) {
             throw new RuntimeException(implode(' / ', $validation->errors));
         }
+
+        $this->assertPackageTypeMatchesImportKind($package->manifest, $kind);
 
         $resolutionMap = (new ResolutionMapBuilder(
             resolve(RelationMatchResolverRegistry::class),
@@ -62,7 +65,7 @@ final class StartPageImportAction
             'target_id' => is_int($target->id) ? $target->id : null,
             'target_label' => $target->label,
             'target_url' => $target->url,
-            'kind' => ImportSessionKind::PageImport,
+            'kind' => $kind,
             'status' => $resolutionMap->hasUnresolved() ? ImportSessionStatus::Mapped : ImportSessionStatus::Parsed,
             'source_filename' => $this->sourceFilenameFrom($state),
             'source_package_path' => $archiveDiskPath,
@@ -137,6 +140,33 @@ final class StartPageImportAction
             __('capell-admin::exchanger.import_workspace_default_name'),
             now()->format('Y-m-d H:i'),
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $manifest
+     */
+    private function assertPackageTypeMatchesImportKind(array $manifest, ImportSessionKind $kind): void
+    {
+        $actualPackageType = $manifest['package_type'] ?? null;
+        $expectedPackageType = $this->expectedPackageTypeFor($kind);
+
+        if ($actualPackageType === $expectedPackageType->value) {
+            return;
+        }
+
+        throw new RuntimeException((string) __('migration-assistant::imports.expected_package_type', [
+            'actual' => is_string($actualPackageType) ? $actualPackageType : 'unknown',
+            'expected' => $expectedPackageType->value,
+            'kind' => $kind->value,
+        ]));
+    }
+
+    private function expectedPackageTypeFor(ImportSessionKind $kind): PackageType
+    {
+        return match ($kind) {
+            ImportSessionKind::PageImport => PackageType::PageExport,
+            ImportSessionKind::SiteImport => PackageType::SiteExport,
+        };
     }
 
     /**

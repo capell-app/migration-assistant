@@ -8,10 +8,12 @@ use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\RefreshPageImportStatusAction;
 use Capell\MigrationAssistant\Actions\Imports\ResolvePageImportSessionAction;
 use Capell\MigrationAssistant\Actions\Imports\StartPageImportAction;
+use Capell\MigrationAssistant\Actions\Imports\StartSiteImportAction;
 use Capell\MigrationAssistant\Data\Imports\PageImportDecisionData;
 use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
 use Capell\MigrationAssistant\Data\PageReviewRow;
 use Capell\MigrationAssistant\Data\RelationResolveRow;
+use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
@@ -101,6 +103,62 @@ function stageActionImportPackage(
     writeActionImportPackage($absolutePath, $pageUuid, $siteId, $url, $layoutId);
 }
 
+function stageActionSiteImportPackage(string $relativePath, string $pageUuid, int $sourceSiteId): void
+{
+    $absolutePath = Storage::disk('local')->path($relativePath);
+    if (! is_dir(dirname($absolutePath))) {
+        mkdir(dirname($absolutePath), 0777, true);
+    }
+
+    $manifestJson = json_encode([
+        'schema_version' => 1,
+        'package_type' => 'site-export',
+    ], JSON_THROW_ON_ERROR);
+
+    $siteDescriptorJson = json_encode([
+        'type' => 'site',
+        'ref' => 'site:' . $sourceSiteId,
+        'id' => $sourceSiteId,
+        'attributes' => [
+            'name' => 'Action Imported Site',
+            'status' => true,
+            'default' => false,
+        ],
+    ], JSON_THROW_ON_ERROR);
+
+    $pageJson = json_encode([
+        'type' => 'page',
+        'uuid' => $pageUuid,
+        'id' => 456,
+        'attributes' => [
+            'title' => 'Action Imported Site Page',
+            'site_id' => $sourceSiteId,
+        ],
+        'owned_relations' => [
+            'page_urls' => [
+                ['site_id' => $sourceSiteId, 'language_id' => 1, 'url' => '/site-action'],
+            ],
+        ],
+        'shared_relations' => [
+            'site' => ['ref' => 'site:' . $sourceSiteId],
+        ],
+    ], JSON_THROW_ON_ERROR);
+
+    $integrityFiles = [
+        'manifest.json' => ChecksumGenerator::forString($manifestJson),
+        sprintf('pages/%s.json', $pageUuid) => ChecksumGenerator::forString($pageJson),
+        'relations/sites/source-site.json' => ChecksumGenerator::forString($siteDescriptorJson),
+    ];
+
+    $zipArchive = new ZipArchive;
+    $zipArchive->open($absolutePath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $zipArchive->addFromString('manifest.json', $manifestJson);
+    $zipArchive->addFromString('integrity.json', json_encode(['files' => $integrityFiles], JSON_THROW_ON_ERROR));
+    $zipArchive->addFromString(sprintf('pages/%s.json', $pageUuid), $pageJson);
+    $zipArchive->addFromString('relations/sites/source-site.json', $siteDescriptorJson);
+    $zipArchive->close();
+}
+
 /**
  * @return array{PageImportWizardStateData, string, Site}
  */
@@ -168,6 +226,48 @@ it('moves upload state to review state after parsing a package', function (): vo
     expect($session->status)->toBe(ImportSessionStatus::Parsed);
 
     Queue::assertNotPushed(ExecuteImportPlanJob::class);
+});
+
+it('moves site upload state to review state using a site import session', function (): void {
+    $pageUuid = (string) Str::uuid();
+    $sourceSiteId = 654;
+    $relativePath = 'exchanger/imports/site-action-review.zip';
+
+    stageActionSiteImportPackage($relativePath, $pageUuid, $sourceSiteId);
+
+    $state = StartSiteImportAction::run([
+        'archive' => $relativePath,
+        'archive_filename' => 'site-action-review.zip',
+        'workspace_name' => 'Site Action Review',
+    ]);
+
+    $session = actionImportSessionForState($state);
+
+    expect($state->step)->toBe(ImportPagesPage::STEP_REVIEW)
+        ->and($state->sessionId)->toBeInt()
+        ->and($state->reviewRows[0]['uuid'] ?? null)->toBe($pageUuid)
+        ->and($state->reviewRows[0]['site_ref'] ?? null)->toBe('site:' . $sourceSiteId)
+        ->and($state->resolveRows[0]['ref'] ?? null)->toBe('site:' . $sourceSiteId)
+        ->and($state->relationDecisions['site:' . $sourceSiteId]['action'] ?? null)->toBe(RelationResolveRow::ACTION_CREATE_NEW)
+        ->and($session->kind)->toBe(ImportSessionKind::SiteImport)
+        ->and($session->status)->toBe(ImportSessionStatus::Mapped);
+
+    Queue::assertNotPushed(ExecuteImportPlanJob::class);
+});
+
+it('rejects page imports when the uploaded package is a site export', function (): void {
+    $pageUuid = (string) Str::uuid();
+    $relativePath = 'exchanger/imports/site-export-uploaded-as-page.zip';
+
+    stageActionSiteImportPackage($relativePath, $pageUuid, 765);
+
+    expect(fn (): mixed => StartPageImportAction::run([
+        'archive' => $relativePath,
+        'archive_filename' => 'site-export-uploaded-as-page.zip',
+        'workspace_name' => 'Wrong Kind',
+    ]))->toThrow(RuntimeException::class, 'Expected a page-export package for page-import; got site-export.');
+
+    expect(ImportSession::query()->count())->toBe(0);
 });
 
 it('does not create an import session when the uploaded archive cannot be parsed', function (): void {
