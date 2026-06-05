@@ -18,7 +18,7 @@ Prioritized.
 
 1. **Partially shipped: create real `SiteImport` sessions from site-export packages.** `StartSiteImportAction` now reuses the reviewed page-import wizard state path with `ImportSessionKind::SiteImport`, and `StartPageImportAction` guards package type so page imports reject `site-export` archives instead of creating the wrong session kind. This closes the package-local backend start path but the dedicated `ImportSitesPage` UI remains a hidden placeholder, so the remaining UI polish belongs in the Next site-import wizard row. Evidence: `PageImportWorkflowActionsTest` covers site-export upload state moving to review with a `SiteImport` session and page-import rejection of site-export archives. — `src/Actions/Imports/StartPageImportAction.php`, `src/Actions/Imports/StartSiteImportAction.php`, `tests/Admin/Feature/Actions/Imports/PageImportWorkflowActionsTest.php` — **L**
 
-2. **Fix the corrupted rollback-report table name across the codebase.** — A bad find/replace turned `reports` into a malformed dashboard/report suffix. The physical table, model `$table`, provider migration registration, and all docs previously used the malformed rollback-report table name. A hyphen in a SQL identifier is fragile (forces backtick-quoting everywhere) and clearly unintended. Rename to `import_rollback_reports` via a corrective migration + filename + model + manifest + docs sweep. — `database/migrations/`, `src/Models/ImportRollbackReport.php`, `src/Providers/MigrationAssistantServiceProvider.php` — **M**
+2. **Done/Shipped: fixed the corrupted rollback-report table name across the codebase.** The physical table, model `$table`, provider migration registration, README/overview docs, and rollback-report health check now use `import_rollback_reports`. The create migration and the June 4 compatibility migration both detect the old malformed `import_rollback_dashboard-dashboard_reports` table and rename it safely for existing installs. — `database/migrations/`, `src/Models/ImportRollbackReport.php`, `src/Providers/MigrationAssistantServiceProvider.php` — **M**
 
 3. **Done/Shipped: repaired garbled prose left by the same find/replace.** The collision-detector contract and review-row builder now describe the null detector as reporting no collisions, while the overview/workflow docs consistently refer to Migration Assistant. The package search surface no longer exposes the corrupted prose tokens in source, docs, manifest, or migration compatibility code. — `src/Contracts/PageCollisionDetector.php`, `src/Actions/BuildPageReviewRows.php`, `docs/overview.md`, `docs/import-export-workflow.md`, `database/migrations/` — **S**
 
@@ -34,7 +34,7 @@ Prioritized.
 
 Tied to `capell.json` → `capabilities` (`migration-assistant`, `migration-assistant-admin`, `migration-assistant-console`) and migration-tool norms.
 
-- **Console surface is empty (table stakes for `migration-assistant-console`).** No `Command`/`AsCommand`/`hasCommand` exists anywhere in `src/` despite the `console` surface and the `migration-assistant-console` capability. A migration tool needs `migrate:export`, `migrate:import`, `migrate:status`, `migrate:rollback-report` for CI, scripted server-to-server moves, and headless runs. This is the single largest manifest-vs-reality gap.
+- **Partially shipped: console surface now has status and rollback-report audit commands.** `MigrationAssistantServiceProvider` registers `migration-assistant:status` and `migration-assistant:rollback-report`, and `capell.json.commands` exposes both. Remaining table-stakes console gaps are headless package export/import and automated rollback execution for CI and scripted server-to-server moves.
 - **Automated rollback execution (differentiator).** Today rollback is _advisory only_ — `CreateImportRollbackReportAction::instructionsFor()` emits a manual prose paragraph ("review each created model... remove any records..."). The report already stores `created_models` (`src/Models/ImportRollbackReport.php`), so a one-click "Undo this import" that deletes the recorded rows is achievable and would be a headline feature versus competitors that only log.
 - **Field-mapping UI (table stakes).** `FieldMapper` (56 lines) and `ImportTargetRegistry` exist, but mapping is code-level; there is no column→field mapping screen in the wizard. Flat-file (CSV/XML) importers normally let an operator map source columns to target fields visually.
 - **Resumable / chunked import for large datasets (table stakes at scale).** `PageImportService::import()` wraps the entire payload in a single `DB::transaction` (`src/Services/Import/PageImportService.php`) and the job has a 900s timeout. There is no batching, checkpointing, or progress-by-row — a large site will hit memory/timeout limits with no way to resume.
@@ -44,7 +44,7 @@ Tied to `capell.json` → `capabilities` (`migration-assistant`, `migration-assi
 
 ## 4. Issues / Risks
 
-- **Manifest advertises capabilities that are unreachable in production.** `console` surface + `migration-assistant-console` capability with zero commands (§3); `site.import`/`site.export` permissions + a **critical** `migration-assistant.site-import` health check while the only site-import UI throws (`src/Filament/Pages/ImportSitesPage.php:53-55`). A marketplace reviewer exercising these will find them missing.
+- **Manifest still advertises some capabilities that are unreachable in production.** The console surface is no longer empty because status and rollback-report commands ship (§3), but headless export/import and automated rollback execution are still absent. `site.import`/`site.export` permissions remain ahead of the dedicated site-import UI while `ImportSitesPage` is still a hidden placeholder.
 - **Done/Shipped: health checks now run concrete probes.** `MigrationAssistantHealthCheck` verifies package-reader dependencies/limits/source readers/manifest validation, rollback-report table and morph alias support, and positive media ingest limits with translated Diagnostics output. The remaining marketplace/manifest risk is around console/site-import capability reachability, not a no-op health class.
 - **Single-transaction import = large-dataset memory/time risk.** Entire `payload` decoded and written inside one transaction (`src/Services/Import/PageImportService.php`); combined with `tries = 1` and a 900s timeout, a big import that fails mid-way rolls back wholesale with no resume (§2.7, §3).
 - **Partial-failure handling is coarse.** `ExecuteImportPlanJob` truncates errors to the first 5 (`implode(' / ', array_slice($report->errors, 0, 5))`) and marks the whole session `Failed`; per-row failures inside `PageImportService` are collected but the user sees a truncated string, not a structured per-entry error report.
@@ -56,7 +56,7 @@ Tied to `capell.json` → `capabilities` (`migration-assistant`, `migration-assi
 
 ## 5. Marketplace & Selling
 
-**Critique.** Marketplace copy has been rewritten around the buyer outcome — moving existing pages and media into Capell with preview, validation, queued execution, and rollback reports. Remaining marketplace risk is no longer the headline copy; it is capability reachability (console/site-import gaps), the rollback table naming cleanup, and proving the workflow with complete screenshots/demo data.
+**Critique.** Marketplace copy has been rewritten around the buyer outcome — moving existing pages and media into Capell with preview, validation, queued execution, and rollback reports. Remaining marketplace risk is no longer the headline copy, screenshots, health probes, rollback table naming, or basic console reachability; it is the deeper capability reachability gap around headless export/import, automated rollback execution, and the dedicated site-import wizard.
 
 **Improved 1-sentence summary:**
 
@@ -80,14 +80,14 @@ Tied to `capell.json` → `capabilities` (`migration-assistant`, `migration-assi
 
 | Item                                                                                 | Bucket | Effort | Impact | Section ref |
 | ------------------------------------------------------------------------------------ | ------ | ------ | ------ | ----------- |
-| Fix corrupted `import_rollback_*` table name (migration + model + provider + docs)   | Now    | M      | High   | §2.2        |
+| Done/Shipped: Fix corrupted `import_rollback_*` table name (migration + model + provider + docs) | Done | M | High | §2.2 |
 | Done/Shipped: Repair garbled Migration Assistant prose in src + docs                 | Done   | S      | Med    | §2.3        |
 | Done/Shipped: Promote existing screenshots + hero assets into `capell.json` marketplace block. Evidence: marketplace lists desktop/mobile hero assets and every committed workflow screenshot PNG, guarded by `PackageManifestTest`. | Done | S | High | §5 |
 | Done/Shipped: Rewrite marketplace summary + composer description (buyer-facing). Evidence: manifest and composer now lead with safe page/media migration, preview, validation, queued execution, and rollback reports. | Done | S | High | §5 |
 | Done/Shipped: Implement real health-check probe methods. Evidence: `MigrationAssistantHealthCheckTest` covers manifest-keyed package-reader, rollback-report, and media-ingest diagnostics. | Done | M | High | §2.4, §4 |
 | Done/Shipped: Resolve manifest-vs-reality enough to create `SiteImport` sessions from site-export packages. Evidence: `StartSiteImportAction` starts the site-import review state and package-type guards reject wrong archive kinds; dedicated site-import UI remains in the Next wizard row. | Done | M | High | §2.1, §4 |
 | Done/Shipped: Removed orphan `WordPressImport`/`SpreadsheetImport` kinds. Evidence: `ImportSessionKind` contains only `PageImport`/`SiteImport`, with `ImportSessionKindTest` covering the contract. | Done | S | Med | §2.6 |
-| Add console commands (export/import/status/rollback) for the `console` capability    | Next   | L      | High   | §3          |
+| Partially shipped: status and rollback-report commands exist; add headless export/import plus automated rollback execution | Next | M | High | §3 |
 | Build site-import wizard end-to-end (UI → SiteImport kind → job)                     | Next   | L      | High   | §2.1, §3    |
 | Ship automated one-click rollback execution from `created_models`                    | Next   | M      | High   | §3          |
 | Raise `ExecuteImportPlanJob` `tries`/backoff now that ingest is idempotent           | Next   | S      | Med    | §2.7        |
