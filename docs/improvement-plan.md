@@ -26,7 +26,7 @@ Prioritized.
 
 5. **Reconcile `adminQueryBudget: 40` with the wizard's real query count.** — `capell.json` → `performance.adminQueryBudget` is 40, but `ImportPagesPage` is a multi-step Livewire wizard that hydrates review rows, resolve rows and validation summaries each poll. Either add a query-count assertion test to enforce the budget or correct the number; right now it is an unverified claim. — `capell.json`, `src/Filament/Pages/ImportPagesPage.php` — **S**
 
-6. **Resolve the dead-vs-live `ImportSessionKind` cases.** — `WordPressImport` and `SpreadsheetImport` exist (`src/Enums/ImportSessionKind.php:11-12`) but are never assigned to a session anywhere in `src/`. wordpress-importer registers a reader, not a kind, so the WXR path likely runs as `PageImport`. Either delete the orphan cases or document that downstream importers set them — leaving them implies routing that does not exist. — `src/Enums/ImportSessionKind.php` — **S**
+6. **Done/Shipped: removed orphan `ImportSessionKind` cases.** `ImportSessionKind` now exposes only the package-owned archive workflows, `PageImport` and `SiteImport`; WordPress and spreadsheet ingestion stay on the source-reader extension path rather than reserving session kinds this package does not route. Evidence: `ImportSessionKindTest` locks the enum values to `page-import`/`site-import` and asserts `WordPressImport`/`SpreadsheetImport` are not part of the contract. — `src/Enums/ImportSessionKind.php`, `tests/Unit/MigrationAssistant/ImportSessionKindTest.php` — **S**
 
 7. **Make `ExecuteImportPlanJob` retry-aware (`tries = 1`).** — The job sets `public int $tries = 1` (`src/Jobs/ExecuteImportPlanJob.php`), so any transient failure (lock contention, disk hiccup) is terminal. Media ingest is explicitly engineered to be idempotent and runs outside the import transaction, and `WithoutOverlapping(...)->dontRelease()` already guards concurrency — the design anticipates retries the config forbids. Raise `tries` (with backoff) now that the work is idempotent, or document why single-shot is deliberate. — `src/Jobs/ExecuteImportPlanJob.php` — **S**
 
@@ -86,7 +86,7 @@ Tied to `capell.json` → `capabilities` (`migration-assistant`, `migration-assi
 | Rewrite marketplace summary + composer description (buyer-facing)                    | Now    | S      | High   | §5          |
 | Implement real health-check probe methods (mirror password-policy)                   | Now    | M      | High   | §2.4, §4    |
 | Done/Shipped: Resolve manifest-vs-reality enough to create `SiteImport` sessions from site-export packages. Evidence: `StartSiteImportAction` starts the site-import review state and package-type guards reject wrong archive kinds; dedicated site-import UI remains in the Next wizard row. | Done | M | High | §2.1, §4 |
-| Delete or document orphan `WordPressImport`/`SpreadsheetImport` kinds                | Now    | S      | Med    | §2.6        |
+| Done/Shipped: Removed orphan `WordPressImport`/`SpreadsheetImport` kinds. Evidence: `ImportSessionKind` contains only `PageImport`/`SiteImport`, with `ImportSessionKindTest` covering the contract. | Done | S | Med | §2.6 |
 | Add console commands (export/import/status/rollback) for the `console` capability    | Next   | L      | High   | §3          |
 | Build site-import wizard end-to-end (UI → SiteImport kind → job)                     | Next   | L      | High   | §2.1, §3    |
 | Ship automated one-click rollback execution from `created_models`                    | Next   | M      | High   | §3          |
