@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 return [
     'expected_package_type' => 'Expected a :expected package for :kind; got :actual.',
+    'external_default_target_label' => 'External page import',
+    'external_page_attributes_required' => 'External import row :row is missing required Capell page attributes: :attributes.',
+    'external_page_target_required' => 'External import execution only supports page targets; got :target.',
+    'external_preview_has_errors' => 'External import preview has errors and cannot be executed: :errors.',
     'health' => [
         'none' => 'none',
         'ok' => 'ok',

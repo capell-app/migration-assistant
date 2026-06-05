@@ -6,6 +6,8 @@ use Capell\MigrationAssistant\Services\Import\CsvReader;
 use Capell\MigrationAssistant\Services\Import\ExternalImportPreviewBuilder;
 use Capell\MigrationAssistant\Services\Import\FieldMapper;
 use Capell\MigrationAssistant\Services\Import\XmlReader;
+use Capell\MigrationAssistant\Support\ImportSourceRegistry;
+use Capell\MigrationAssistant\Tests\Fixtures\PathAwareXmlFixtureReader;
 
 it('reads CSV imports into source rows', function (): void {
     $path = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-csv-');
@@ -70,4 +72,28 @@ it('maps external rows and builds a preview summary', function (): void {
     expect($preview->creates)->toBe(1)
         ->and($preview->errors)->toBe([])
         ->and($preview->rows[0]['attributes']['name'])->toBe('Preview');
+});
+
+it('prefers path-aware source readers only when a readable path matches', function (): void {
+    $registry = new ImportSourceRegistry;
+    $registry->register(new PathAwareXmlFixtureReader);
+    $registry->register(new XmlReader);
+
+    $matchingPath = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-fixture-xml-') . '.xml';
+    file_put_contents($matchingPath, <<<'XML'
+<?xml version="1.0"?>
+<fixture />
+XML);
+
+    $genericPath = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-generic-xml-') . '.xml';
+    file_put_contents($genericPath, <<<'XML'
+<?xml version="1.0"?>
+<items>
+    <item><title>Generic</title></item>
+</items>
+XML);
+
+    expect($registry->readerFor($matchingPath))->toBeInstanceOf(PathAwareXmlFixtureReader::class)
+        ->and($registry->readerFor($genericPath))->toBeInstanceOf(XmlReader::class)
+        ->and($registry->readerFor('unreadable.xml'))->toBeInstanceOf(PathAwareXmlFixtureReader::class);
 });
