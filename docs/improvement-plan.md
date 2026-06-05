@@ -8,9 +8,9 @@ Migration Assistant is the generic Capell content-migration framework: it owns R
 
 Current marketplace summary (verbatim, `capell.json` → `marketplace.summary`):
 
-> "MigrationAssistant provides package import workflows, source reads, mapping, preview, validation, execution state, and rollback reports."
+> "Safely move pages and media into Capell — preview every change, validate before you write, and keep a rollback report for every import."
 
-Screenshot count mismatch: `capell.json` → `marketplace.screenshots` lists **1** image (`docs/assets/marketplace/extension-card.jpg`), while `docs/screenshots.json` declares **6** surfaces and `docs/screenshots/` contains **10** PNGs (light+dark pairs). The marketplace block is under-populated relative to the assets that already exist on disk.
+Screenshot coverage is now reconciled: `capell.json` → `marketplace.screenshots` lists the extension card, desktop/mobile hero assets, every committed workflow screenshot PNG under `docs/screenshots/`, and captions/alt text for the required screenshot-contract surfaces. `PackageManifestTest` guards that all committed screenshot PNGs and hero assets remain declared.
 
 ## 2. Improvements (existing functionality)
 
@@ -56,7 +56,7 @@ Tied to `capell.json` → `capabilities` (`migration-assistant`, `migration-assi
 
 ## 5. Marketplace & Selling
 
-**Critique.** The current `capell.json` summary ("MigrationAssistant provides package import workflows, source reads, mapping, preview, validation, execution state, and rollback reports") is a comma-separated feature dump — internal-engineer voice, leads with the package name, no buyer benefit, never says _migrate from where to where_. The composer `description` ("MigrationAssistant export, import, and rollback report workflows for Capell.") is similarly inward-facing. Neither mentions the actual acquisition hook: **getting an existing site (incl. WordPress, via the importer) into Capell**.
+**Critique.** Marketplace copy has been rewritten around the buyer outcome — moving existing pages and media into Capell with preview, validation, queued execution, and rollback reports. Remaining marketplace risk is no longer the headline copy; it is capability reachability (console/site-import gaps), the rollback table naming cleanup, and proving the workflow with complete screenshots/demo data.
 
 **Improved 1-sentence summary:**
 
@@ -66,7 +66,7 @@ Tied to `capell.json` → `capabilities` (`migration-assistant`, `migration-assi
 
 > Migration Assistant is Capell's content-migration engine: upload a content package or flat file (CSV/XML), review and resolve incoming relations, run a dry-run validation, then execute on a queue with live progress. Every run produces a rollback report capturing exactly which records were created, so nothing is a one-way door. It is also the foundation other importers build on — the WordPress Importer plugs straight in — making it the first thing you install when bringing an existing site onto Capell. Media is deduplicated by checksum and large payloads are size-guarded, so imports stay safe and idempotent.
 
-**Screenshot/media gaps.** The manifest exposes only `extension-card.jpg` to the marketplace, but 10 polished PNGs (light/dark) already exist for the six key surfaces (session index, validation summary, relation resolution, rollback report, export intent). Promote these into `capell.json` → `marketplace.screenshots` with captions; the work is done, it just is not wired up. Add a short hero/loop of the upload→preview→execute flow (the `hero-desktop.jpg`/`hero-mobile.jpg` assets already exist on disk).
+**Done/Shipped: screenshot/media reconciliation.** The manifest now exposes the extension card, desktop/mobile hero assets, all committed light/dark workflow screenshots, and meaningful captions/alt text. `PackageManifestTest` asserts every committed screenshot PNG and hero asset is present in `marketplace.screenshots`.
 
 **Pricing / tier / bundle positioning.** Tier `premium`, bundle `operations`, license `paid`. Migration tools are **acquisition drivers, not revenue centers** — they are how a prospect's existing content lands inside the platform, after which every other package monetizes. Consider whether the _page-import_ core belongs in a lower/free tier (or a time-limited "import window") to maximize funnel, keeping site-import, automated rollback, and console/CI commands as the premium upsell. Bundling it into `operations` is defensible, but a "Migration & SEO" cross-sell bundle (below) may convert better.
 
@@ -82,8 +82,8 @@ Tied to `capell.json` → `capabilities` (`migration-assistant`, `migration-assi
 | ------------------------------------------------------------------------------------ | ------ | ------ | ------ | ----------- |
 | Fix corrupted `import_rollback_*` table name (migration + model + provider + docs)   | Now    | M      | High   | §2.2        |
 | Done/Shipped: Repair garbled Migration Assistant prose in src + docs                 | Done   | S      | Med    | §2.3        |
-| Promote existing 10 screenshots + hero into `capell.json` marketplace block          | Now    | S      | High   | §5          |
-| Rewrite marketplace summary + composer description (buyer-facing)                    | Now    | S      | High   | §5          |
+| Done/Shipped: Promote existing screenshots + hero assets into `capell.json` marketplace block. Evidence: marketplace lists desktop/mobile hero assets and every committed workflow screenshot PNG, guarded by `PackageManifestTest`. | Done | S | High | §5 |
+| Done/Shipped: Rewrite marketplace summary + composer description (buyer-facing). Evidence: manifest and composer now lead with safe page/media migration, preview, validation, queued execution, and rollback reports. | Done | S | High | §5 |
 | Done/Shipped: Implement real health-check probe methods. Evidence: `MigrationAssistantHealthCheckTest` covers manifest-keyed package-reader, rollback-report, and media-ingest diagnostics. | Done | M | High | §2.4, §4 |
 | Done/Shipped: Resolve manifest-vs-reality enough to create `SiteImport` sessions from site-export packages. Evidence: `StartSiteImportAction` starts the site-import review state and package-type guards reject wrong archive kinds; dedicated site-import UI remains in the Next wizard row. | Done | M | High | §2.1, §4 |
 | Done/Shipped: Removed orphan `WordPressImport`/`SpreadsheetImport` kinds. Evidence: `ImportSessionKind` contains only `PageImport`/`SiteImport`, with `ImportSessionKindTest` covering the contract. | Done | S | Med | §2.6 |
