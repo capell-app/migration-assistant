@@ -35,15 +35,8 @@ it('serialises into a stable manifest array', function (): void {
 
 it('declares all committed marketplace screenshots', function (): void {
     $packagePath = dirname(__DIR__, 3);
-    $manifest = json_decode(
-        (string) file_get_contents($packagePath . '/capell.json'),
-        associative: true,
-        flags: JSON_THROW_ON_ERROR,
-    );
-
-    throw_unless(is_array($manifest), RuntimeException::class, 'Expected Migration Assistant manifest array.');
-
-    $marketplaceScreenshots = $manifest['marketplace']['screenshots'] ?? [];
+    $manifest = capell_json_file_array($packagePath . '/capell.json');
+    $marketplaceScreenshots = data_get($manifest, 'marketplace.screenshots', []);
 
     throw_unless(is_array($marketplaceScreenshots), RuntimeException::class, 'Migration Assistant marketplace screenshots must be an array.');
 

@@ -16,6 +16,8 @@ use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
+use Illuminate\Database\Eloquent\Model;
+use PHPUnit\Framework\Assert;
 
 it('executes external preview rows into pages with an import session and rollback report', function (): void {
     $layout = Layout::factory()->create();
@@ -60,9 +62,9 @@ it('executes external preview rows into pages with an import session and rollbac
         ->and($result->report->errors)->toBe([])
         ->and($page->name)->toBe('External imported page')
         ->and($page->meta['content'] ?? null)->toBe('<p>Imported body</p>')
-        ->and((int) $page->getAttribute('layout_id'))->toBe((int) $layout->getKey())
-        ->and((int) $page->getAttribute('blueprint_id'))->toBe((int) $type->getKey())
-        ->and((int) $page->getAttribute('site_id'))->toBe((int) $site->getKey())
+        ->and(migrationAssistantNumericAttribute($page, 'layout_id'))->toBe(migrationAssistantModelId($layout))
+        ->and(migrationAssistantNumericAttribute($page, 'blueprint_id'))->toBe(migrationAssistantModelId($type))
+        ->and(migrationAssistantNumericAttribute($page, 'site_id'))->toBe(migrationAssistantModelId($site))
         ->and($rollbackReport->summary['pages_created'] ?? null)->toBe(1)
         ->and($rollbackReport->created_models[0]['id'] ?? null)->toBe($page->getKey());
 });
@@ -101,7 +103,7 @@ it('rejects external previews before writing when page references are missing', 
         return;
     }
 
-    expect()->fail('Expected external execution to reject missing page references.');
+    Assert::fail('Expected external execution to reject missing page references.');
 });
 
 it('creates rollback reports for failed external executions with created pages', function (): void {
@@ -138,9 +140,28 @@ it('creates rollback reports for failed external executions with created pages',
         ->where('import_session_id', $result->session->getKey())
         ->firstOrFail();
 
+    $summary = $rollbackReport->summary;
+    throw_unless(is_array($summary), RuntimeException::class, 'Expected rollback report summary.');
+
     expect($result->session->status)->toBe(ImportSessionStatus::Failed)
         ->and($rollbackReport->created_models)->toBe([
             ['class' => Page::class, 'id' => 123],
         ])
-        ->and($rollbackReport->summary['errors'])->toBe(['Second row failed.']);
+        ->and($summary['errors'])->toBe(['Second row failed.']);
 });
+
+function migrationAssistantModelId(Model $model): int
+{
+    $key = $model->getKey();
+    throw_unless(is_numeric($key), RuntimeException::class, 'Expected model key to be numeric.');
+
+    return (int) $key;
+}
+
+function migrationAssistantNumericAttribute(Model $model, string $attribute): int
+{
+    $value = $model->getAttribute($attribute);
+    throw_unless(is_numeric($value), RuntimeException::class, sprintf('Expected [%s] to be numeric.', $attribute));
+
+    return (int) $value;
+}
