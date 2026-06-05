@@ -94,8 +94,8 @@ it('rejects external previews before writing when page references are missing', 
             'blueprint_id' => $type->getKey(),
             'site_id' => $site->getKey(),
         ]);
-    } catch (RuntimeException $exception) {
-        expect($exception->getMessage())->toContain('layout_id')
+    } catch (RuntimeException $runtimeException) {
+        expect($runtimeException->getMessage())->toContain('layout_id')
             ->and(ImportSession::query()->count())->toBe(0);
 
         return;

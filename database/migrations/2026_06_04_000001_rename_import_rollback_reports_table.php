@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    private const LEGACY_ROLLBACK_REPORTS_TABLE = 'import_rollback_dashboard' . '-dashboard_reports';
+    private const string LEGACY_ROLLBACK_REPORTS_TABLE = 'import_rollback_dashboard-dashboard_reports';
 
     public function up(): void
     {
