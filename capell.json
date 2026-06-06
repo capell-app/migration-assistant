@@ -113,61 +113,6 @@
                 "path": "docs/assets/marketplace/extension-card.jpg",
                 "alt": "Migration Assistant extension preview image",
                 "caption": "Migration Assistant extension preview"
-            },
-            {
-                "path": "docs/screenshots/import-session-index-or-host-admin-surface.png",
-                "alt": "Import session index showing each migration and its current state",
-                "caption": "Review import sessions and their current migration state"
-            },
-            {
-                "path": "docs/screenshots/import-session-index-or-host-admin-surface-dark.png",
-                "alt": "Dark-mode import session index showing each migration and its current state",
-                "caption": "Review import sessions in dark mode"
-            },
-            {
-                "path": "docs/screenshots/recovery-page-imports.png",
-                "alt": "Recovery Center page import workflow showing upload, review, relation resolution, validation, and rollback state",
-                "caption": "Move through the page import workflow with each checkpoint visible"
-            },
-            {
-                "path": "docs/screenshots/import-validation-summary.png",
-                "alt": "Dry-run validation summary listing errors and warnings before execution",
-                "caption": "Run a dry-run validation and review every error before you write"
-            },
-            {
-                "path": "docs/screenshots/import-validation-summary-dark.png",
-                "alt": "Dark-mode dry-run validation summary listing errors and warnings before execution",
-                "caption": "Review validation errors and warnings in dark mode"
-            },
-            {
-                "path": "docs/screenshots/relation-resolution-review.png",
-                "alt": "Relation resolution review mapping imported references to existing records",
-                "caption": "Map imported references to existing Capell records"
-            },
-            {
-                "path": "docs/screenshots/relation-resolution-review-dark.png",
-                "alt": "Dark-mode relation resolution review mapping imported references to existing records",
-                "caption": "Resolve imported references in dark mode"
-            },
-            {
-                "path": "docs/screenshots/import-rollback-report-view.png",
-                "alt": "Rollback report listing exactly which records an import created",
-                "caption": "Every import keeps a rollback report of what it created"
-            },
-            {
-                "path": "docs/screenshots/import-rollback-report-view-dark.png",
-                "alt": "Dark-mode rollback report listing exactly which records an import created",
-                "caption": "Review rollback reports in dark mode"
-            },
-            {
-                "path": "docs/screenshots/package-export-intent-screen.png",
-                "alt": "Package export intent screen confirming included resources before download",
-                "caption": "Prepare a deterministic export package before download"
-            },
-            {
-                "path": "docs/screenshots/package-export-intent-screen-dark.png",
-                "alt": "Dark-mode package export intent screen confirming included resources before download",
-                "caption": "Prepare export packages in dark mode"
             }
         ],
         "categories": [

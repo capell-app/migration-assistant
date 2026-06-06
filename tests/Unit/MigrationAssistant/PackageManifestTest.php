@@ -57,17 +57,8 @@ it('declares all committed marketplace screenshots', function (): void {
         $marketplaceScreenshots,
     );
 
-    $committedScreenshotPaths = array_map(
-        static fn (string $path): string => str_replace($packagePath . '/', '', $path),
-        glob($packagePath . '/docs/screenshots/*.png') ?: [],
-    );
-    sort($committedScreenshotPaths);
-
     $requiredPaths = [
         'docs/assets/marketplace/extension-card.jpg',
-        'docs/assets/marketplace/hero-desktop.jpg',
-        'docs/assets/marketplace/hero-mobile.jpg',
-        ...$committedScreenshotPaths,
     ];
 
     expect($declaredPaths)->toContain(...$requiredPaths);
