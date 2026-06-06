@@ -46,7 +46,15 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
     public int $timeout = 900;
 
-    public int $tries = 1;
+    public int $tries = 3;
+
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
+    }
 
     public function __construct(public int $importSessionId)
     {
@@ -115,6 +123,12 @@ final class ExecuteImportPlanJob implements ShouldQueue
                 event(new ImportFailed($session, (string) $failureReason));
             }
         } catch (Throwable $throwable) {
+            if ($this->hasQueuedRetryAttemptRemaining()) {
+                $this->releaseSessionForRetry($session);
+
+                throw $throwable;
+            }
+
             $this->markFailed($session, $throwable->getMessage());
 
             throw $throwable;
@@ -342,6 +356,19 @@ final class ExecuteImportPlanJob implements ShouldQueue
         ])->save();
 
         event(new ImportFailed($session, $reason));
+    }
+
+    private function hasQueuedRetryAttemptRemaining(): bool
+    {
+        return $this->job !== null && $this->attempts() < $this->tries;
+    }
+
+    private function releaseSessionForRetry(ImportSession $session): void
+    {
+        $session->forceFill([
+            'status' => ImportSessionStatus::Queued,
+            'failure_reason' => null,
+        ])->save();
     }
 
     private function authenticateSessionUser(ImportSession $session): void
