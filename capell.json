@@ -13,9 +13,15 @@
         "bundle": "operations"
     },
     "namespace": "Capell\\MigrationAssistant",
-    "surfaces": ["admin", "console"],
+    "surfaces": [
+        "admin",
+        "console"
+    ],
     "dependencies": {
-        "requires": ["capell-app/admin", "capell-app/core"],
+        "requires": [
+            "capell-app/admin",
+            "capell-app/core"
+        ],
         "supports": [],
         "conflicts": []
     },
@@ -109,16 +115,6 @@
                 "caption": "Migration Assistant extension preview"
             },
             {
-                "path": "docs/assets/marketplace/hero-desktop.jpg",
-                "alt": "Migration Assistant upload, preview, and execute flow on desktop",
-                "caption": "Upload a package, preview every change, then execute on a queue"
-            },
-            {
-                "path": "docs/assets/marketplace/hero-mobile.jpg",
-                "alt": "Migration Assistant upload, preview, and execute flow on mobile",
-                "caption": "Review migration progress from a compact admin viewport"
-            },
-            {
                 "path": "docs/screenshots/import-session-index-or-host-admin-surface.png",
                 "alt": "Import session index showing each migration and its current state",
                 "caption": "Review import sessions and their current migration state"
@@ -174,7 +170,11 @@
                 "caption": "Prepare export packages in dark mode"
             }
         ],
-        "categories": ["admin", "console", "operations"]
+        "categories": [
+            "admin",
+            "console",
+            "operations"
+        ]
     },
     "contributionTraceability": {
         "deferredContributions": [
