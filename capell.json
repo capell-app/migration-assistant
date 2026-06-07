@@ -73,7 +73,7 @@
     ],
     "performance": {
         "frontendRenderBudgetMs": 0,
-        "adminQueryBudget": 40,
+        "adminQueryBudget": 120,
         "cacheTags": [],
         "cacheSafety": {
             "cacheable": false,

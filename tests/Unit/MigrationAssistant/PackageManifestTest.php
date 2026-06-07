@@ -67,3 +67,10 @@ it('declares all committed marketplace screenshots', function (): void {
         expect(file_exists($packagePath . '/' . $declaredPath))->toBeTrue();
     }
 });
+
+it('declares the measured admin wizard query budget', function (): void {
+    $packagePath = dirname(__DIR__, 3);
+    $manifest = capell_json_file_array($packagePath . '/capell.json');
+
+    expect(data_get($manifest, 'performance.adminQueryBudget'))->toBe(120);
+});

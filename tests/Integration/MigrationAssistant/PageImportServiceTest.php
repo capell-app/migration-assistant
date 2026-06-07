@@ -140,6 +140,35 @@ it('skips pages whose shared relations are unresolved', function (): void {
         ->and($report->pagesSkipped)->toBe(1);
 });
 
+it('reports partial import failures with structured error details', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->create();
+    $site = Site::factory()->create();
+
+    $package = new PackageReadResult(
+        archivePath: '',
+        manifest: [],
+        integrity: [],
+        payload: [
+            'pages/valid.json' => makePageDescriptor($layout, $type, $site),
+            'pages/broken.json' => '{invalid-json',
+        ],
+    );
+
+    $report = (new PageImportService)->import($package, fullyResolvedMap($layout, $type, $site));
+
+    expect($report->pagesCreated)->toBe(1)
+        ->and($report->errors)->toHaveCount(1)
+        ->and($report->structuredErrors)->toBe([
+            [
+                'entry' => 'pages/broken.json',
+                'phase' => 'page',
+                'message' => 'Syntax error',
+            ],
+        ])
+        ->and($report->toArray()['structured_errors'])->toBe($report->structuredErrors);
+});
+
 it('rebinds media owners to the newly imported page', function (): void {
     $layout = Layout::factory()->create();
     $type = Blueprint::factory()->create();
