@@ -15,6 +15,8 @@ use Capell\Core\Support\Database\RuntimeSchemaState;
 use Capell\Core\Support\Packages\AbstractPackageServiceProvider;
 use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
 use Capell\MigrationAssistant\Console\Commands\ExecuteMigrationAssistantRollbackCommand;
+use Capell\MigrationAssistant\Console\Commands\ExportMigrationAssistantPackageCommand;
+use Capell\MigrationAssistant\Console\Commands\ImportMigrationAssistantPackageCommand;
 use Capell\MigrationAssistant\Console\Commands\ShowMigrationAssistantRollbackReportCommand;
 use Capell\MigrationAssistant\Console\Commands\ShowMigrationAssistantStatusCommand;
 use Capell\MigrationAssistant\Contracts\MigrationAssistantContextResolver;
@@ -63,6 +65,8 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
             ->hasTranslations()
             ->hasCommands([
                 ExecuteMigrationAssistantRollbackCommand::class,
+                ExportMigrationAssistantPackageCommand::class,
+                ImportMigrationAssistantPackageCommand::class,
                 ShowMigrationAssistantRollbackReportCommand::class,
                 ShowMigrationAssistantStatusCommand::class,
             ])

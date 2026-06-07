@@ -46,6 +46,8 @@
         "demo": null,
         "doctor": null,
         "status": "migration-assistant:status",
+        "export": "migration-assistant:export",
+        "import": "migration-assistant:import",
         "rollback-report": "migration-assistant:rollback-report",
         "rollback-execute": "migration-assistant:rollback-execute"
     },
@@ -64,6 +66,8 @@
         "migration-assistant-admin",
         "migration-assistant-console",
         "migration-assistant-status-command",
+        "migration-assistant-export-command",
+        "migration-assistant-import-command",
         "migration-assistant-rollback-report-command",
         "migration-assistant-rollback-execute-command"
     ],

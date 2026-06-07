@@ -4,6 +4,7 @@ All notable changes to `capell-app/migration-assistant` will be documented in th
 
 ## Unreleased
 
+- Added `migration-assistant:export` and `migration-assistant:import` for headless package export/import workflows in CI and scripted migrations.
 - Added `ExecuteImportRollbackAction` and `migration-assistant:rollback-execute` for dry-run capable rollback execution from recorded created models.
 - Corrected rollback report storage from `import_rollback_rollback-report` to `import_rollback_reports`, including a safe rename migration for existing installs.
 - Added `migration-assistant:status` and `migration-assistant:rollback-report` console commands for headless status and rollback-report audits.

@@ -94,6 +94,8 @@ Validation, relation resolution, rollback, and export screenshots need seeded im
 ## Commands
 
 - `migration-assistant:status {session?} --json` reports recent import sessions or a specific session by id/UUID.
+- `migration-assistant:export --page={id} --json` and `migration-assistant:export --site={id} --json` create page/site migration packages for CI and scripted moves.
+- `migration-assistant:import {archive} --json` creates and validates an import session; `--execute` queues the validated session and `--sync` runs it inline.
 - `migration-assistant:rollback-report {session} --json` reports created records and manual rollback instructions for a completed import session.
 
 ## Routes And Config

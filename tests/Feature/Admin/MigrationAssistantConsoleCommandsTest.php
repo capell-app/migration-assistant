@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 use Capell\Core\Models\Page;
+use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
+use Capell\MigrationAssistant\Data\ExportOptions;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Models\ImportSession;
+use Capell\MigrationAssistant\Services\Export\PageExportService;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 it('shows import session status from the console', function (): void {
@@ -113,4 +117,56 @@ it('executes rollback reports from the console', function (): void {
         ->and($result['matched'])->toBe(1)
         ->and($result['deleted'])->toBe(1)
         ->and(Page::query()->whereKey($page->getKey())->exists())->toBeFalse();
+});
+
+it('exports page packages from the console', function (): void {
+    $relativeExportDirectory = 'framework/testing/console-export-' . Str::random(8);
+    config()->set('migration-assistant.paths.exports', $relativeExportDirectory);
+
+    $site = Site::factory()->hasSiteDomains()->create();
+    $page = Page::factory()->recycle($site)->create();
+
+    $exitCode = Artisan::call('migration-assistant:export', [
+        '--page' => [(string) $page->getKey()],
+        '--without-media' => true,
+        '--json' => true,
+    ]);
+
+    $result = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($exitCode)->toBe(0)
+        ->and($result['type'])->toBe('page-export')
+        ->and($result['count'])->toBe(1)
+        ->and(File::exists($result['path']))->toBeTrue();
+
+    File::deleteDirectory(storage_path('app/' . $relativeExportDirectory));
+});
+
+it('creates validated import sessions from the console', function (): void {
+    $relativeExportDirectory = 'framework/testing/console-import-export-' . Str::random(8);
+    $relativeImportDirectory = 'framework/testing/console-import-' . Str::random(8);
+    config()->set('migration-assistant.paths.exports', $relativeExportDirectory);
+    config()->set('migration-assistant.paths.imports', $relativeImportDirectory);
+
+    $site = Site::factory()->hasSiteDomains()->create();
+    $page = Page::factory()->recycle($site)->create();
+    $archivePath = resolve(PageExportService::class)->exportPages([(int) $page->getKey()], new ExportOptions(
+        includeMedia: false,
+    ));
+
+    $exitCode = Artisan::call('migration-assistant:import', [
+        'archive' => $archivePath,
+        '--workspace-name' => 'Console Import',
+        '--json' => true,
+    ]);
+
+    $result = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($exitCode)->toBe(0)
+        ->and($result['kind'])->toBe('page-import')
+        ->and($result['status'])->toBe('validated')
+        ->and(ImportSession::query()->where('uuid', $result['uuid'])->exists())->toBeTrue();
+
+    File::deleteDirectory(storage_path('app/' . $relativeExportDirectory));
+    File::deleteDirectory(storage_path('app/' . $relativeImportDirectory));
 });

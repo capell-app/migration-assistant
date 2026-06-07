@@ -28,7 +28,8 @@ Migration Assistant separates export, package validation, flat-file source readi
 
 - `migration-assistant:status {session?} --json` gives operators and CI jobs a headless status view for recent imports or one import session.
 - `migration-assistant:rollback-report {session} --json` returns the rollback report payload for audit and scripted sign-off.
-- Headless package import/export commands are still future work; admin upload/export flows remain the execution surface today.
+- `migration-assistant:export --page={id} --json` and `migration-assistant:export --site={id} --json` create deterministic page/site ZIP packages for CI and scripted server-to-server moves.
+- `migration-assistant:import {archive} --json` creates and validates an import session through the same review/validation Actions as the admin wizard; add `--execute` to queue the import or `--sync` to run it immediately for controlled maintenance windows.
 
 ## Source Packages
 

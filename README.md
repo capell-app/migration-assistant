@@ -100,7 +100,7 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 ## Runtime Surface
 
 - Jobs: `ExecuteImportPlanJob`.
-- Commands: `migration-assistant:status`, `migration-assistant:rollback-report`.
+- Commands: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:status`, `migration-assistant:rollback-report`, `migration-assistant:rollback-execute`.
 
 ## Data And Persistence
 
@@ -145,7 +145,9 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 - Check upload and package size limits before importing client archives.
 - Run queue workers before testing async import jobs.
 - Review relation resolution before applying imported data.
-- Use `migration-assistant:status --json` and `migration-assistant:rollback-report {session} --json` for headless CI or migration audit checks.
+- Use `migration-assistant:export --page={id} --json` or `migration-assistant:export --site={id} --json` for scripted package creation.
+- Use `migration-assistant:import {archive} --json` to create and validate an import session; add `--execute` to queue it or `--sync` for controlled one-off execution.
+- Use `migration-assistant:status --json`, `migration-assistant:rollback-report {session} --json`, and `migration-assistant:rollback-execute {session} --dry-run --json` for headless CI or migration audit checks.
 
 ## Docs
 
