@@ -81,3 +81,36 @@ it('shows rollback report data from the console', function (): void {
         ])
         ->and($report['manual_instructions'])->toContain('roll back');
 });
+
+it('executes rollback reports from the console', function (): void {
+    $page = Page::factory()->create();
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Completed,
+        'source_filename' => 'pages.zip',
+        'executed_at' => now()->addMinute(),
+    ]);
+
+    CreateImportRollbackReportAction::run(
+        $session,
+        new ImportExecutionReport(
+            pagesCreated: 1,
+            pagesSkipped: 0,
+            createdPageIds: [(int) $page->getKey()],
+            errors: [],
+        ),
+    );
+
+    $exitCode = Artisan::call('migration-assistant:rollback-execute', [
+        'session' => $session->uuid,
+        '--json' => true,
+    ]);
+
+    $result = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($exitCode)->toBe(0)
+        ->and($result['matched'])->toBe(1)
+        ->and($result['deleted'])->toBe(1)
+        ->and(Page::query()->whereKey($page->getKey())->exists())->toBeFalse();
+});

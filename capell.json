@@ -46,7 +46,8 @@
         "demo": null,
         "doctor": null,
         "status": "migration-assistant:status",
-        "rollback-report": "migration-assistant:rollback-report"
+        "rollback-report": "migration-assistant:rollback-report",
+        "rollback-execute": "migration-assistant:rollback-execute"
     },
     "settings": [],
     "permissions": [
@@ -63,7 +64,8 @@
         "migration-assistant-admin",
         "migration-assistant-console",
         "migration-assistant-status-command",
-        "migration-assistant-rollback-report-command"
+        "migration-assistant-rollback-report-command",
+        "migration-assistant-rollback-execute-command"
     ],
     "performance": {
         "frontendRenderBudgetMs": 0,

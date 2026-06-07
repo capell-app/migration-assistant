@@ -24,4 +24,10 @@ return [
             'id' => 'ID',
         ],
     ],
+    'rollback_execute' => [
+        'description' => 'Execute a Migration Assistant rollback report by deleting recorded created models.',
+        'dry_run' => 'Dry run only; no imported records were deleted.',
+        'not_found' => 'Rollback report for import session [:session] could not be found.',
+        'summary' => 'Matched :matched imported record(s), deleted :deleted, skipped :skipped.',
+    ],
 ];
