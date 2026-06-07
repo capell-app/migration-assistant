@@ -41,6 +41,7 @@ final readonly class SiteImportService
                 mediaReassigned: $report->mediaReassigned,
                 createdSiteIds: $createdSiteIds,
                 createdSiteDomainIds: $createdSiteDomainIds,
+                structuredErrors: $report->structuredErrors,
             );
         });
     }

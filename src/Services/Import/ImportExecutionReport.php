@@ -17,6 +17,7 @@ final readonly class ImportExecutionReport
 {
     /**
      * @param  array<int, string>  $errors
+     * @param  list<array{entry: string, phase: string, message: string}>  $structuredErrors
      * @param  array<int, int|string>  $createdPageIds
      * @param  array<int, int|string>  $createdSiteIds
      * @param  array<int, int|string>  $createdSiteDomainIds
@@ -30,6 +31,7 @@ final readonly class ImportExecutionReport
         public int $mediaReassigned = 0,
         public array $createdSiteIds = [],
         public array $createdSiteDomainIds = [],
+        public array $structuredErrors = [],
     ) {}
 
     public function isSuccess(): bool
@@ -51,6 +53,7 @@ final readonly class ImportExecutionReport
             'created_site_ids' => $this->createdSiteIds,
             'created_site_domain_ids' => $this->createdSiteDomainIds,
             'errors' => $this->errors,
+            'structured_errors' => $this->structuredErrors,
         ];
     }
 

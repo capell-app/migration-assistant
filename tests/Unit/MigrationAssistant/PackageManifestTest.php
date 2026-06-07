@@ -32,3 +32,45 @@ it('serialises into a stable manifest array', function (): void {
         ->toHaveKey('note', 'release candidate')
         ->toHaveKey('checksums', ['payload' => 'sha256-abc']);
 });
+
+it('declares all committed marketplace screenshots', function (): void {
+    $packagePath = dirname(__DIR__, 3);
+    $manifest = capell_json_file_array($packagePath . '/capell.json');
+    $marketplaceScreenshots = data_get($manifest, 'marketplace.screenshots', []);
+
+    throw_unless(is_array($marketplaceScreenshots), RuntimeException::class, 'Migration Assistant marketplace screenshots must be an array.');
+
+    $declaredPaths = array_map(
+        static function (mixed $screenshot): string {
+            throw_unless(is_array($screenshot), RuntimeException::class, 'Migration Assistant marketplace screenshot entries must be arrays.');
+
+            $path = $screenshot['path'] ?? null;
+            $alt = $screenshot['alt'] ?? null;
+            $caption = $screenshot['caption'] ?? null;
+
+            throw_unless(is_string($path), RuntimeException::class, 'Migration Assistant marketplace screenshot paths must be strings.');
+            throw_unless(is_string($alt), RuntimeException::class, 'Migration Assistant marketplace screenshot alt text must be strings.');
+            throw_unless(is_string($caption), RuntimeException::class, 'Migration Assistant marketplace screenshot captions must be strings.');
+
+            return $path;
+        },
+        $marketplaceScreenshots,
+    );
+
+    $requiredPaths = [
+        'docs/assets/marketplace/extension-card.jpg',
+    ];
+
+    expect($declaredPaths)->toContain(...$requiredPaths);
+
+    foreach ($declaredPaths as $declaredPath) {
+        expect(file_exists($packagePath . '/' . $declaredPath))->toBeTrue();
+    }
+});
+
+it('declares the measured admin wizard query budget', function (): void {
+    $packagePath = dirname(__DIR__, 3);
+    $manifest = capell_json_file_array($packagePath . '/capell.json');
+
+    expect(data_get($manifest, 'performance.adminQueryBudget'))->toBe(120);
+});

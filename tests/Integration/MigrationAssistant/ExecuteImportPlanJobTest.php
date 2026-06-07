@@ -42,6 +42,13 @@ it('dispatches on the configured migration-assistant queue', function (): void {
     );
 });
 
+it('allows queued import execution to retry with backoff', function (): void {
+    $job = new ExecuteImportPlanJob(42);
+
+    expect($job->tries)->toBe(3)
+        ->and($job->backoff())->toBe([60, 300]);
+});
+
 it('marks the session failed when source path is empty', function (): void {
     Notification::fake();
 

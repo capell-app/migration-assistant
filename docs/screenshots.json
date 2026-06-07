@@ -15,7 +15,8 @@
             "required": true,
             "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
             "useCase": "An administrator reviews import sessions and their current migration state.",
-            "screenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface.png"
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface-dark.png"
         },
         {
             "id": "import-validation-summary",
@@ -27,7 +28,8 @@
             "required": true,
             "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
             "useCase": "An operator reviews validation errors and warnings before executing an import.",
-            "screenshotPath": "packages/migration-assistant/docs/screenshots/import-validation-summary.png"
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/import-validation-summary.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-validation-summary-dark.png"
         },
         {
             "id": "recovery-page-imports",
@@ -51,7 +53,8 @@
             "required": true,
             "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
             "useCase": "An operator maps imported references to existing Capell records before execution.",
-            "screenshotPath": "packages/migration-assistant/docs/screenshots/relation-resolution-review.png"
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/relation-resolution-review.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/relation-resolution-review-dark.png"
         },
         {
             "id": "import-rollback-report-view",
@@ -63,7 +66,8 @@
             "required": true,
             "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
             "useCase": "An operator reviews what rollback changed and what manual cleanup remains.",
-            "screenshotPath": "packages/migration-assistant/docs/screenshots/import-rollback-report-view.png"
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/import-rollback-report-view.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-rollback-report-view-dark.png"
         },
         {
             "id": "package-export-intent-screen",
@@ -75,7 +79,8 @@
             "required": true,
             "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
             "useCase": "An operator prepares an export package and confirms included resources before download.",
-            "screenshotPath": "packages/migration-assistant/docs/screenshots/package-export-intent-screen.png"
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/package-export-intent-screen.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/package-export-intent-screen-dark.png"
         }
     ]
 }

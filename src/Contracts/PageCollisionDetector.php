@@ -7,7 +7,7 @@ namespace Capell\MigrationAssistant\Contracts;
 /**
  * Detects whether an incoming import URL collides with existing data.
  *
- * Core provides a null implementation that dashboard-dashboard_reports no collisions. Packages
+ * Core provides a null implementation that reports no collisions. Packages
  * that want richer behavior bind their own implementation over the container
  * key.
  */

@@ -1,14 +1,14 @@
-# MigrationAssistant
+# Migration Assistant
 
 Status: **Available, schema-owning** · Kind: **package** · Tier: **premium** · Bundle: **operations** · Contexts: **admin, console** · Product group: **Capell Operations**
 
-This page is the consolidated implementation overview for the MigrationAssistant package. It is extracted from the package README, service providers, migrations, config files, routes, resources, models, actions, and the shared Capell ERD notes where available.
+This page is the consolidated implementation overview for the Migration Assistant package. It is extracted from the package README, service providers, migrations, config files, routes, resources, models, actions, and the shared Capell ERD notes where available.
 
 ## What This Package Adds
 
-MigrationAssistant provides the Capell Migration AIOrchestrator: package export/import, CSV/XML source reads, source contracts for add-on importers, field mapping, preview, validation, dependency graph review, relation resolution, media ingest, queued execution, and rollback reports.
+Migration Assistant provides the Capell Migration Assistant: package export/import, CSV/XML source reads, source contracts for add-on importers, field mapping, preview, validation, dependency graph review, relation resolution, media ingest, queued execution, and rollback reports.
 
-- Page imports are owned here: the Recovery Center page upload, review, relation resolution, validation, dispatch, and status polling flow lives in MigrationAssistant.
+- Page imports are owned here: the Recovery Center page upload, review, relation resolution, validation, dispatch, and status polling flow lives in Migration Assistant.
 - Import source contracts expose rows, columns, metadata, and a suggested target.
 - Native CSV and XML readers cover common flat-file migrations without extra Composer dependencies.
 - Field mapping targets Capell pages and types. Collection-like imports resolve through the same target registry until another package registers a concrete collection target.
@@ -22,9 +22,9 @@ MigrationAssistant provides the Capell Migration AIOrchestrator: package export/
 
 Separates migration work into services, actions, DTOs, jobs, events, source readers, target registries, and resolver contracts so package and flat-file data can be moved with explicit ownership rules.
 
-- MigrationAssistantServiceProvider registers the package.
+- `MigrationAssistantServiceProvider` registers the package.
 - Config file: migration-assistant.php.
-- Migrations create import_rollback_dashboard-dashboard_reports and import_sessions, including generic target fields.
+- Migrations create import_rollback_reports and import_sessions, including generic target fields.
 - Jobs execute import plans.
 - Events report import completed or failed.
 - Services cover package reading, writing, CSV/XML reading, mapping, preview, validation, relation resolution, media ingest, and rollback reports.
@@ -34,7 +34,7 @@ Separates migration work into services, actions, DTOs, jobs, events, source read
 
 Supports controlled migration workflows where content, media, source files, and relationships need review before import and operators need evidence after execution.
 
-- Adds import_rollback_dashboard-dashboard_reports and import_sessions tables.
+- Adds import_rollback_reports and import_sessions tables.
 - Adds migration-assistant queue configuration.
 - Uses disk and path config for imports, exports, and working files.
 - May require queue workers for long-running imports.
@@ -42,7 +42,7 @@ Supports controlled migration workflows where content, media, source files, and 
 
 ## Data And Retention
 
-- import_rollback_dashboard-dashboard_reports stores import session, created model ids, source filename/checksum, summary counts, executing user/time, and manual rollback instructions.
+- import_rollback_reports stores import session, created model ids, source filename/checksum, summary counts, executing user/time, and manual rollback instructions.
 - import_sessions stores import kind, generic target type/id, status, manifest, decisions, validation state, and result summary.
 - Retention and deletion rules should be verified against the host application policy.
 
@@ -88,12 +88,15 @@ Validation, relation resolution, rollback, and export screenshots need seeded im
 ## Admin Surfaces
 
 - ImportPagesPage (packages/migration-assistant/src/Filament/Pages/ImportPagesPage.php, slug `recovery-center/import-pages`)
-- ImportSitesPage (packages/migration-assistant/src/Filament/Pages/ImportSitesPage.php, slug `recovery-center/import-sites`)
+- ImportSitesPage (packages/migration-assistant/src/Filament/Pages/ImportSitesPage.php, slug `recovery-center/import-sites`) is a hidden placeholder until the site-import wizard ships.
 - ImportSessionResource (packages/migration-assistant/src/Filament/Resources/ImportSessions/ImportSessionResource.php)
 
 ## Commands
 
-- None proven in this package directory.
+- `migration-assistant:status {session?} --json` reports recent import sessions or a specific session by id/UUID.
+- `migration-assistant:export --page={id} --json` and `migration-assistant:export --site={id} --json` create page/site migration packages for CI and scripted moves.
+- `migration-assistant:import {archive} --json` creates and validates an import session; `--execute` queues the validated session and `--sync` runs it inline.
+- `migration-assistant:rollback-report {session} --json` reports created records and manual rollback instructions for a completed import session.
 
 ## Routes And Config
 
@@ -105,9 +108,8 @@ Validation, relation resolution, rollback, and export screenshots need seeded im
 
 ## Migrations
 
-- Migration: create_import_rollback_dashboard-dashboard_reports_table.php
+- Migration: create_import_rollback_reports_table.php
 - Migration: create_import_sessions_table.php
-- Migration: add_target_columns_to_import_sessions_table.php
 
 ## ERD Excerpt
 
@@ -115,7 +117,7 @@ Validation, relation resolution, rollback, and export screenshots need seeded im
 erDiagram
     USERS ||--o{ IMPORT_SESSIONS : starts
     USERS ||--o{ IMPORT_ROLLBACK_REPORTS : executes
-    IMPORT_SESSIONS ||--o{ IMPORT_ROLLBACK_REPORTS : dashboard-dashboard_reports
+    IMPORT_SESSIONS ||--o{ IMPORT_ROLLBACK_REPORTS : reports
 
     IMPORT_ROLLBACK_REPORTS {
         bigint id PK

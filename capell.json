@@ -6,16 +6,22 @@
     "kind": "package",
     "capellApiVersion": "^4.0",
     "version": "4.x-dev",
-    "description": "MigrationAssistant provides package import workflows, source reads, mapping, preview, validation, execution state, and rollback reports.",
+    "description": "Migration Assistant is Capell's content-migration engine: upload a content package or flat file (CSV/XML), review and resolve incoming relations, run a dry-run validation, then execute on a queue with live progress. Every run produces a rollback report capturing exactly which records were created, so nothing is a one-way door. It is also the foundation other importers build on — the WordPress Importer plugs straight in — making it the first thing you install when bringing existing pages into Capell. Media is deduplicated by checksum and large payloads are size-guarded, so imports stay safe and idempotent.",
     "product": {
         "group": "Capell Operations",
         "tier": "premium",
         "bundle": "operations"
     },
     "namespace": "Capell\\MigrationAssistant",
-    "surfaces": ["admin", "console"],
+    "surfaces": [
+        "admin",
+        "console"
+    ],
     "dependencies": {
-        "requires": ["capell-app/admin", "capell-app/core"],
+        "requires": [
+            "capell-app/admin",
+            "capell-app/core"
+        ],
         "supports": [],
         "conflicts": []
     },
@@ -38,14 +44,17 @@
         "install": null,
         "setup": null,
         "demo": null,
-        "doctor": null
+        "doctor": null,
+        "status": "migration-assistant:status",
+        "export": "migration-assistant:export",
+        "import": "migration-assistant:import",
+        "rollback-report": "migration-assistant:rollback-report",
+        "rollback-execute": "migration-assistant:rollback-execute"
     },
     "settings": [],
     "permissions": [
         "page.export",
-        "site.export",
         "page.import",
-        "site.import",
         "page.import.update-shared-relations",
         "page.import.publish-live",
         "import-session.view",
@@ -55,11 +64,16 @@
     "capabilities": [
         "migration-assistant",
         "migration-assistant-admin",
-        "migration-assistant-console"
+        "migration-assistant-console",
+        "migration-assistant-status-command",
+        "migration-assistant-export-command",
+        "migration-assistant-import-command",
+        "migration-assistant-rollback-report-command",
+        "migration-assistant-rollback-execute-command"
     ],
     "performance": {
         "frontendRenderBudgetMs": 0,
-        "adminQueryBudget": 40,
+        "adminQueryBudget": 120,
         "cacheTags": [],
         "cacheSafety": {
             "cacheable": false,
@@ -78,15 +92,8 @@
             "surface": "admin"
         },
         {
-            "key": "migration-assistant.site-import",
-            "label": "Site imports materialise sites, domains, and pages through the execution job",
-            "class": "Capell\\MigrationAssistant\\Health\\MigrationAssistantHealthCheck",
-            "severity": "critical",
-            "surface": "admin"
-        },
-        {
             "key": "migration-assistant.rollback-report",
-            "label": "Rollback reports include all created page, site, and site-domain records",
+            "label": "Rollback reports include all created records captured by the import execution report",
             "class": "Capell\\MigrationAssistant\\Health\\MigrationAssistantHealthCheck",
             "severity": "critical",
             "surface": "admin"
@@ -106,7 +113,7 @@
         "privateDocsRequested": true
     },
     "marketplace": {
-        "summary": "MigrationAssistant provides package import workflows, source reads, mapping, preview, validation, execution state, and rollback reports.",
+        "summary": "Safely move pages and media into Capell — preview every change, validate before you write, and keep a rollback report for every import.",
         "screenshots": [
             {
                 "path": "docs/assets/marketplace/extension-card.jpg",
@@ -114,7 +121,11 @@
                 "caption": "Migration Assistant extension preview"
             }
         ],
-        "categories": ["admin", "console", "operations"]
+        "categories": [
+            "admin",
+            "console",
+            "operations"
+        ]
     },
     "contributionTraceability": {
         "deferredContributions": [

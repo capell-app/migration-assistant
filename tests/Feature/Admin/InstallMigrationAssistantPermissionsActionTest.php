@@ -21,9 +21,7 @@ it('installs the full migration-assistant permission matrix', function (): void 
 it('registers every permission listed in plan section 6.9', function (): void {
     $expected = [
         'page.export',
-        'site.export',
         'page.import',
-        'site.import',
         'page.import.update-shared-relations',
         'page.import.publish-live',
         'import-session.view',

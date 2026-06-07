@@ -38,6 +38,7 @@ final readonly class PageImportService
         $created = [];
         $skipped = 0;
         $errors = [];
+        $structuredErrors = [];
         $urlsCreated = 0;
         $mediaReassigned = 0;
 
@@ -47,6 +48,7 @@ final readonly class PageImportService
             &$created,
             &$skipped,
             &$errors,
+            &$structuredErrors,
             &$urlsCreated,
             &$mediaReassigned,
         ): ImportExecutionReport {
@@ -56,6 +58,7 @@ final readonly class PageImportService
                 &$created,
                 &$skipped,
                 &$errors,
+                &$structuredErrors,
                 &$urlsCreated,
                 &$mediaReassigned,
             ): void {
@@ -86,7 +89,7 @@ final readonly class PageImportService
                             $sourceIdToLocalId[$sourceId] = $pageId;
                         }
                     } catch (Throwable $e) {
-                        $errors[] = sprintf('[%s] %s', $entryPath, $e->getMessage());
+                        $this->recordError($errors, $structuredErrors, $entryPath, 'page', $e);
                     }
                 }
 
@@ -102,7 +105,7 @@ final readonly class PageImportService
                         $urlsCreated += $this->restorePageUrls($localId, $descriptor);
                         $mediaReassigned += $this->rebindMedia($localId, $descriptor, $resolutionMap);
                     } catch (Throwable $e) {
-                        $errors[] = sprintf('[%s owned-relations] %s', $entryPath, $e->getMessage());
+                        $this->recordError($errors, $structuredErrors, $entryPath, 'owned-relations', $e);
                     }
                 }
             });
@@ -114,8 +117,31 @@ final readonly class PageImportService
                 errors: $errors,
                 pageUrlsCreated: $urlsCreated,
                 mediaReassigned: $mediaReassigned,
+                structuredErrors: $structuredErrors,
             );
         }, $targetContextId);
+    }
+
+    /**
+     * @param  list<string>  $errors
+     * @param  list<array{entry: string, phase: string, message: string}>  $structuredErrors
+     */
+    private function recordError(
+        array &$errors,
+        array &$structuredErrors,
+        string $entryPath,
+        string $phase,
+        Throwable $throwable,
+    ): void {
+        $message = $throwable->getMessage();
+        $errors[] = $phase === 'page'
+            ? sprintf('[%s] %s', $entryPath, $message)
+            : sprintf('[%s %s] %s', $entryPath, $phase, $message);
+        $structuredErrors[] = [
+            'entry' => $entryPath,
+            'phase' => $phase,
+            'message' => $message,
+        ];
     }
 
     /**
