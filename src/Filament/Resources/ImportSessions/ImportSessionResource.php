@@ -27,6 +27,8 @@ class ImportSessionResource extends Resource
     use HasConfiguredTable;
     use HasNavigationBadge;
 
+    protected static ?string $slug = 'migration-assistant/import-sessions';
+
     protected static ?string $model = ImportSession::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowPath;

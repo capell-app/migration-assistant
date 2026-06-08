@@ -8,6 +8,7 @@ use Capell\MigrationAssistant\Actions\ExecuteImportRollbackAction;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Override;
 
 final class ExecuteMigrationAssistantRollbackCommand extends Command
 {
@@ -18,6 +19,7 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
 
     protected $description = 'Execute a Migration Assistant rollback report by deleting recorded created models.';
 
+    #[Override]
     public function getDescription(): string
     {
         return (string) __('migration-assistant::commands.rollback_execute.description');

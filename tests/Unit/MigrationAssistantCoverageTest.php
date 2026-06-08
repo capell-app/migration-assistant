@@ -476,5 +476,5 @@ it('maps external type fields and builds failed notification mail fallback URLs'
     ])
         ->and($notification->via(new stdClass))->toBe(['mail', 'database'])
         ->and($notification->toMail(new stdClass)->actionUrl)
-        ->toContain('/admin/import-sessions/' . $session->getKey());
+        ->toContain('/admin/migration-assistant/import-sessions/' . $session->getKey());
 });

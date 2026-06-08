@@ -97,7 +97,7 @@ class ImportPagesPage extends Page implements HasForms
 
     protected static string|BackedEnum|null $activeNavigationIcon = Heroicon::ArrowDownTray;
 
-    protected static ?string $slug = 'recovery-center/import-pages';
+    protected static ?string $slug = 'migration-assistant/recovery-center/import-pages';
 
     protected string $view = 'capell-admin::components.pages.import-pages';
 

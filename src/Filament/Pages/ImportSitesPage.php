@@ -28,7 +28,7 @@ class ImportSitesPage extends Page
 
     protected static string|BackedEnum|null $activeNavigationIcon = Heroicon::GlobeAlt;
 
-    protected static ?string $slug = 'recovery-center/import-sites';
+    protected static ?string $slug = 'migration-assistant/recovery-center/import-sites';
 
     protected string $view = 'capell-admin::components.pages.recovery-center-stub';
 
