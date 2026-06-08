@@ -16,7 +16,13 @@
     "surfaces": ["admin", "console"],
     "dependencies": {
         "requires": ["capell-app/admin", "capell-app/core"],
-        "supports": [],
+        "supports": [
+            "capell-app/media-library",
+            "capell-app/seo-suite",
+            "capell-app/site-discovery",
+            "capell-app/url-manager",
+            "capell-app/wordpress-importer"
+        ],
         "conflicts": []
     },
     "providers": {
