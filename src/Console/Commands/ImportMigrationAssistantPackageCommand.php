@@ -9,6 +9,9 @@ use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\StartPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\StartSiteImportAction;
 use Capell\MigrationAssistant\Data\Imports\PageImportDecisionData;
+use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
+use Capell\MigrationAssistant\Data\PageReviewRow;
+use Capell\MigrationAssistant\Data\RelationResolveRow;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
@@ -74,9 +77,9 @@ final class ImportMigrationAssistantPackageCommand extends Command
             new PageImportDecisionData(
                 sessionId: $startedState->sessionId,
                 reviewRows: $startedState->reviewRows,
-                pageDecisions: $startedState->pageDecisions,
+                pageDecisions: $this->defaultPageDecisions($startedState),
                 resolveRows: $startedState->resolveRows,
-                relationDecisions: $startedState->relationDecisions,
+                relationDecisions: $this->defaultRelationDecisions($startedState),
                 canUpdateSharedRelations: false,
             ),
             forceValidation: true,
@@ -148,6 +151,50 @@ final class ImportMigrationAssistantPackageCommand extends Command
             'session' => $session->uuid,
             'status' => $session->status->value,
         ]));
+    }
+
+    /**
+     * @return array<string, array{action: string, notes?: string}>
+     */
+    private function defaultPageDecisions(PageImportWizardStateData $state): array
+    {
+        $decisions = $state->pageDecisions;
+
+        foreach ($state->reviewRows as $row) {
+            if (($row['collision_state'] ?? null) !== PageReviewRow::COLLISION_URL_WORKSPACE) {
+                continue;
+            }
+
+            $uuid = $row['uuid'] ?? null;
+
+            if (! is_string($uuid) || $uuid === '') {
+                continue;
+            }
+
+            $decisions[$uuid] = ['action' => PageReviewRow::ACTION_SKIP];
+        }
+
+        return $decisions;
+    }
+
+    /**
+     * @return array<string, array{action: string, target_id?: int|string|null, notes?: string}>
+     */
+    private function defaultRelationDecisions(PageImportWizardStateData $state): array
+    {
+        $decisions = $state->relationDecisions;
+
+        foreach ($state->resolveRows as $row) {
+            $ref = $row['ref'] ?? null;
+
+            if (! is_string($ref) || $ref === '' || isset($decisions[$ref])) {
+                continue;
+            }
+
+            $decisions[$ref] = ['action' => RelationResolveRow::ACTION_CLONE_IMPORTED];
+        }
+
+        return $decisions;
     }
 
     private function archivePath(): ?string

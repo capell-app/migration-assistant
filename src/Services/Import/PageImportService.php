@@ -13,6 +13,7 @@ use Capell\MigrationAssistant\Contracts\NullMigrationAssistantContextResolver;
 use Capell\MigrationAssistant\Contracts\NullMigrationAssistantRowContributor;
 use Illuminate\Support\Facades\DB;
 use Throwable;
+use UnexpectedValueException;
 
 /**
  * Applies a read page-export package to the local database, writing new
@@ -331,8 +332,11 @@ final readonly class PageImportService
      */
     private function decode(string $contents): array
     {
-        /** @var array<string, mixed> $decoded */
-        $decoded = json_decode($contents, true);
+        $decoded = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+
+        if (! is_array($decoded)) {
+            throw new UnexpectedValueException('Page import descriptor must decode to an object.');
+        }
 
         return $decoded;
     }

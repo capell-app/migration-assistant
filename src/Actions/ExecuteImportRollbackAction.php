@@ -6,9 +6,13 @@ namespace Capell\MigrationAssistant\Actions;
 
 use Capell\MigrationAssistant\Data\RollbackExecutionResultData;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
+use Carbon\CarbonInterface;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
+use Throwable;
 
 final class ExecuteImportRollbackAction
 {
@@ -97,14 +101,42 @@ final class ExecuteImportRollbackAction
 
     private function wasEditedAfterImport(Model $model, ImportRollbackReport $report): bool
     {
-        $executedAt = $report->executed_at;
-        $updatedAt = $model->getAttribute('updated_at');
+        $executedAt = $this->dateAttribute($report, 'executed_at');
+        $updatedAt = $this->dateAttribute($model, $model->getUpdatedAtColumn())
+            ?? $this->dateAttribute($model, $model->getCreatedAtColumn());
 
-        if ($executedAt === null || ! method_exists($updatedAt, 'greaterThan')) {
+        if (! $executedAt instanceof CarbonInterface) {
             return false;
         }
 
+        if (! $updatedAt instanceof CarbonInterface) {
+            return $executedAt->lessThan(now());
+        }
+
         return $updatedAt->greaterThan($executedAt);
+    }
+
+    private function dateAttribute(Model $model, string $attribute): ?CarbonInterface
+    {
+        $value = $model->getAttribute($attribute);
+
+        if ($value instanceof CarbonInterface) {
+            return $value;
+        }
+
+        if ($value instanceof DateTimeInterface) {
+            return Carbon::instance($value);
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

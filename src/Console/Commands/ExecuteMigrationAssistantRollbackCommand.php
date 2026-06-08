@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Console\Commands;
 
 use Capell\MigrationAssistant\Actions\ExecuteImportRollbackAction;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
+use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Override;
@@ -65,7 +66,7 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
             ->whereHas('importSession', static function (Builder $query) use ($sessionIdentifier): void {
                 $query
                     ->where('uuid', $sessionIdentifier)
-                    ->orWhereKey(is_numeric($sessionIdentifier) ? (int) $sessionIdentifier : $sessionIdentifier);
+                    ->orWhere((new ImportSession)->getKeyName(), is_numeric($sessionIdentifier) ? (int) $sessionIdentifier : 0);
             })
             ->latest('id')
             ->first();

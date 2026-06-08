@@ -43,6 +43,7 @@ it('dry-runs rollback execution without deleting created models', function (): v
 
 it('skips records edited after the import execution timestamp', function (): void {
     $page = Page::factory()->create();
+    $page->forceFill(['updated_at' => now()])->saveQuietly();
     $report = migrationAssistantRollbackReport([
         ['class' => Page::class, 'id' => $page->getKey()],
     ], executedAt: now()->subDay());
