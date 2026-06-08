@@ -23,7 +23,10 @@ final class ResolvePageImportSessionAction
 
         $query = ImportSession::query()
             ->whereKey($sessionId)
-            ->where('kind', ImportSessionKind::PageImport);
+            ->whereIn('kind', [
+                ImportSessionKind::PageImport,
+                ImportSessionKind::SiteImport,
+            ]);
 
         if (auth()->id() !== null) {
             $query->where('user_id', auth()->id());

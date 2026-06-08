@@ -176,9 +176,9 @@ class ImportPagesPage extends Page implements HasForms
     public function parseAndAdvance(): void
     {
         try {
-            $this->applyWizardState(StartPageImportAction::run($this->data));
+            $this->applyWizardState($this->startImport($this->data));
         } catch (Throwable $throwable) {
-            if ($throwable->getMessage() === StartPageImportAction::ERROR_UPLOAD_REQUIRED) {
+            if ($throwable->getMessage() === $this->uploadRequiredError()) {
                 Notification::make()->danger()->title(__('capell-admin::exchanger.upload_required'))->send();
 
                 return;
@@ -367,6 +367,19 @@ class ImportPagesPage extends Page implements HasForms
     public function canPublishLive(): bool
     {
         return auth()->user()?->can(MigrationAssistantPermission::PageImportPublishLive->value) ?? false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function startImport(array $data): PageImportWizardStateData
+    {
+        return StartPageImportAction::run($data);
+    }
+
+    protected function uploadRequiredError(): string
+    {
+        return StartPageImportAction::ERROR_UPLOAD_REQUIRED;
     }
 
     private function decisionData(): PageImportDecisionData
