@@ -28,7 +28,7 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
 
     public function handle(): int
     {
-        $sessionIdentifier = (string) $this->argument('session');
+        $sessionIdentifier = $this->stringArgument('session');
         $report = $this->findRollbackReport($sessionIdentifier);
 
         if (! $report instanceof ImportRollbackReport) {
@@ -70,5 +70,14 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
             })
             ->latest('id')
             ->first();
+    }
+
+    private function stringArgument(string $name): string
+    {
+        $value = $this->argument($name);
+
+        return is_string($value) || is_int($value) || is_float($value)
+            ? (string) $value
+            : '';
     }
 }

@@ -100,7 +100,7 @@ final class ImportMigrationAssistantPackageCommand extends Command
 
         if ((bool) $this->option('sync')) {
             $session->forceFill(['status' => ImportSessionStatus::Queued])->save();
-            (new ExecuteImportPlanJob((int) $session->getKey()))->handle(
+            (new ExecuteImportPlanJob($this->sessionId($session)))->handle(
                 resolve(PackageReader::class),
                 resolve(PageImportService::class),
                 resolve(MediaIngestService::class),
@@ -108,11 +108,14 @@ final class ImportMigrationAssistantPackageCommand extends Command
             );
             $session->refresh();
         } elseif ((bool) $this->option('execute')) {
+            $validationResults = $this->validationResults($session);
+            $confirmationExpected = $this->confirmationExpected($validationResults);
+
             DispatchPageImportAction::run(
-                (int) $session->getKey(),
-                is_array($session->validation_results) ? $session->validation_results : [],
-                (string) (($session->validation_results ?? [])['confirmation_expected'] ?? ''),
-                (string) (($session->validation_results ?? [])['confirmation_expected'] ?? ''),
+                $this->sessionId($session),
+                $validationResults,
+                $confirmationExpected,
+                $confirmationExpected,
             );
             $session->refresh();
         }
@@ -237,6 +240,49 @@ final class ImportMigrationAssistantPackageCommand extends Command
         }
 
         return ImportSession::query()->find($sessionId);
+    }
+
+    private function sessionId(ImportSession $session): int
+    {
+        $key = $session->getKey();
+
+        if (is_int($key)) {
+            return $key;
+        }
+
+        return is_string($key) && ctype_digit($key) ? (int) $key : 0;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validationResults(ImportSession $session): array
+    {
+        $validationResults = $session->validation_results;
+
+        if (! is_array($validationResults)) {
+            return [];
+        }
+
+        $normalizedResults = [];
+
+        foreach ($validationResults as $key => $value) {
+            if (is_string($key)) {
+                $normalizedResults[$key] = $value;
+            }
+        }
+
+        return $normalizedResults;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validationResults
+     */
+    private function confirmationExpected(array $validationResults): string
+    {
+        $confirmationExpected = $validationResults['confirmation_expected'] ?? '';
+
+        return is_string($confirmationExpected) ? $confirmationExpected : '';
     }
 
     private function stringOption(string $name): ?string

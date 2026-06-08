@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Throwable;
 
+/**
+ * @method static RollbackExecutionResultData run(ImportRollbackReport $report, bool $dryRun = false)
+ */
 final class ExecuteImportRollbackAction
 {
     use AsAction;
@@ -102,8 +105,10 @@ final class ExecuteImportRollbackAction
     private function wasEditedAfterImport(Model $model, ImportRollbackReport $report): bool
     {
         $executedAt = $this->dateAttribute($report, 'executed_at');
-        $updatedAt = $this->dateAttribute($model, $model->getUpdatedAtColumn())
-            ?? $this->dateAttribute($model, $model->getCreatedAtColumn());
+        $updatedAtColumn = $model->getUpdatedAtColumn();
+        $createdAtColumn = $model->getCreatedAtColumn();
+        $updatedAt = (is_string($updatedAtColumn) ? $this->dateAttribute($model, $updatedAtColumn) : null)
+            ?? (is_string($createdAtColumn) ? $this->dateAttribute($model, $createdAtColumn) : null);
 
         if (! $executedAt instanceof CarbonInterface) {
             return false;

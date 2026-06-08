@@ -338,6 +338,14 @@ final readonly class PageImportService
             throw new UnexpectedValueException('Page import descriptor must decode to an object.');
         }
 
-        return $decoded;
+        $result = [];
+
+        foreach ($decoded as $key => $value) {
+            if (is_string($key)) {
+                $result[$key] = $value;
+            }
+        }
+
+        return $result;
     }
 }
