@@ -27,6 +27,9 @@
             "providers": [
                 "Capell\\MigrationAssistant\\Providers\\MigrationAssistantServiceProvider"
             ]
+        },
+        "branch-alias": {
+            "dev-main": "4.x-dev"
         }
     },
     "config": {
