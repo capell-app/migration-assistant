@@ -42,6 +42,7 @@ use Capell\MigrationAssistant\Tests\Fixtures\MigrationAssistantRoleOnlyUserForPo
 use Capell\Tests\Fixtures\Models\User;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 uses(CreatesAdminUser::class);
@@ -476,5 +477,14 @@ it('maps external type fields and builds failed notification mail fallback URLs'
     ])
         ->and($notification->via(new stdClass))->toBe(['mail', 'database'])
         ->and($notification->toMail(new stdClass)->actionUrl)
-        ->toContain('/admin/import-sessions/' . $session->getKey());
+        ->toContain('/admin/migration-assistant/import-sessions/' . migrationAssistantCoverageModelKey($session));
 });
+
+function migrationAssistantCoverageModelKey(Model $model): string
+{
+    $key = $model->getKey();
+
+    return is_string($key) || is_int($key) || is_float($key)
+        ? (string) $key
+        : '';
+}

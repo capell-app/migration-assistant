@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Notifications;
 
+use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -69,7 +70,7 @@ class ImportCompletedNotification extends Notification implements ShouldQueue
     private function resolveSessionUrl(): string
     {
         try {
-            return route('filament.admin.resources.import-sessions.view', [
+            return ImportSessionResource::getUrl('view', [
                 'record' => $this->session->getKey(),
             ]);
         } catch (Throwable) {

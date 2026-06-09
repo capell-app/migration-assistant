@@ -48,14 +48,6 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
     public int $tries = 3;
 
-    /**
-     * @return list<int>
-     */
-    public function backoff(): array
-    {
-        return [60, 300];
-    }
-
     public function __construct(public int $importSessionId)
     {
         $queueName = config('migration-assistant.queue.name', 'migration-assistant');
@@ -65,6 +57,14 @@ final class ExecuteImportPlanJob implements ShouldQueue
         if (is_string($connection) && $connection !== '') {
             $this->onConnection($connection);
         }
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
     }
 
     public function handle(

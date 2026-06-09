@@ -5,38 +5,19 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Filament\Pages;
 
 use BackedEnum;
-use BezhanSalleh\FilamentShield\Traits\HasPageShield;
-use Filament\Navigation\NavigationItem;
-use Filament\Pages\Page;
+use Capell\MigrationAssistant\Actions\Imports\StartSiteImportAction;
+use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Override;
-use RuntimeException;
 
-/**
- * H3 placeholder. Recovery Center entry point for the SiteImport kind —
- * structurally equivalent to ImportPagesPage but wraps the full site
- * (Site / SiteDomain / Navigation) rather than just pages. The page is
- * registered in the Recovery Center navigation group now so the nav is
- * discoverable; every user-facing action throws
- * a clear placeholder exception until the migration-assistant package provides it.
- */
-class ImportSitesPage extends Page
+class ImportSitesPage extends ImportPagesPage
 {
-    use HasPageShield;
-
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedGlobeAlt;
 
     protected static string|BackedEnum|null $activeNavigationIcon = Heroicon::GlobeAlt;
 
-    protected static ?string $slug = 'recovery-center/import-sites';
-
-    protected string $view = 'capell-admin::components.pages.recovery-center-stub';
-
-    #[Override]
-    public static function shouldRegisterNavigation(): bool
-    {
-        return false;
-    }
+    protected static ?string $slug = 'migration-assistant/recovery-center/import-sites';
 
     #[Override]
     public static function getNavigationLabel(): string
@@ -44,15 +25,18 @@ class ImportSitesPage extends Page
         return (string) __('capell-admin::exchanger.import_sites');
     }
 
-    /** @return array<NavigationItem> */
     #[Override]
-    public function getSubNavigation(): array
+    public function getTitle(): string|Htmlable
     {
-        return [];
+        return __('capell-admin::exchanger.import_sites');
     }
 
-    public function runImport(): never
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    #[Override]
+    protected function startImport(array $data): PageImportWizardStateData
     {
-        throw new RuntimeException('Site imports are provided by the migration-assistant package.');
+        return StartSiteImportAction::run($data);
     }
 }

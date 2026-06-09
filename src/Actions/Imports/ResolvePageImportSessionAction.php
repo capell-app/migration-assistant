@@ -17,15 +17,26 @@ final class ResolvePageImportSessionAction
 
     public function handle(?int $sessionId): ?ImportSession
     {
-        if ($sessionId === null || auth()->id() === null) {
+        if ($sessionId === null) {
             return null;
         }
 
-        $session = ImportSession::query()
+        $query = ImportSession::query()
             ->whereKey($sessionId)
-            ->where('kind', ImportSessionKind::PageImport)
-            ->where('user_id', auth()->id())
-            ->first();
+            ->whereIn('kind', [
+                ImportSessionKind::PageImport,
+                ImportSessionKind::SiteImport,
+            ]);
+
+        if (auth()->id() !== null) {
+            $query->where('user_id', auth()->id());
+        } elseif (app()->runningInConsole()) {
+            $query->whereNull('user_id');
+        } else {
+            return null;
+        }
+
+        $session = $query->first();
 
         return $session instanceof ImportSession ? $session : null;
     }

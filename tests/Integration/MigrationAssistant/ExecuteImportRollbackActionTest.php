@@ -24,7 +24,7 @@ it('deletes created models from a rollback report and records an execution summa
         ->and($result->deleted)->toBe(1)
         ->and($result->skipped)->toBe([])
         ->and(Page::query()->whereKey($page->getKey())->exists())->toBeFalse()
-        ->and($report->summary['rollback_execution']['deleted'] ?? null)->toBe(1);
+        ->and(migrationAssistantRollbackExecution($report)['deleted'] ?? null)->toBe(1);
 });
 
 it('dry-runs rollback execution without deleting created models', function (): void {
@@ -43,6 +43,7 @@ it('dry-runs rollback execution without deleting created models', function (): v
 
 it('skips records edited after the import execution timestamp', function (): void {
     $page = Page::factory()->create();
+    $page->forceFill(['updated_at' => now()])->saveQuietly();
     $report = migrationAssistantRollbackReport([
         ['class' => Page::class, 'id' => $page->getKey()],
     ], executedAt: now()->subDay());
@@ -80,4 +81,32 @@ function migrationAssistantRollbackReport(array $createdModels, DateTimeInterfac
         'manual_instructions' => 'Rollback records.',
         'executed_at' => $executedAt,
     ]);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function migrationAssistantRollbackExecution(ImportRollbackReport $report): array
+{
+    $summary = $report->summary ?? [];
+    $execution = is_array($summary) ? ($summary['rollback_execution'] ?? []) : [];
+
+    return is_array($execution) ? migrationAssistantRollbackStringKeyedArray($execution) : [];
+}
+
+/**
+ * @param  array<array-key, mixed>  $array
+ * @return array<string, mixed>
+ */
+function migrationAssistantRollbackStringKeyedArray(array $array): array
+{
+    $normalized = [];
+
+    foreach ($array as $key => $value) {
+        if (is_string($key)) {
+            $normalized[$key] = $value;
+        }
+    }
+
+    return $normalized;
 }

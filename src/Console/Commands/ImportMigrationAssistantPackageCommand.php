@@ -9,6 +9,9 @@ use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\StartPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\StartSiteImportAction;
 use Capell\MigrationAssistant\Data\Imports\PageImportDecisionData;
+use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
+use Capell\MigrationAssistant\Data\PageReviewRow;
+use Capell\MigrationAssistant\Data\RelationResolveRow;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
@@ -74,9 +77,9 @@ final class ImportMigrationAssistantPackageCommand extends Command
             new PageImportDecisionData(
                 sessionId: $startedState->sessionId,
                 reviewRows: $startedState->reviewRows,
-                pageDecisions: $startedState->pageDecisions,
+                pageDecisions: $this->defaultPageDecisions($startedState),
                 resolveRows: $startedState->resolveRows,
-                relationDecisions: $startedState->relationDecisions,
+                relationDecisions: $this->defaultRelationDecisions($startedState),
                 canUpdateSharedRelations: false,
             ),
             forceValidation: true,
@@ -97,7 +100,7 @@ final class ImportMigrationAssistantPackageCommand extends Command
 
         if ((bool) $this->option('sync')) {
             $session->forceFill(['status' => ImportSessionStatus::Queued])->save();
-            (new ExecuteImportPlanJob((int) $session->getKey()))->handle(
+            (new ExecuteImportPlanJob($this->sessionId($session)))->handle(
                 resolve(PackageReader::class),
                 resolve(PageImportService::class),
                 resolve(MediaIngestService::class),
@@ -105,11 +108,14 @@ final class ImportMigrationAssistantPackageCommand extends Command
             );
             $session->refresh();
         } elseif ((bool) $this->option('execute')) {
+            $validationResults = $this->validationResults($session);
+            $confirmationExpected = $this->confirmationExpected($validationResults);
+
             DispatchPageImportAction::run(
-                (int) $session->getKey(),
-                is_array($session->validation_results) ? $session->validation_results : [],
-                (string) (($session->validation_results ?? [])['confirmation_expected'] ?? ''),
-                (string) (($session->validation_results ?? [])['confirmation_expected'] ?? ''),
+                $this->sessionId($session),
+                $validationResults,
+                $confirmationExpected,
+                $confirmationExpected,
             );
             $session->refresh();
         }
@@ -148,6 +154,50 @@ final class ImportMigrationAssistantPackageCommand extends Command
             'session' => $session->uuid,
             'status' => $session->status->value,
         ]));
+    }
+
+    /**
+     * @return array<string, array{action: string, notes?: string}>
+     */
+    private function defaultPageDecisions(PageImportWizardStateData $state): array
+    {
+        $decisions = $state->pageDecisions;
+
+        foreach ($state->reviewRows as $row) {
+            if (($row['collision_state'] ?? null) !== PageReviewRow::COLLISION_URL_WORKSPACE) {
+                continue;
+            }
+
+            $uuid = $row['uuid'] ?? null;
+
+            if (! is_string($uuid) || $uuid === '') {
+                continue;
+            }
+
+            $decisions[$uuid] = ['action' => PageReviewRow::ACTION_SKIP];
+        }
+
+        return $decisions;
+    }
+
+    /**
+     * @return array<string, array{action: string, target_id?: int|string|null, notes?: string}>
+     */
+    private function defaultRelationDecisions(PageImportWizardStateData $state): array
+    {
+        $decisions = $state->relationDecisions;
+
+        foreach ($state->resolveRows as $row) {
+            $ref = $row['ref'] ?? null;
+
+            if (! is_string($ref) || $ref === '' || isset($decisions[$ref])) {
+                continue;
+            }
+
+            $decisions[$ref] = ['action' => RelationResolveRow::ACTION_CLONE_IMPORTED];
+        }
+
+        return $decisions;
     }
 
     private function archivePath(): ?string
@@ -190,6 +240,49 @@ final class ImportMigrationAssistantPackageCommand extends Command
         }
 
         return ImportSession::query()->find($sessionId);
+    }
+
+    private function sessionId(ImportSession $session): int
+    {
+        $key = $session->getKey();
+
+        if (is_int($key)) {
+            return $key;
+        }
+
+        return is_string($key) && ctype_digit($key) ? (int) $key : 0;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validationResults(ImportSession $session): array
+    {
+        $validationResults = $session->validation_results;
+
+        if (! is_array($validationResults)) {
+            return [];
+        }
+
+        $normalizedResults = [];
+
+        foreach ($validationResults as $key => $value) {
+            if (is_string($key)) {
+                $normalizedResults[$key] = $value;
+            }
+        }
+
+        return $normalizedResults;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validationResults
+     */
+    private function confirmationExpected(array $validationResults): string
+    {
+        $confirmationExpected = $validationResults['confirmation_expected'] ?? '';
+
+        return is_string($confirmationExpected) ? $confirmationExpected : '';
     }
 
     private function stringOption(string $name): ?string
