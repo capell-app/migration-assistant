@@ -155,7 +155,6 @@ Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) du
 - [credits-and-acknowledgements.md](docs/credits-and-acknowledgements.md)
 - [extension-points.md](docs/extension-points.md)
 - [import-export-workflow.md](docs/import-export-workflow.md)
-- [migration-assistant.md](docs/migration-assistant.md)
 - [overview.md](docs/overview.md)
 
 ## Testing

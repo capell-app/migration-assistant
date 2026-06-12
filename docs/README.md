@@ -11,7 +11,6 @@ Start at the [package README](../README.md) when deciding whether to install thi
 | [Credits And Acknowledgements](credits-and-acknowledgements.md) | Upstream services, dependencies, and acknowledgements.                             |
 | [Extension Points](extension-points.md)                         | Package extension points, registration paths, and focused tests.                   |
 | [Import Export Workflow](import-export-workflow.md)             | Focused package workflow, setup, troubleshooting, or implementation details.       |
-| [Migration Assistant](migration-assistant.md)                   | Focused package workflow, setup, troubleshooting, or implementation details.       |
 | [Overview](overview.md)                                         | Package boundary, runtime surfaces, install notes, and first troubleshooting path. |
 
 ## Read Next
