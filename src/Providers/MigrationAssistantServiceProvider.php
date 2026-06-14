@@ -98,7 +98,7 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
 
     private function registerInstalledPackage(): void
     {
-        CapellCore::registerModels([
+        $this->surface()->models([
             ImportRollbackReport::class,
             ImportSession::class,
         ]);

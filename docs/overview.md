@@ -1,154 +1,105 @@
 # Migration Assistant
 
-Status: **Available, schema-owning** · Kind: **package** · Tier: **premium** · Bundle: **operations** · Contexts: **admin, console** · Product group: **Capell Operations**
+<!-- prettier-ignore-start -->
 
-This page is the consolidated implementation overview for the Migration Assistant package. It is extracted from the package README, service providers, migrations, config files, routes, resources, models, actions, and the shared Capell ERD notes where available.
+## What This Plugin Adds
 
-## What This Package Adds
+Migration Assistant is an **Available**, **Schema-owning** Capell package in the **Capell Operations** product group. It ships as `capell-app/migration-assistant` and extends these surfaces: admin, console.
 
-Migration Assistant provides the Capell Migration Assistant: package export/import, CSV/XML source reads, source contracts for add-on importers, field mapping, preview, validation, dependency graph review, relation resolution, media ingest, queued execution, and rollback reports.
+Migration Assistant is Capell's content-migration engine: upload a content package or flat file (CSV/XML), review and resolve incoming relations, run a dry-run validation, then execute on a queue with live progress. Every run produces a rollback report capturing exactly which records were created, so nothing is a one-way door. It is also the foundation other importers build on - the WordPress Importer plugs straight in - making it the first thing you install when bringing existing pages into Capell. Media is deduplicated by checksum and large payloads are size-guarded, so imports stay safe and idempotent.
 
-- Page imports are owned here: the Recovery Center page upload, review, relation resolution, validation, dispatch, and status polling flow lives in Migration Assistant.
-- Import source contracts expose rows, columns, metadata, and a suggested target.
-- Native CSV and XML readers cover common flat-file migrations without extra Composer dependencies.
-- Field mapping targets Capell pages and types. Collection-like imports resolve through the same target registry until another package registers a concrete collection target.
-- Preview output separates creates, skips, warnings, and blocking errors before execution.
-- Rollback reports capture created model class/id pairs, imported URL/media counts, source filename/checksum, executing user/time, and manual rollback instructions.
-- Import session tracking, retry/cancel flow, notifications, and queued execution.
-- Package reader/writer services.
-- Import validation, relation resolution, dependency graph, and media ingest services.
+After install, admins get package-owned management or reporting surfaces inside Capell.
 
-## Developer Notes
+Status details:
 
-Separates migration work into services, actions, DTOs, jobs, events, source readers, target registries, and resolver contracts so package and flat-file data can be moved with explicit ownership rules.
-
-- `MigrationAssistantServiceProvider` registers the package.
-- Config file: migration-assistant.php.
-- Migrations create import_rollback_reports and import_sessions, including generic target fields.
-- Jobs execute import plans.
-- Events report import completed or failed.
-- Services cover package reading, writing, CSV/XML reading, mapping, preview, validation, relation resolution, media ingest, and rollback reports.
-- WordPress WXR support lives in `capell-app/wordpress-importer`, which depends on this package and registers its reader through the source registry.
-
-## Operational Notes
-
-Supports controlled migration workflows where content, media, source files, and relationships need review before import and operators need evidence after execution.
-
-- Adds import_rollback_reports and import_sessions tables.
-- Adds migration-assistant queue configuration.
-- Uses disk and path config for imports, exports, and working files.
-- May require queue workers for long-running imports.
-- No public routes are registered by this package.
-
-## Data And Retention
-
-- import_rollback_reports stores import session, created model ids, source filename/checksum, summary counts, executing user/time, and manual rollback instructions.
-- import_sessions stores import kind, generic target type/id, status, manifest, decisions, validation state, and result summary.
-- Retention and deletion rules should be verified against the host application policy.
-
-## Screenshot Plan
-
-- Import session index or host admin surface.
-- Page import upload and validation workflow.
-- Import validation summary.
-- Relation resolution review.
-- Rollback report view.
-- Package export intent screen.
-
-## Screenshots
-
-![Import batches admin index](screenshots/import-session-index-or-host-admin-surface.png)
-
-Validation, relation resolution, rollback, and export screenshots need seeded import sessions before they can show distinct workflow states.
-
-## Pitfalls
-
-- Configure MIGRATOR_QUEUE and MIGRATOR_DISK before large imports.
-- Check upload and package size limits before importing client archives.
-- Run queue workers before testing async import jobs.
-- Review relation resolution before applying imported data.
-
-## Verification
-
-- Run `vendor/bin/pest packages/migration-assistant/tests` when package tests exist.
-- Run the relevant host-app migration or package install flow in a disposable database.
-- Open the listed admin or frontend surface and compare it with the screenshot plan.
-
-## Package Manifest
-
-- Composer name: `capell-app/migration-assistant`
-- Product group: Capell Operations
-- Kind: package
+- Status: Available
 - Tier: premium
 - Bundle: operations
-- Contexts: `admin`, `console`
-- Requires: `capell-app/admin`, `capell-app/core`
-- Optional dependencies: None listed.
+- Composer package: `capell-app/migration-assistant`
+- Namespace: `Capell\MigrationAssistant`
+- Theme key: not applicable
 
-## Admin Surfaces
+## Why It Matters
 
-- ImportPagesPage (packages/migration-assistant/src/Filament/Pages/ImportPagesPage.php, slug `recovery-center/import-pages`)
-- ImportSitesPage (packages/migration-assistant/src/Filament/Pages/ImportSitesPage.php, slug `recovery-center/import-sites`) is a hidden placeholder until the site-import wizard ships.
-- ImportSessionResource (packages/migration-assistant/src/Filament/Resources/ImportSessions/ImportSessionResource.php)
+**For developers:** The package gives developers package-owned service providers, Actions, Data objects, models, and Filament classes instead of pushing this behaviour into core or application code.
 
-## Commands
+**For teams:** Safely move pages and media into Capell - preview every change, validate before you write, and keep a rollback report for every import.
 
-- `migration-assistant:status {session?} --json` reports recent import sessions or a specific session by id/UUID.
-- `migration-assistant:export --page={id} --json` and `migration-assistant:export --site={id} --json` create page/site migration packages for CI and scripted moves.
-- `migration-assistant:import {archive} --json` creates and validates an import session; `--execute` queues the validated session and `--sync` runs it inline.
-- `migration-assistant:rollback-report {session} --json` reports created records and manual rollback instructions for a completed import session.
+## Screens And Workflow
 
-## Routes And Config
+Screenshot contract: `screenshots.json`.
 
-- Config: packages/migration-assistant/config/migration-assistant.php
+- Import session index or host admin surface (admin, required).
+- Import validation summary (admin, required).
+- Recovery page imports (admin, required).
+- Relation resolution review (admin, required).
+- Rollback report view (admin, required).
+- Package export intent screen (admin, required).
 
-## Permissions And Gates
+## Technical Shape
 
-- Policy: OwnershipMap (packages/migration-assistant/src/Policy/OwnershipMap.php)
+- Service providers: `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`.
+- Config files: `packages/migration-assistant/config/migration-assistant.php`.
+- Migrations: `packages/migration-assistant/database/migrations/2026_05_10_190859_01_create_import_sessions_table.php`, `packages/migration-assistant/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php`, `packages/migration-assistant/database/migrations/2026_06_04_000001_rename_import_rollback_reports_table.php`.
+- Models: `ImportRollbackReport`, `ImportSession`.
+- Filament classes: `ImportPagesPage`, `ImportSitesPage`, `ImportSessionResource`, `ListImportSessions`, `ViewImportSession`, `ImportSessionInfolist`, `ImportSessionsTable`.
+- Policies: `ImportSessionPolicy`.
+- Events: `ImportCompleted`, `ImportFailed`.
+- Listeners: `SendImportSessionNotifications`.
+- Actions: `BuildImportValidationSummaryAction`, `BuildPageReviewRows`, `BuildRelationResolveRowsAction`, `CancelImportSessionAction`, `ClaimImportSessionForExecutionAction`, `CreateImportRollbackReportAction`, `ExecuteImportRollbackAction`, `AdvancePageImportToValidationAction`, `DispatchPageImportAction`, `ExecuteExternalPageImportAction`, `RefreshPageImportStatusAction`, `ResolvePageImportConfirmationTargetAction`, `and 5 more`.
+- Data objects: `DependencyGraph`, `ExportOptions`, `ExternalImportPreview`, `ExternalImportReadResult`, `ImportValidationSummary`, `ExternalPageImportExecutionResult`, `PageImportDecisionData`, `PageImportStatusData`, `PageImportWizardStateData`, `PackageManifest`, `PageImportTargetData`, `PageReviewRow`, `and 2 more`.
+- Jobs: `ExecuteImportPlanJob`.
+- Command signatures: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
+- Console command classes: `ExecuteMigrationAssistantRollbackCommand`, `ExportMigrationAssistantPackageCommand`, `ImportMigrationAssistantPackageCommand`, `ShowMigrationAssistantRollbackReportCommand`, `ShowMigrationAssistantStatusCommand`.
+- Health checks: `Capell\MigrationAssistant\Health\MigrationAssistantHealthCheck`.
 
-## Migrations
+## Data Model
 
-- Migration: create_import_rollback_reports_table.php
-- Migration: create_import_sessions_table.php
+- Models: `ImportRollbackReport`, `ImportSession`.
+- Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`.
+- Migration impact: run host migrations through the package install flow before opening package surfaces.
+- Deletion/retention behaviour: Docs gap unless the package has an explicit pruning command, retention setting, or tested cascade path.
 
-## ERD Excerpt
+## Install Impact
 
-```mermaid
-erDiagram
-    USERS ||--o{ IMPORT_SESSIONS : starts
-    USERS ||--o{ IMPORT_ROLLBACK_REPORTS : executes
-    IMPORT_SESSIONS ||--o{ IMPORT_ROLLBACK_REPORTS : reports
+- Admin navigation: adds package-owned Filament classes when registered.
+- Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`.
+- Public routes: none detected in package route files.
+- Database changes: package migrations are declared.
+- Settings: no package settings declared.
+- Queues or schedules: review package jobs or schedules before install.
+- Cache tags: none declared.
+- Commands: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
 
-    IMPORT_ROLLBACK_REPORTS {
-        bigint id PK
-        uuid uuid
-        bigint import_session_id FK
-        bigint user_id FK
-        string source_filename
-        string source_package_checksum
-        json created_models
-        json summary
-        text manual_instructions
-        timestamp executed_at
-    }
+## Common Pitfalls
 
-    IMPORT_SESSIONS {
-        bigint id PK
-        uuid uuid
-        bigint user_id FK
-        string kind
-        string status
-        json manifest
-        json result_summary
-    }
-```
+- Run migrations before opening package resources or public routes.
+- Run package commands from the host app; in this repository use `vendor/bin/pest` for package tests.
+- Keep `composer.json`, `composer.local.json`, `capell.json`, docs, screenshots, and tests aligned when the package surface changes.
 
-## Screenshot Automation
+## Troubleshooting
 
-Deployment should read [screenshots.json](screenshots.json), install the package with demo data, resolve each admin surface or frontend URL, and write images to `packages/migration-assistant/docs/screenshots`.
+| Symptom | Likely cause | Check | Fix |
+| --- | --- | --- | --- |
+| Package surface is missing after install | Provider or manifest is not loaded | Confirm `capell.json`, package `composer.json`, and provider registration | Reinstall the package, refresh Composer autoload, and clear host caches |
+| Admin screen or command fails on missing table | Package migrations have not run | Check the tables listed in `Data Model` | Run host migrations and rerun the focused package test |
+| Background work does not run | Queue worker or scheduled command is not active | Check package jobs, commands, and host scheduler configuration | Start the queue or scheduler, then run the focused command or package test |
 
-- Import session index or host admin surface.
-- Import validation summary.
-- Relation resolution review.
-- Rollback report view.
-- Package export intent screen.
+## Quick Start
+
+1. Install the package: `composer require capell-app/migration-assistant`.
+2. Run the required setup: `php artisan migrate`.
+3. Open the related Capell admin surface and verify Migration Assistant appears.
+
+## Next Steps
+
+- [Package docs index](README.md)
+- [Screenshot contract](screenshots.json)
+- [Marketplace assets](assets/marketplace/)
+- [Capell content language plan](../../../docs/CONTENT_LANGUAGE_PLAN.md)
+- [Capell documentation design system](../../../docs/DESIGN_SYSTEM.md)
+- [Capell and package ERD notes](../../../docs/erd/capell-and-package-erds.md)
+- Related packages: [Media Library](../../media-library/README.md), [Seo Suite](../../seo-suite/README.md), [Site Discovery](../../site-discovery/README.md), [Url Manager](../../url-manager/README.md), [Wordpress Importer](../../wordpress-importer/README.md).
+- Focused tests: `vendor/bin/pest packages/migration-assistant/tests --configuration=phpunit.xml`.
+
+<!-- prettier-ignore-end -->

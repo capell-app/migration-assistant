@@ -1,173 +1,106 @@
 # Migration Assistant
 
-Migration Assistant export, import, and rollback report workflows for Capell.
+<!-- prettier-ignore-start -->
 
-## At A Glance
+## What This Plugin Adds
 
-- Package: `capell-app/migration-assistant`
-- Namespace: `Capell\MigrationAssistant\`
-- Surfaces: Filament admin, queue, database
-- Service providers: `packages/migration-assistant/src/Providers/MigrationAssistantServiceProvider.php`
-- Capell dependencies: `capell-app/admin`, `capell-app/core`
-- Third-party dependencies: `lorisleiva/laravel-actions`, `spatie/laravel-package-tools`
+Migration Assistant is an **Available**, **Schema-owning** Capell package in the **Capell Operations** product group. It ships as `capell-app/migration-assistant` and extends these surfaces: admin, console.
 
-## Why It Helps Your Capell Workflow
+Migration Assistant is Capell's content-migration engine: upload a content package or flat file (CSV/XML), review and resolve incoming relations, run a dry-run validation, then execute on a queue with live progress. Every run produces a rollback report capturing exactly which records were created, so nothing is a one-way door. It is also the foundation other importers build on - the WordPress Importer plugs straight in - making it the first thing you install when bringing existing pages into Capell. Media is deduplicated by checksum and large payloads are size-guarded, so imports stay safe and idempotent.
 
-- Provides import workflows, source readers, mapping, preview, validation, execution state, and rollback reports for content moves.
-- Helps owners de-risk migrations by showing what will change before import and what changed afterwards.
-- Gives developers extension points for sources, targets, relations, row contributors, collision detection, and rollback behavior.
+After install, admins get package-owned management or reporting surfaces inside Capell.
 
-## Best Used With
+Status details:
 
-- [WordPress Importer](../wordpress-importer/README.md)
-- [Media Library](../media-library/README.md)
-- [Diagnostics](../diagnostics/README.md)
-
-## What It Adds
-
-- Migration Assistant export, import, and rollback report workflows for Capell.
-- Admin resources: `ImportSessionResource`.
-- Recovery Center page import workflow: upload, review, resolve relations, validate, queue execution, and inspect rollback evidence.
+- Status: Available
+- Tier: premium
+- Bundle: operations
+- Composer package: `capell-app/migration-assistant`
+- Namespace: `Capell\MigrationAssistant`
+- Theme key: not applicable
 
 ## Why It Matters
 
-**For developers:** Separates migration work into services, actions, DTOs, jobs, events, source readers, target registries, and resolver contracts so package and flat-file data can be moved with explicit ownership rules.
+**For developers:** The package gives developers package-owned service providers, Actions, Data objects, models, and Filament classes instead of pushing this behaviour into core or application code.
 
-**For teams:** Supports controlled migration workflows where content, media, relationships, source files, and rollback evidence can be reviewed before and after import.
-
-## Built With
-
-This package makes its Composer dependencies visible because they are part of the value proposition, not just plumbing. When an upstream package has a public repository, its linked preview card points readers back to the maintainers so their work gets proper credit.
-
-**Capell packages used here**
-
-- [Capell Admin](https://github.com/capell-app/admin)
-- [Capell Core](https://github.com/capell-app/core)
-
-**Open-source packages used here**
-
-- [Laravel Actions](https://github.com/lorisleiva/laravel-actions) - single-purpose action classes that keep package workflows out of controllers and Filament resources.
-- [Spatie Laravel Package Tools](https://github.com/spatie/laravel-package-tools) - Laravel package bootstrapping for config, migrations, commands, translations, and service provider setup.
-
-**Linked package previews**
-
-[![Laravel Actions GitHub preview](https://opengraph.githubassets.com/capell-readme/lorisleiva/laravel-actions)](https://github.com/lorisleiva/laravel-actions)
-
-[![Spatie Laravel Package Tools GitHub preview](https://opengraph.githubassets.com/capell-readme/spatie/laravel-package-tools)](https://github.com/spatie/laravel-package-tools)
+**For teams:** Safely move pages and media into Capell - preview every change, validate before you write, and keep a rollback report for every import.
 
 ## Screens And Workflow
 
-Screenshots are generated from [docs/screenshots.json](docs/screenshots.json) during package deployment.
+Screenshot contract: `docs/screenshots.json`.
 
-- Import session index or host admin surface.
-- Page import upload and validation workflow.
-- Import validation summary.
-- Relation resolution review.
-- Rollback report view.
-- Package export intent screen.
+- Import session index or host admin surface (admin, required).
+- Import validation summary (admin, required).
+- Recovery page imports (admin, required).
+- Relation resolution review (admin, required).
+- Rollback report view (admin, required).
+- Package export intent screen (admin, required).
 
 ## Technical Shape
 
-- `MigrationAssistantServiceProvider` registers the package.
-- Config file: migration-assistant.php.
-- Migrations create import_rollback_reports and import_sessions, including generic import target columns.
-- Jobs execute import plans.
-- Events report import completed or failed.
-- Services cover package reading, writing, CSV/XML reading, mapping, validation, relation resolution, media ingest, preview, and rollback reporting.
-- WordPress WXR support is intentionally provided by the separate `capell-app/wordpress-importer` package, which registers a source reader with Migration Assistant.
-
-## Code Map
-
-| Area      | Path                                         | Purpose                                                             |
-| --------- | -------------------------------------------- | ------------------------------------------------------------------- |
-| Actions   | `packages/migration-assistant/src/Actions`   | Domain operations. Test these directly where possible.              |
-| Data      | `packages/migration-assistant/src/Data`      | Structured payloads, form state, view models, and integration data. |
-| Enums     | `packages/migration-assistant/src/Enums`     | Persisted states and Filament option values.                        |
-| Models    | `packages/migration-assistant/src/Models`    | Eloquent records owned by the package.                              |
-| Filament  | `packages/migration-assistant/src/Filament`  | Admin resources, pages, widgets, and settings UI.                   |
-| Jobs      | `packages/migration-assistant/src/Jobs`      | Queued work and async side effects.                                 |
-| Providers | `packages/migration-assistant/src/Providers` | Registration, extension hooks, routes, migrations, and resources.   |
-| Resources | `packages/migration-assistant/resources`     | Views, translations, assets, and package resources.                 |
-| Config    | `packages/migration-assistant/config`        | Package configuration and publishable config.                       |
-| Database  | `packages/migration-assistant/database`      | Migrations, seeders, and settings migrations.                       |
-| Tests     | `packages/migration-assistant/tests`         | Package-level Pest coverage.                                        |
-
-## Admin Surface
-
-- Resources: `ImportSessionResource`.
-- Pages: `ImportPagesPage`, `ListImportSessions`, `ViewImportSession`. `ImportSitesPage` remains a hidden placeholder until the site-import wizard ships.
-
-## Runtime Surface
-
-- Jobs: `ExecuteImportPlanJob`.
-- Commands: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:status`, `migration-assistant:rollback-report`, `migration-assistant:rollback-execute`.
-
-## Data And Persistence
-
-- import_rollback_reports stores the import session, created model ids, source filename/checksum, summary counts, executing user/time, and manual rollback instructions.
-- import_sessions stores import kind, generic target type/id, status, manifest, decisions, validation state, and result summary.
-- Retention and deletion rules should be verified against the host application policy.
-
+- Service providers: `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`.
+- Config files: `packages/migration-assistant/config/migration-assistant.php`.
+- Migrations: `packages/migration-assistant/database/migrations/2026_05_10_190859_01_create_import_sessions_table.php`, `packages/migration-assistant/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php`, `packages/migration-assistant/database/migrations/2026_06_04_000001_rename_import_rollback_reports_table.php`.
 - Models: `ImportRollbackReport`, `ImportSession`.
-- Migrations: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`.
-- Config: `packages/migration-assistant/config/migration-assistant.php`.
-- Data objects live in `src/Data/`; use them for payloads, form state, and view models.
-
-## Extension Points
-
-- Contracts: `ImportSessionSubNavigationExtender`, `ImportSourceReader`, `MigrationAssistantContextResolver`, `MigrationAssistantRowContributor`, `PageCollisionDetector`, `PageImportTargetResolver`.
+- Filament classes: `ImportPagesPage`, `ImportSitesPage`, `ImportSessionResource`, `ListImportSessions`, `ViewImportSession`, `ImportSessionInfolist`, `ImportSessionsTable`.
+- Policies: `ImportSessionPolicy`.
 - Events: `ImportCompleted`, `ImportFailed`.
 - Listeners: `SendImportSessionNotifications`.
-- Register Capell extension points, routes, migrations, settings, render hooks, and resources from service providers.
+- Actions: `BuildImportValidationSummaryAction`, `BuildPageReviewRows`, `BuildRelationResolveRowsAction`, `CancelImportSessionAction`, `ClaimImportSessionForExecutionAction`, `CreateImportRollbackReportAction`, `ExecuteImportRollbackAction`, `AdvancePageImportToValidationAction`, `DispatchPageImportAction`, `ExecuteExternalPageImportAction`, `RefreshPageImportStatusAction`, `ResolvePageImportConfirmationTargetAction`, `and 5 more`.
+- Data objects: `DependencyGraph`, `ExportOptions`, `ExternalImportPreview`, `ExternalImportReadResult`, `ImportValidationSummary`, `ExternalPageImportExecutionResult`, `PageImportDecisionData`, `PageImportStatusData`, `PageImportWizardStateData`, `PackageManifest`, `PageImportTargetData`, `PageReviewRow`, `and 2 more`.
+- Jobs: `ExecuteImportPlanJob`.
+- Command signatures: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
+- Console command classes: `ExecuteMigrationAssistantRollbackCommand`, `ExportMigrationAssistantPackageCommand`, `ImportMigrationAssistantPackageCommand`, `ShowMigrationAssistantRollbackReportCommand`, `ShowMigrationAssistantStatusCommand`.
+- Health checks: `Capell\MigrationAssistant\Health\MigrationAssistantHealthCheck`.
+
+## Data Model
+
+- Models: `ImportRollbackReport`, `ImportSession`.
+- Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`.
+- Migration impact: run host migrations through the package install flow before opening package surfaces.
+- Deletion/retention behaviour: Docs gap unless the package has an explicit pruning command, retention setting, or tested cascade path.
 
 ## Install Impact
 
-- Adds import_rollback_reports and import_sessions tables.
-- Adds migration-assistant queue configuration.
-- Uses disk and path config for imports, exports, and working files.
-- May require queue workers for long-running imports.
-- No public routes are registered by this package.
-
-## Install And Setup
-
-- Install with `composer require capell-app/migration-assistant` in the host Capell application.
-- Run migrations through the host application package install flow.
-- In this repository, verify package changes with `vendor/bin/pest`; do not use `php artisan`.
-
-## Admin And Access
-
-- Import session access is guarded by `ImportSessionPolicy`.
-- Policy support: OwnershipMap (packages/migration-assistant/src/Policy/OwnershipMap.php)
+- Admin navigation: adds package-owned Filament classes when registered.
+- Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`.
+- Public routes: none detected in package route files.
+- Database changes: package migrations are declared.
+- Settings: no package settings declared.
+- Queues or schedules: review package jobs or schedules before install.
+- Cache tags: none declared.
+- Commands: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
 
 ## Common Pitfalls
 
-- Configure MIGRATOR_QUEUE and MIGRATOR_DISK before large imports.
-- Check upload and package size limits before importing client archives.
-- Run queue workers before testing async import jobs.
-- Review relation resolution before applying imported data.
-- Use `migration-assistant:export --page={id} --json` or `migration-assistant:export --site={id} --json` for scripted package creation.
-- Use `migration-assistant:import {archive} --json` to create and validate an import session; add `--execute` to queue it or `--sync` for controlled one-off execution.
-- Use `migration-assistant:status --json`, `migration-assistant:rollback-report {session} --json`, and `migration-assistant:rollback-execute {session} --dry-run --json` for headless CI or migration audit checks.
+- Run migrations before opening package resources or public routes.
+- Run package commands from the host app; in this repository use `vendor/bin/pest` for package tests.
+- Keep `composer.json`, `composer.local.json`, `capell.json`, docs, screenshots, and tests aligned when the package surface changes.
 
-## Docs
+## Troubleshooting
 
-- [docs index](docs/README.md)
-- [credits-and-acknowledgements.md](docs/credits-and-acknowledgements.md)
-- [extension-points.md](docs/extension-points.md)
-- [import-export-workflow.md](docs/import-export-workflow.md)
-- [migration-assistant.md](docs/migration-assistant.md)
-- [overview.md](docs/overview.md)
+| Symptom | Likely cause | Check | Fix |
+| --- | --- | --- | --- |
+| Package surface is missing after install | Provider or manifest is not loaded | Confirm `capell.json`, package `composer.json`, and provider registration | Reinstall the package, refresh Composer autoload, and clear host caches |
+| Admin screen or command fails on missing table | Package migrations have not run | Check the tables listed in `Data Model` | Run host migrations and rerun the focused package test |
+| Background work does not run | Queue worker or scheduled command is not active | Check package jobs, commands, and host scheduler configuration | Start the queue or scheduler, then run the focused command or package test |
 
-## Testing
+## Quick Start
 
-Run package tests from the repository root:
+1. Install the package: `composer require capell-app/migration-assistant`.
+2. Run the required setup: `php artisan migrate`.
+3. Open the related Capell admin surface and verify Migration Assistant appears.
 
-```bash
-vendor/bin/pest packages/migration-assistant/tests --configuration=phpunit.xml
-```
+## Next Steps
 
-## Maintenance Notes
+- [Package docs](docs/README.md)
+- [Overview](docs/overview.md)
+- [Screenshot contract](docs/screenshots.json)
+- [Marketplace assets](docs/assets/marketplace/)
+- [Capell content language plan](../../docs/CONTENT_LANGUAGE_PLAN.md)
+- [Capell documentation design system](../../docs/DESIGN_SYSTEM.md)
+- [Capell and package ERD notes](../../docs/erd/capell-and-package-erds.md)
+- Related packages: [Media Library](../media-library/README.md), [Seo Suite](../seo-suite/README.md), [Site Discovery](../site-discovery/README.md), [Url Manager](../url-manager/README.md), [Wordpress Importer](../wordpress-importer/README.md).
+- Focused tests: `vendor/bin/pest packages/migration-assistant/tests --configuration=phpunit.xml`.
 
-- Put behaviour changes in `src/Actions/`; UI classes, commands, and controllers should call actions instead of owning domain logic.
-- Use package `Data` classes at boundaries instead of passing anonymous arrays between layers.
-- Use backed enums for persisted values and enum labels for Filament options.
+<!-- prettier-ignore-end -->
