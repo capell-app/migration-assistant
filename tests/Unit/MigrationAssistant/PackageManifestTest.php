@@ -112,13 +112,13 @@ it('declares migration assistant install surfaces and contribution traceability'
 
     expect($manifest)
         ->toHaveKey('name', 'capell-app/migration-assistant')
-        ->and($manifest['database']['requiredTables'] ?? [])->toBe([
+        ->and(data_get($manifest, 'database.requiredTables', []))->toBe([
             'import_sessions',
             'import_rollback_reports',
         ])
         ->and($manifest['permissions'] ?? [])->toBe($permissions)
-        ->and($manifest['security']['adminSurface']['permissions'] ?? [])->toBe($permissions)
-        ->and($manifest['contributionTraceability']['deferredContributions'] ?? null)->toBe([]);
+        ->and(data_get($manifest, 'security.adminSurface.permissions', []))->toBe($permissions)
+        ->and(data_get($manifest, 'contributionTraceability.deferredContributions'))->toBe([]);
 
     expect($manifest['contributes'] ?? [])->toContain(
         [
