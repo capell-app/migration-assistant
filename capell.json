@@ -34,11 +34,73 @@
         "admin": [],
         "frontend": []
     },
-    "contributes": [],
+    "contributes": [
+        {
+            "type": "admin-page",
+            "class": "Capell\\MigrationAssistant\\Manifest\\ImportPagesPageContribution",
+            "pageClass": "Capell\\MigrationAssistant\\Filament\\Pages\\ImportPagesPage",
+            "labelKey": "capell-admin::exchanger.import_pages"
+        },
+        {
+            "type": "admin-page",
+            "class": "Capell\\MigrationAssistant\\Manifest\\ImportSitesPageContribution",
+            "pageClass": "Capell\\MigrationAssistant\\Filament\\Pages\\ImportSitesPage",
+            "labelKey": "capell-admin::exchanger.import_sites"
+        },
+        {
+            "type": "admin-resource",
+            "class": "Capell\\MigrationAssistant\\Manifest\\ImportSessionResourceContribution",
+            "resourceClass": "Capell\\MigrationAssistant\\Filament\\Resources\\ImportSessions\\ImportSessionResource"
+        },
+        {
+            "type": "model",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantModelsContribution",
+            "modelClasses": [
+                "Capell\\MigrationAssistant\\Models\\ImportSession",
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackReport"
+            ]
+        },
+        {
+            "type": "configurator",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantConsoleCommandsContribution",
+            "commands": [
+                "migration-assistant:export",
+                "migration-assistant:import",
+                "migration-assistant:status",
+                "migration-assistant:rollback-report",
+                "migration-assistant:rollback-execute"
+            ],
+            "commandClasses": [
+                "Capell\\MigrationAssistant\\Console\\Commands\\ExportMigrationAssistantPackageCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ImportMigrationAssistantPackageCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantStatusCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantRollbackReportCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ExecuteMigrationAssistantRollbackCommand"
+            ]
+        },
+        {
+            "type": "permission",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantPermissionsContribution",
+            "permissions": [
+                "page.export",
+                "page.import",
+                "page.import.update-shared-relations",
+                "page.import.publish-live",
+                "import-session.view",
+                "import-session.cancel",
+                "import-session.retry"
+            ]
+        },
+        {
+            "type": "health-check",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantHealthContribution",
+            "checkClass": "Capell\\MigrationAssistant\\Health\\MigrationAssistantHealthCheck"
+        }
+    ],
     "database": {
         "migrations": true,
         "settings": false,
-        "requiredTables": []
+        "requiredTables": ["import_sessions", "import_rollback_reports"]
     },
     "commands": {
         "install": null,
@@ -165,11 +227,6 @@
         "categories": ["admin", "console", "operations"]
     },
     "contributionTraceability": {
-        "deferredContributions": [
-            "admin-page",
-            "admin-resource",
-            "model",
-            "route"
-        ]
+        "deferredContributions": []
     }
 }
