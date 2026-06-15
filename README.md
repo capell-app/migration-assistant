@@ -8,7 +8,7 @@ Migration Assistant is an **Available**, **Schema-owning** Capell package in the
 
 Migration Assistant is Capell's content-migration engine: upload a content package or flat file (CSV/XML), review and resolve incoming relations, run a dry-run validation, then execute on a queue with live progress. Every run produces a rollback report capturing exactly which records were created, so nothing is a one-way door. It is also the foundation other importers build on - the WordPress Importer plugs straight in - making it the first thing you install when bringing existing pages into Capell. Media is deduplicated by checksum and large payloads are size-guarded, so imports stay safe and idempotent.
 
-After install, admins get Recovery Center import pages, an import-session resource, console import/export commands, and health diagnostics for package-reader, rollback-report, and media-ingest readiness.
+After install, admins get package-owned management or reporting surfaces inside Capell.
 
 Status details:
 
@@ -51,24 +51,25 @@ Screenshot contract: `docs/screenshots.json`.
 - Jobs: `ExecuteImportPlanJob`.
 - Command signatures: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
 - Console command classes: `ExecuteMigrationAssistantRollbackCommand`, `ExportMigrationAssistantPackageCommand`, `ImportMigrationAssistantPackageCommand`, `ShowMigrationAssistantRollbackReportCommand`, `ShowMigrationAssistantStatusCommand`.
+- Manifest contributions: `admin-page: Capell\MigrationAssistant\Manifest\ImportPagesPageContribution`, `admin-page: Capell\MigrationAssistant\Manifest\ImportSitesPageContribution`, `admin-resource: Capell\MigrationAssistant\Manifest\ImportSessionResourceContribution`, `configurator: Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribution`, `health-check: Capell\MigrationAssistant\Manifest\MigrationAssistantHealthContribution`, `model: Capell\MigrationAssistant\Manifest\MigrationAssistantModelsContribution`, `permission: Capell\MigrationAssistant\Manifest\MigrationAssistantPermissionsContribution`.
 - Health checks: `Capell\MigrationAssistant\Health\MigrationAssistantHealthCheck`.
 
 ## Data Model
 
+- Required tables: `import_sessions`, `import_rollback_reports`.
 - Models: `ImportRollbackReport`, `ImportSession`.
 - Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`.
-- Tables: `import_sessions`, `import_rollback_reports`.
-- Migration impact: run host migrations through the package install flow before opening package surfaces. The compatibility migration renames the old malformed rollback-report table if it exists.
+- Migration impact: run host migrations through the package install flow before opening package surfaces.
 - Deletion/retention behaviour: Docs gap unless the package has an explicit pruning command, retention setting, or tested cascade path.
 
 ## Install Impact
 
-- Admin navigation: adds `ImportPagesPage`, `ImportSitesPage`, and `ImportSessionResource`.
+- Admin navigation: adds package-owned Filament classes when registered.
 - Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`.
 - Public routes: none detected in package route files.
-- Database changes: creates `import_sessions` and `import_rollback_reports`.
+- Database changes: package migrations are declared.
 - Settings: no package settings declared.
-- Queues or schedules: `ExecuteImportPlanJob` runs queued imports on the configured migration-assistant queue.
+- Queues or schedules: review package jobs or schedules before install.
 - Cache tags: none declared.
 - Commands: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
 
@@ -89,7 +90,7 @@ Screenshot contract: `docs/screenshots.json`.
 ## Quick Start
 
 1. Install the package: `composer require capell-app/migration-assistant`.
-2. Run the host application migration flow.
+2. Run the required setup: `php artisan migrate`.
 3. Open the related Capell admin surface and verify Migration Assistant appears.
 
 ## Next Steps
