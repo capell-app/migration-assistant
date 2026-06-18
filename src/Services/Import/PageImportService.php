@@ -192,6 +192,12 @@ final readonly class PageImportService
         // parent_id is written in pass 2 once the source → local map is built.
         $attributes['parent_id'] = null;
 
+        // The `admin` JSON column holds admin-panel metadata that can flag a page
+        // as a protected/system record and seed admin-resource behaviour. It must
+        // never be honoured from an untrusted import package — set it server-side
+        // to a non-elevated default rather than letting the payload control it.
+        $attributes['admin'] = null;
+
         $page = new Page;
         $page->forceFill($attributes);
         $page->save();
@@ -204,8 +210,10 @@ final readonly class PageImportService
      */
     private function importablePageAttributes(): array
     {
+        // `admin` is deliberately excluded: it carries admin-panel/privilege
+        // metadata and must be set server-side (see writePage), never honoured
+        // from the untrusted import payload.
         return [
-            'admin',
             'layout_id',
             'meta',
             'name',
