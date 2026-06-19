@@ -16,10 +16,7 @@
             "notes": "Capture after installing capell-app/migration-assistant in the isolated demo harness and seeding the data required for this use case.",
             "useCase": "An administrator reviews import sessions and their current migration state.",
             "screenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface.png",
-            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface-dark.png",
-            "covers": [
-                "packages/migration-assistant/src/Filament/Resources/ImportSessions/Pages/ViewImportSession.php"
-            ]
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface-dark.png"
         },
         {
             "id": "import-validation-summary",
