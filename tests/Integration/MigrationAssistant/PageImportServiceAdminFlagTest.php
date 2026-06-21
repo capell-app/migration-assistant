@@ -25,6 +25,10 @@ function makePageDescriptorWithAdminPayload(
     array $adminPayload,
     int $sourceId = 7700,
 ): string {
+    $layoutReference = importResolutionReference('layout', $layout->getKey());
+    $typeReference = importResolutionReference('type', $type->getKey());
+    $siteReference = importResolutionReference('site', $site->getKey());
+
     $descriptor = [
         'type' => 'page',
         'uuid' => (string) Str::uuid(),
@@ -41,14 +45,19 @@ function makePageDescriptorWithAdminPayload(
         ],
         'owned_relations' => ['page_urls' => []],
         'shared_relations' => [
-            'layout' => ['ref' => 'layout:' . $layout->getKey()],
-            'type' => ['ref' => 'type:' . $type->getKey()],
-            'site' => ['ref' => 'site:' . $site->getKey()],
+            'layout' => ['ref' => $layoutReference],
+            'type' => ['ref' => $typeReference],
+            'site' => ['ref' => $siteReference],
         ],
         'media_bindings' => [],
     ];
 
     return (string) json_encode($descriptor);
+}
+
+function importResolutionReference(string $prefix, mixed $key): string
+{
+    return sprintf('%s:%s', $prefix, is_scalar($key) ? (string) $key : '');
 }
 
 it('does not honour the admin flag from the untrusted import payload', function (): void {
