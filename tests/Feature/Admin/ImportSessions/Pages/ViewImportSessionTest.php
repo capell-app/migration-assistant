@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(CreatesAdminUser::class)->group('import-session-resource');
 
@@ -24,8 +25,12 @@ beforeEach(function (): void {
         test()->markTestSkipped('capell-app/migration-assistant is not installed in this checkout.');
     }
 
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
     Permission::findOrCreate('View:ImportSessionResource', 'web');
     InstallMigrationAssistantPermissionsAction::run();
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
     config()->set('migration-assistant.disk', 'local');
     Storage::fake(migrationAssistantArchiveDisk());
     Queue::fake();
@@ -38,6 +43,10 @@ beforeEach(function (): void {
         InstallMigrationAssistantPermissionsAction::PERMISSION_IMPORT_SESSION_RETRY,
     ]);
     test()->actingAs($adminUser);
+});
+
+afterEach(function (): void {
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
 });
 
 /**
