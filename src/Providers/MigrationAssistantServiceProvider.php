@@ -51,7 +51,7 @@ use Illuminate\Support\Facades\Schema;
 use Override;
 use Spatie\LaravelPackageTools\Package;
 
-class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
+final class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
 {
     public static string $name = 'migration-assistant';
 
@@ -93,7 +93,7 @@ class MigrationAssistantServiceProvider extends AbstractPackageServiceProvider
     #[Override]
     protected function isPackageInstalled(): bool
     {
-        return CapellCore::isPackageInstalled(static::$packageName);
+        return CapellCore::isPackageInstalled(self::$packageName);
     }
 
     private function registerInstalledPackage(): void
