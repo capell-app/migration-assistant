@@ -126,12 +126,7 @@
     "capabilities": [
         "migration-assistant",
         "migration-assistant-admin",
-        "migration-assistant-console",
-        "migration-assistant-status-command",
-        "migration-assistant-export-command",
-        "migration-assistant-import-command",
-        "migration-assistant-rollback-report-command",
-        "migration-assistant-rollback-execute-command"
+        "migration-assistant-console"
     ],
     "security": {
         "riskTier": "standard",
