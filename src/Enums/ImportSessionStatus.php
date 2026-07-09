@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Enums;
 
-enum ImportSessionStatus: string
+use Filament\Support\Contracts\HasLabel;
+
+enum ImportSessionStatus: string implements HasLabel
 {
     /** Created but nothing parsed yet — user is still on step 1 (upload). */
     case Draft = 'draft';
@@ -39,5 +41,10 @@ enum ImportSessionStatus: string
             self::Completed, self::Failed, self::Abandoned => true,
             default => false,
         };
+    }
+
+    public function getLabel(): string
+    {
+        return __('capell-migration-assistant::imports.enums.import_session_status.' . $this->value);
     }
 }

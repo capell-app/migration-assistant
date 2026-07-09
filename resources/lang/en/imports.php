@@ -3,6 +3,27 @@
 declare(strict_types=1);
 
 return [
+    'enums' => [
+        'import_session_kind' => [
+            'page-import' => 'Page import',
+            'site-import' => 'Site import',
+        ],
+        'import_session_status' => [
+            'draft' => 'Draft',
+            'parsed' => 'Parsed',
+            'mapped' => 'Mapped',
+            'validated' => 'Validated',
+            'queued' => 'Queued',
+            'running' => 'Running',
+            'completed' => 'Completed',
+            'failed' => 'Failed',
+            'abandoned' => 'Abandoned',
+        ],
+        'package_type' => [
+            'page-export' => 'Page export',
+            'site-export' => 'Site export',
+        ],
+    ],
     'expected_package_type' => 'Expected a :expected package for :kind; got :actual.',
     'external_default_target_label' => 'External page import',
     'external_page_attributes_required' => 'External import row :row is missing required Capell page attributes: :attributes.',

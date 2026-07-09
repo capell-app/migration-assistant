@@ -29,7 +29,7 @@ final readonly class BuildImportValidationSummaryAction
      */
     private const float LOW_CONFIDENCE_THRESHOLD = 0.5;
 
-    public function __construct(private BuildPageReviewRows $buildPageReviewRows = new BuildPageReviewRows) {}
+    public function __construct(private BuildPageReviewRowsAction $buildPageReviewRows = new BuildPageReviewRowsAction) {}
 
     /**
      * @param  array<string, array{action: string, target_id?: int|string|null, notes?: string}>  $pageDecisions
