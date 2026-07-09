@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Actions\Imports;
 
-use Capell\MigrationAssistant\Actions\BuildPageReviewRows;
+use Capell\MigrationAssistant\Actions\BuildPageReviewRowsAction;
 use Capell\MigrationAssistant\Actions\BuildRelationResolveRowsAction;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
@@ -53,7 +53,7 @@ final class StartPageImportAction
             resolve(RelationMatchResolverRegistry::class),
         ))->build($package->payload);
 
-        $reviewRows = resolve(BuildPageReviewRows::class)->run($package, $resolutionMap);
+        $reviewRows = resolve(BuildPageReviewRowsAction::class)->run($package, $resolutionMap);
         $resolveRows = BuildRelationResolveRowsAction::run($resolutionMap);
 
         $target = resolve(PageImportTargetResolver::class)->create($this->workspaceNameFrom($state));

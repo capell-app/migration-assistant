@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Capell\Core\Models\Site;
-use Capell\MigrationAssistant\Actions\BuildPageReviewRows;
+use Capell\MigrationAssistant\Actions\BuildPageReviewRowsAction;
 use Capell\MigrationAssistant\Data\PageReviewRow;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
@@ -68,7 +68,7 @@ it('marks row as create when no URL collision exists', function (): void {
         pageReviewEnvelope($uuid, (int) $site->getKey(), '/fresh-page'),
     );
 
-    $rows = (new BuildPageReviewRows)->run($package, resolvedSiteMap($site));
+    $rows = (new BuildPageReviewRowsAction)->run($package, resolvedSiteMap($site));
 
     expect($rows)->toHaveCount(1)
         ->and($rows[0]->uuid)->toBe($uuid)
@@ -108,7 +108,7 @@ it('flags URL collisions against live pages and suggests update', function (): v
         pageReviewEnvelope($uuid, (int) $site->getKey(), '/already-live'),
     );
 
-    $rows = (new BuildPageReviewRows)->run($package, resolvedSiteMap($site));
+    $rows = (new BuildPageReviewRowsAction)->run($package, resolvedSiteMap($site));
 
     expect($rows[0]->collisionState)->toBe(PageReviewRow::COLLISION_URL_LIVE)
         ->and($rows[0]->suggestedAction)->toBe(PageReviewRow::ACTION_UPDATE)

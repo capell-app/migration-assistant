@@ -25,7 +25,7 @@ use JsonException;
  * {@see ResolutionMap} so tuple-level (site, language, url) matching can
  * happen once site imports are supported.
  */
-final readonly class BuildPageReviewRows
+final readonly class BuildPageReviewRowsAction
 {
     public function __construct(
         private PageCollisionDetector $detector = new PageUrlCollisionDetector,
