@@ -8,8 +8,10 @@ use Capell\Core\Models\SiteDomain;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
+use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 it('uses mysql-safe foreign key names for import rollback reports', function (): void {
@@ -84,4 +86,33 @@ it('creates an import rollback report from an execution report', function (): vo
         ])
         ->and($summary['page_urls_created'] ?? null)->toBe(2)
         ->and($rollbackReport->manual_instructions)->toContain('roll back');
+});
+
+it('encrypts session and rollback diagnostic payloads at rest', function (): void {
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Completed,
+        'target_url' => 'https://example.test/import?token=url-secret',
+        'source_package_path' => 'migration-assistant/imports/path-secret.zip',
+        'manifest' => ['secret' => 'manifest-secret'],
+        'failure_reason' => 'provider-secret',
+    ]);
+    $report = CreateImportRollbackReportAction::run($session, new ImportExecutionReport(0, 0, [], ['report-secret']));
+    $rawSession = DB::table('import_sessions')->where('id', $session->getKey())->first();
+    $rawReport = DB::table('import_rollback_reports')->where('id', $report->getKey())->first();
+
+    expect($rawSession)
+        ->not->toBeNull()
+        ->and((string) $rawSession->target_url)->not->toContain('url-secret')
+        ->and((string) $rawSession->source_package_path)->not->toContain('path-secret')
+        ->and((string) $rawSession->manifest)->not->toContain('manifest-secret')
+        ->and((string) $rawSession->failure_reason)->not->toContain('provider-secret')
+        ->and($rawReport)->not->toBeNull()
+        ->and((string) $rawReport->summary)->not->toContain('report-secret')
+        ->and($session->refresh()->target_url)->toBe('https://example.test/import?token=url-secret')
+        ->and($report->refresh()->summary)->toHaveKey('errors')
+        ->and(serialize(new ExecuteImportPlanJob((int) $session->getKey())))
+        ->not->toContain('url-secret')
+        ->not->toContain('manifest-secret');
 });
