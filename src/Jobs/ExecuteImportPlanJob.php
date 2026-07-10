@@ -7,10 +7,12 @@ namespace Capell\MigrationAssistant\Jobs;
 use Capell\MigrationAssistant\Actions\ClaimImportSessionForExecutionAction;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
+use Capell\MigrationAssistant\Actions\ReauthorizeImportSessionExecutionAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Events\ImportCompleted;
 use Capell\MigrationAssistant\Events\ImportFailed;
+use Capell\MigrationAssistant\Exceptions\ImportExecutionAuthorizationException;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\MediaIngestService;
 use Capell\MigrationAssistant\Services\Import\PackageReader;
@@ -89,8 +91,6 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
         $previousUser = Auth::user();
 
-        $this->authenticateSessionUser($session);
-
         try {
             $executor = ($executorRegistry ?? resolve(ImportSessionExecutorRegistry::class))->executorFor($session);
 
@@ -111,6 +111,9 @@ final class ExecuteImportPlanJob implements ShouldQueue
             $absolutePath = Storage::disk(is_string($disk) ? $disk : 'local')->path($archivePath);
             $package = $reader->read($absolutePath);
             $map = $this->hydrateResolutionMap($session);
+            $actor = ReauthorizeImportSessionExecutionAction::run($session, $package, $map);
+            Auth::guard()->setUser($actor);
+
             $map = $this->ingestMediaBinaries($package, $map, $mediaIngester, $session);
 
             $this->assertNoBlockingUnresolvedReferences($package, $map, $session->kind);
@@ -133,8 +136,11 @@ final class ExecuteImportPlanJob implements ShouldQueue
             } else {
                 event(new ImportFailed($session, (string) $failureReason));
             }
-
             $this->deleteTerminalArchive($session);
+        } catch (ImportExecutionAuthorizationException $exception) {
+            $this->markFailed($session, $exception->getMessage());
+
+            return;
         } catch (Throwable $throwable) {
             if ($this->hasQueuedRetryAttemptRemaining()) {
                 $this->releaseSessionForRetry($session);
@@ -396,15 +402,6 @@ final class ExecuteImportPlanJob implements ShouldQueue
             'status' => ImportSessionStatus::Queued,
             'failure_reason' => null,
         ])->save();
-    }
-
-    private function authenticateSessionUser(ImportSession $session): void
-    {
-        if ($session->user_id === null) {
-            return;
-        }
-
-        Auth::onceUsingId($session->user_id);
     }
 
     private function restoreAuthenticatedUser(?Authenticatable $previousUser): void

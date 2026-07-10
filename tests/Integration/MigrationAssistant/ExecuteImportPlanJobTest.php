@@ -10,10 +10,13 @@ use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
 use Capell\Core\Models\Theme;
 use Capell\MigrationAssistant\Actions\ReclaimStaleImportSessionsAction;
+use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Data\DependencyGraph;
 use Capell\MigrationAssistant\Data\PackageManifest;
+use Capell\MigrationAssistant\Data\PageImportTargetData;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
+use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Enums\PackageType;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
@@ -30,6 +33,8 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 it('dispatches on the configured migration-assistant queue', function (): void {
     Queue::fake();
@@ -76,6 +81,127 @@ it('marks the session failed when source path is empty', function (): void {
         ->and($session->failure_reason)->toContain('source package')
         ->and((int) $session->getAttribute('updated_by'))->toBe((int) $initiator->getKey())
         ->and(Auth::id())->toBeNull();
+});
+
+it('fails safely when the initiator is deleted after dispatch', function (): void {
+    Notification::fake();
+
+    $site = Site::factory()->create();
+    $initiator = migrationAssistantGlobalQueueActor();
+    $archiveRelativePath = 'migration-assistant/imports/deleted-actor.zip';
+    writePageImportPackageForJob(Storage::disk('local')->path($archiveRelativePath), (int) $site->getKey());
+
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'user_id' => $initiator->getKey(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Queued,
+        'source_package_path' => $archiveRelativePath,
+    ]);
+
+    $initiator->delete();
+
+    executeImportPlanJob($session);
+
+    $session->refresh();
+
+    expect($session->status)->toBe(ImportSessionStatus::Failed)
+        ->and($session->failure_reason)->toBe(__('migration-assistant::imports.execution_actor_missing'));
+});
+
+it('fails safely when the import permission is revoked after dispatch', function (): void {
+    Notification::fake();
+
+    $site = Site::factory()->create();
+    $initiator = migrationAssistantGlobalQueueActor();
+    $archiveRelativePath = 'migration-assistant/imports/revoked-permission.zip';
+    writePageImportPackageForJob(Storage::disk('local')->path($archiveRelativePath), (int) $site->getKey());
+
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'user_id' => $initiator->getKey(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Queued,
+        'source_package_path' => $archiveRelativePath,
+    ]);
+
+    $initiator->revokePermissionTo(MigrationAssistantPermission::PageImport->value);
+
+    executeImportPlanJob($session);
+
+    $session->refresh();
+
+    expect($session->status)->toBe(ImportSessionStatus::Failed)
+        ->and($session->failure_reason)->toBe(__('migration-assistant::imports.execution_permission_revoked'))
+        ->and(Page::query()->withoutGlobalScopes()->where('name', 'Queued authorization test page')->exists())->toBeFalse();
+});
+
+it('fails safely when the initiator loses target site access after dispatch', function (): void {
+    Notification::fake();
+
+    $site = Site::factory()->create();
+    $permission = Permission::findOrCreate(MigrationAssistantPermission::PageImport->value);
+    $role = Role::findOrCreate('migration-assistant-site-importer');
+    $role->syncPermissions([$permission]);
+    $initiator = User::factory()->create();
+    $initiator->assignRoleForSite($site, $role);
+    $archiveRelativePath = 'migration-assistant/imports/revoked-site-access.zip';
+    writePageImportPackageForJob(Storage::disk('local')->path($archiveRelativePath), (int) $site->getKey());
+
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'user_id' => $initiator->getKey(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Queued,
+        'source_package_path' => $archiveRelativePath,
+    ]);
+
+    $initiator->removeRoleForSite($site, $role);
+
+    executeImportPlanJob($session);
+
+    $session->refresh();
+
+    expect($session->status)->toBe(ImportSessionStatus::Failed)
+        ->and($session->failure_reason)->toBe(__('migration-assistant::imports.execution_site_access_revoked'));
+});
+
+it('fails safely when the persisted import target has drifted', function (): void {
+    Notification::fake();
+
+    $site = Site::factory()->create();
+    $initiator = migrationAssistantGlobalQueueActor();
+    $archiveRelativePath = 'migration-assistant/imports/target-drift.zip';
+    writePageImportPackageForJob(Storage::disk('local')->path($archiveRelativePath), (int) $site->getKey());
+    app()->instance(PageImportTargetResolver::class, new class implements PageImportTargetResolver
+    {
+        public function create(string $name): PageImportTargetData
+        {
+            return new PageImportTargetData(type: 'workspace', id: 2);
+        }
+
+        public function resolve(ImportSession $session): PageImportTargetData
+        {
+            return new PageImportTargetData(type: 'workspace', id: 2);
+        }
+    });
+
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'user_id' => $initiator->getKey(),
+        'target_type' => 'workspace',
+        'target_id' => 1,
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Queued,
+        'source_package_path' => $archiveRelativePath,
+    ]);
+
+    executeImportPlanJob($session);
+
+    $session->refresh();
+
+    expect($session->status)->toBe(ImportSessionStatus::Failed)
+        ->and($session->failure_reason)->toBe(__('migration-assistant::imports.execution_target_drifted'));
 });
 
 it('marks running sessions failed when the worker reports a job failure', function (): void {
@@ -212,6 +338,7 @@ it('executes site import sessions with unresolved site refs that are created fro
 
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),
+        'user_id' => migrationAssistantGlobalQueueActor()->getKey(),
         'kind' => ImportSessionKind::SiteImport,
         'status' => ImportSessionStatus::Queued,
         'source_package_path' => $archiveRelativePath,
@@ -267,6 +394,7 @@ it('fails site import sessions when malformed site relation refs mask unresolved
 
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),
+        'user_id' => migrationAssistantGlobalQueueActor()->getKey(),
         'kind' => ImportSessionKind::SiteImport,
         'status' => ImportSessionStatus::Queued,
         'source_package_path' => $archiveRelativePath,
@@ -320,5 +448,39 @@ function writeImportPackageForJob(string $archivePath, array $payload): void
         new DependencyGraph([], [], [], []),
         $payload,
         [],
+    );
+}
+
+function writePageImportPackageForJob(string $archivePath, int $siteId): void
+{
+    writeImportPackageForJob($archivePath, [
+        'pages/authorization-test.json' => json_encode([
+            'type' => 'page',
+            'id' => 1,
+            'attributes' => [
+                'name' => 'Queued authorization test page',
+                'site_id' => $siteId,
+            ],
+            'shared_relations' => [],
+        ], JSON_THROW_ON_ERROR),
+    ]);
+}
+
+function migrationAssistantGlobalQueueActor(): User
+{
+    $actor = User::factory()->create();
+    $actor->assignRole('super_admin');
+    $actor->givePermissionTo(MigrationAssistantPermission::PageImport->value);
+
+    return $actor->fresh();
+}
+
+function executeImportPlanJob(ImportSession $session): void
+{
+    (new ExecuteImportPlanJob((int) $session->getKey()))->handle(
+        resolve(PackageReader::class),
+        resolve(PageImportService::class),
+        resolve(MediaIngestService::class),
+        resolve(SiteImportService::class),
     );
 }
