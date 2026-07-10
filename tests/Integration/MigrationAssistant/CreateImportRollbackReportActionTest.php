@@ -34,25 +34,30 @@ it('includes created site and domain records in rollback reports', function (): 
         'executed_at' => now(),
     ]);
 
+    $site = Site::factory()->create();
+    $siteDomain = SiteDomain::factory()->for($site)->create();
+    $page = Page::factory()->for($site)->create();
     $report = new ImportExecutionReport(
         pagesCreated: 1,
         pagesSkipped: 0,
-        createdPageIds: [123],
+        createdPageIds: [$page->getKey()],
         errors: [],
-        createdSiteIds: [456],
-        createdSiteDomainIds: [789],
+        createdSiteIds: [$site->getKey()],
+        createdSiteDomainIds: [$siteDomain->getKey()],
     );
 
     $rollbackReport = CreateImportRollbackReportAction::run($session, $report);
     $summary = migrationAssistantSummary($rollbackReport->summary);
 
     expect($rollbackReport->created_models)->toBe([
-        ['class' => Page::class, 'id' => 123],
-        ['class' => Site::class, 'id' => 456],
-        ['class' => SiteDomain::class, 'id' => 789],
+        ['class' => Page::class, 'id' => $page->getKey()],
+        ['class' => Site::class, 'id' => $site->getKey()],
+        ['class' => SiteDomain::class, 'id' => $siteDomain->getKey()],
     ])
-        ->and($summary['created_site_ids'] ?? null)->toBe([456])
-        ->and($summary['created_site_domain_ids'] ?? null)->toBe([789]);
+        ->and($summary['created_site_ids'] ?? null)->toBe([$site->getKey()])
+        ->and($summary['created_site_domain_ids'] ?? null)->toBe([$siteDomain->getKey()])
+        ->and($rollbackReport->provenance_signature)->not->toBeEmpty()
+        ->and($rollbackReport->provenance['entries'] ?? null)->toHaveCount(3);
 });
 
 it('creates an import rollback report from an execution report', function (): void {
@@ -65,10 +70,11 @@ it('creates an import rollback report from an execution report', function (): vo
         'executed_at' => now(),
     ]);
 
+    $page = Page::factory()->create();
     $report = new ImportExecutionReport(
         pagesCreated: 1,
         pagesSkipped: 0,
-        createdPageIds: [123],
+        createdPageIds: [$page->getKey()],
         errors: [],
         pageUrlsCreated: 2,
         mediaReassigned: 1,
@@ -80,7 +86,7 @@ it('creates an import rollback report from an execution report', function (): vo
     expect($rollbackReport->import_session_id)->toBe($session->getKey())
         ->and($rollbackReport->source_filename)->toBe('pages.zip')
         ->and($rollbackReport->created_models)->toBe([
-            ['class' => Page::class, 'id' => 123],
+            ['class' => Page::class, 'id' => $page->getKey()],
         ])
         ->and($summary['page_urls_created'] ?? null)->toBe(2)
         ->and($rollbackReport->manual_instructions)->toContain('roll back');

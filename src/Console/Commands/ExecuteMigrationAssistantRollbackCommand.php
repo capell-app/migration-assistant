@@ -9,16 +9,18 @@ use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Foundation\Auth\User;
 use Override;
 
 final class ExecuteMigrationAssistantRollbackCommand extends Command
 {
     protected $signature = 'migration-assistant:rollback-execute
         {session : Import session ID or UUID}
+        {--actor= : Authenticated user ID to authorize and audit the rollback}
         {--dry-run : Report what would be deleted without deleting records}
         {--json : Output rollback execution summary as JSON}';
 
-    protected $description = 'Execute a Migration Assistant rollback report by deleting recorded created models.';
+    protected $description = 'Execute a signed Migration Assistant rollback report as an authorized actor.';
 
     #[Override]
     public function getDescription(): string
@@ -39,7 +41,15 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
             return self::FAILURE;
         }
 
-        $result = ExecuteImportRollbackAction::run($report, dryRun: (bool) $this->option('dry-run'));
+        $actor = $this->actor();
+
+        if (! $actor instanceof User) {
+            $this->components->error((string) __('migration-assistant::commands.rollback_execute.actor_required'));
+
+            return self::FAILURE;
+        }
+
+        $result = ExecuteImportRollbackAction::run($report, actor: $actor, dryRun: (bool) $this->option('dry-run'));
 
         if ((bool) $this->option('json')) {
             $this->line(json_encode($result->toArray(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
@@ -79,5 +89,16 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
         return is_string($value) || is_int($value) || is_float($value)
             ? (string) $value
             : '';
+    }
+
+    private function actor(): ?User
+    {
+        $actorId = $this->option('actor');
+
+        if (! is_numeric($actorId)) {
+            return null;
+        }
+
+        return User::query()->find((int) $actorId);
     }
 }

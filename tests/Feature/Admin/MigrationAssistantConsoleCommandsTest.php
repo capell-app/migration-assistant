@@ -53,6 +53,7 @@ it('returns a failure code when a requested import session cannot be found', fun
 });
 
 it('shows rollback report data from the console', function (): void {
+    $page = Page::factory()->create();
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),
         'kind' => ImportSessionKind::PageImport,
@@ -67,7 +68,7 @@ it('shows rollback report data from the console', function (): void {
         new ImportExecutionReport(
             pagesCreated: 1,
             pagesSkipped: 0,
-            createdPageIds: [123],
+            createdPageIds: [migrationAssistantConsoleModelIntKey($page)],
             errors: [],
         ),
     );
@@ -83,15 +84,17 @@ it('shows rollback report data from the console', function (): void {
         ->and($report['session_id'] ?? null)->toBe($session->getKey())
         ->and($report['source_filename'] ?? null)->toBe('pages.zip')
         ->and($report['created_models'] ?? null)->toBe([
-            ['class' => Page::class, 'id' => 123],
+            ['class' => Page::class, 'id' => $page->getKey()],
         ])
         ->and($report['manual_instructions'] ?? null)->toContain('roll back');
 });
 
 it('executes rollback reports from the console', function (): void {
+    $actor = test()->actingAsAdmin()->authenticatedUser();
     $page = Page::factory()->create();
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),
+        'user_id' => $actor->getKey(),
         'kind' => ImportSessionKind::PageImport,
         'status' => ImportSessionStatus::Completed,
         'source_filename' => 'pages.zip',
@@ -110,6 +113,7 @@ it('executes rollback reports from the console', function (): void {
 
     $exitCode = Artisan::call('migration-assistant:rollback-execute', [
         'session' => $session->uuid,
+        '--actor' => $actor->getKey(),
         '--json' => true,
     ]);
 

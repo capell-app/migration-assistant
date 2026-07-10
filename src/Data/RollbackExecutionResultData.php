@@ -9,7 +9,7 @@ use Spatie\LaravelData\Data;
 final class RollbackExecutionResultData extends Data
 {
     /**
-     * @param  list<array{class: string, id: int|string, reason: string}>  $skipped
+     * @param  list<array{type: string, id: int|string, reason: string}>  $skipped
      */
     public function __construct(
         public int $matched,

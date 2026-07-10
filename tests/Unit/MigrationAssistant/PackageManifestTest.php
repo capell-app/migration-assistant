@@ -25,6 +25,7 @@ use Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribu
 use Capell\MigrationAssistant\Manifest\MigrationAssistantHealthContribution;
 use Capell\MigrationAssistant\Manifest\MigrationAssistantModelsContribution;
 use Capell\MigrationAssistant\Manifest\MigrationAssistantPermissionsContribution;
+use Capell\MigrationAssistant\Models\ImportRollbackAudit;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Carbon\CarbonImmutable;
@@ -116,6 +117,7 @@ it('declares migration assistant install surfaces and contribution traceability'
         ->and(data_get($manifest, 'database.requiredTables', []))->toBe([
             'import_sessions',
             'import_rollback_reports',
+            'import_rollback_audits',
         ])
         ->and($manifest['permissions'] ?? [])->toBe($permissions)
         ->and(data_get($manifest, 'security.adminSurface.permissions', []))->toBe($permissions)
@@ -145,6 +147,7 @@ it('declares migration assistant install surfaces and contribution traceability'
             'modelClasses' => [
                 ImportSession::class,
                 ImportRollbackReport::class,
+                ImportRollbackAudit::class,
             ],
         ],
         [

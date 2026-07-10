@@ -57,7 +57,8 @@
             "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantModelsContribution",
             "modelClasses": [
                 "Capell\\MigrationAssistant\\Models\\ImportSession",
-                "Capell\\MigrationAssistant\\Models\\ImportRollbackReport"
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackReport",
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackAudit"
             ]
         },
         {
@@ -108,7 +109,7 @@
     "database": {
         "migrations": true,
         "settings": false,
-        "requiredTables": ["import_sessions", "import_rollback_reports"]
+        "requiredTables": ["import_sessions", "import_rollback_reports", "import_rollback_audits"]
     },
     "commands": {
         "install": null,

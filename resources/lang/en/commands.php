@@ -41,7 +41,8 @@ return [
         ],
     ],
     'rollback_execute' => [
-        'description' => 'Execute a Migration Assistant rollback report by deleting recorded created models.',
+        'description' => 'Execute a signed Migration Assistant rollback report as an authorized actor.',
+        'actor_required' => 'A valid --actor user ID is required to authorize rollback execution.',
         'dry_run' => 'Dry run only; no imported records were deleted.',
         'not_found' => 'Rollback report for import session [:session] could not be found.',
         'summary' => 'Matched :matched imported record(s), deleted :deleted, skipped :skipped.',

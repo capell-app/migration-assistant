@@ -20,6 +20,8 @@ use Override;
  * @property string|null $source_filename
  * @property string|null $source_package_checksum
  * @property array<int, array{class: string, id: int|string}>|null $created_models
+ * @property array<array-key, mixed>|null $provenance
+ * @property string|null $provenance_signature
  * @property array<array-key, mixed>|null $summary
  * @property string $manual_instructions
  * @property CarbonImmutable|null $executed_at
@@ -43,6 +45,8 @@ class ImportRollbackReport extends Model
         'source_filename',
         'source_package_checksum',
         'created_models',
+        'provenance',
+        'provenance_signature',
         'summary',
         'manual_instructions',
         'executed_at',
@@ -68,6 +72,7 @@ class ImportRollbackReport extends Model
     {
         return [
             'created_models' => 'array',
+            'provenance' => 'array',
             'summary' => 'array',
             'executed_at' => 'immutable_datetime',
         ];
