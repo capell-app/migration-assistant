@@ -18,6 +18,7 @@ use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
 use Capell\MigrationAssistant\Services\Import\SiteImportService;
+use Capell\MigrationAssistant\Support\ImportSessionExecutorRegistry;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -72,6 +73,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
         PageImportService $pageImporter,
         MediaIngestService $mediaIngester,
         ?SiteImportService $siteImporter = null,
+        ?ImportSessionExecutorRegistry $executorRegistry = null,
     ): void {
         $session = ImportSession::query()->findOrFail($this->importSessionId);
         $session = ClaimImportSessionForExecutionAction::run(
@@ -89,6 +91,14 @@ final class ExecuteImportPlanJob implements ShouldQueue
         $this->authenticateSessionUser($session);
 
         try {
+            $executor = ($executorRegistry ?? resolve(ImportSessionExecutorRegistry::class))->executorFor($session);
+
+            if ($executor !== null) {
+                $executor->execute($session);
+
+                return;
+            }
+
             $archivePath = (string) $session->source_package_path;
             if ($archivePath === '') {
                 $this->markFailed($session, 'Import session has no source package path.');

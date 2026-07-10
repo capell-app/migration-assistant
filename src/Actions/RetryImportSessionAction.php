@@ -7,6 +7,7 @@ namespace Capell\MigrationAssistant\Actions;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportSession;
+use Capell\MigrationAssistant\Support\ImportSessionExecutorRegistry;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -30,6 +31,12 @@ final class RetryImportSessionAction
             return false;
         }
 
+        $executor = resolve(ImportSessionExecutorRegistry::class)->executorFor($session);
+
+        if ($executor !== null) {
+            return $executor->canRetry($session);
+        }
+
         if ($session->resolution_map === null || $session->page_decisions === null || $session->relation_decisions === null) {
             return false;
         }
@@ -43,11 +50,31 @@ final class RetryImportSessionAction
     {
         throw_if($session->status !== ImportSessionStatus::Failed, RuntimeException::class, 'Only failed sessions can be retried.');
 
+        $executor = resolve(ImportSessionExecutorRegistry::class)->executorFor($session);
+
+        if ($executor !== null) {
+            throw_unless($executor->canRetry($session), RuntimeException::class, 'Import session source data is no longer present and cannot be retried.');
+
+            return $this->dispatchRetry($session);
+        }
+
         throw_if($session->resolution_map === null || $session->page_decisions === null || $session->relation_decisions === null, RuntimeException::class, 'Session is missing resolution data and cannot be retried.');
 
         $archivePath = (string) $session->source_package_path;
         throw_if($archivePath === '' || ! self::archiveDisk()->exists($archivePath), RuntimeException::class, 'Source archive is no longer present on disk.');
 
+        return $this->dispatchRetry($session);
+    }
+
+    private static function archiveDisk(): Filesystem
+    {
+        $diskName = config('migration-assistant.disk', 'local');
+
+        return Storage::disk(is_string($diskName) ? $diskName : 'local');
+    }
+
+    private function dispatchRetry(ImportSession $session): ImportSession
+    {
         $claimedSession = ClaimImportSessionForExecutionAction::run(
             $session,
             ImportSessionStatus::Queued,
@@ -61,12 +88,5 @@ final class RetryImportSessionAction
         dispatch(new ExecuteImportPlanJob((int) $claimedSession->getKey()));
 
         return $claimedSession->refresh();
-    }
-
-    private static function archiveDisk(): Filesystem
-    {
-        $diskName = config('migration-assistant.disk', 'local');
-
-        return Storage::disk(is_string($diskName) ? $diskName : 'local');
     }
 }

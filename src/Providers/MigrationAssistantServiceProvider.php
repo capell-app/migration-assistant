@@ -44,6 +44,7 @@ use Capell\MigrationAssistant\Services\Import\Resolvers\MediaMatchResolver;
 use Capell\MigrationAssistant\Services\Import\Resolvers\RelationMatchResolverRegistry;
 use Capell\MigrationAssistant\Services\Import\XmlReader;
 use Capell\MigrationAssistant\Support\AdminPageExporter;
+use Capell\MigrationAssistant\Support\ImportSessionExecutorRegistry;
 use Capell\MigrationAssistant\Support\ImportSourceRegistry;
 use Capell\MigrationAssistant\Support\ImportTargetRegistry;
 use Illuminate\Support\Facades\Event;
@@ -111,6 +112,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
         $this->app->singletonIf(PageCollisionDetector::class, PageUrlCollisionDetector::class);
 
         $this->app->singleton(ImportTargetRegistry::class);
+        $this->app->singleton(ImportSessionExecutorRegistry::class);
         $this->app->singleton(ImportSourceRegistry::class, static function (): ImportSourceRegistry {
             $registry = new ImportSourceRegistry;
             $registry->register(new CsvReader);

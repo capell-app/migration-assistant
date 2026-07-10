@@ -14,6 +14,7 @@ use Capell\MigrationAssistant\Data\Imports\ExternalPageImportExecutionResult;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Events\ImportCompleted;
+use Capell\MigrationAssistant\Events\ImportCompleting;
 use Capell\MigrationAssistant\Events\ImportFailed;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
@@ -25,7 +26,7 @@ use RuntimeException;
 use Throwable;
 
 /**
- * @method static ExternalPageImportExecutionResult run(ExternalImportPreview $preview, array<string, mixed> $defaultPageAttributes = [], ?string $sourceFilename = null, ?string $targetLabel = null)
+ * @method static ExternalPageImportExecutionResult run(ExternalImportPreview $preview, array<string, mixed> $defaultPageAttributes = [], ?string $sourceFilename = null, ?string $targetLabel = null, ?ImportSession $existingSession = null, bool $finalize = true)
  */
 final class ExecuteExternalPageImportAction
 {
@@ -39,14 +40,74 @@ final class ExecuteExternalPageImportAction
         array $defaultPageAttributes = [],
         ?string $sourceFilename = null,
         ?string $targetLabel = null,
+        ?ImportSession $existingSession = null,
+        bool $finalize = true,
     ): ExternalPageImportExecutionResult {
         $this->assertPreviewCanExecute($preview, $defaultPageAttributes);
 
+        $session = $existingSession ?? $this->createSession($preview, $sourceFilename, $targetLabel);
+
+        try {
+            $report = resolve(PageImportService::class)->import(
+                $this->packageFromPreview($preview, $defaultPageAttributes),
+                new ResolutionMap(resolved: [], unresolved: []),
+                is_numeric($session->getRawOriginal('target_id')) ? (int) $session->getRawOriginal('target_id') : null,
+            );
+
+            if (! $finalize) {
+                return new ExternalPageImportExecutionResult($session->refresh(), $report);
+            }
+
+            $failureReason = $report->isSuccess() ? null : implode(' / ', array_slice($report->errors, 0, 5));
+
+            $session->forceFill([
+                'result_summary' => $report->toArray(),
+                'status' => $report->isSuccess() ? ImportSessionStatus::Running : ImportSessionStatus::Failed,
+                'failure_reason' => $failureReason,
+            ])->save();
+
+            if ($report->createdPageIds !== []) {
+                CreateImportRollbackReportAction::run($session, $report);
+            }
+
+            if ($report->isSuccess()) {
+                event(new ImportCompleting($session->refresh()));
+
+                $session->forceFill([
+                    'status' => ImportSessionStatus::Completed,
+                    'executed_at' => now(),
+                ])->save();
+
+                event(new ImportCompleted($session));
+            } else {
+                $session->forceFill(['executed_at' => now()])->save();
+                event(new ImportFailed($session, (string) $failureReason));
+            }
+
+            return new ExternalPageImportExecutionResult($session->refresh(), $report);
+        } catch (Throwable $throwable) {
+            if (! $finalize) {
+                throw $throwable;
+            }
+
+            $session->forceFill([
+                'status' => ImportSessionStatus::Failed,
+                'failure_reason' => $throwable->getMessage(),
+            ])->save();
+
+            event(new ImportFailed($session, $throwable->getMessage()));
+
+            throw $throwable;
+        }
+    }
+
+    private function createSession(ExternalImportPreview $preview, ?string $sourceFilename, ?string $targetLabel): ImportSession
+    {
         $target = resolve(PageImportTargetResolver::class)->create(
             $targetLabel ?? (string) __('migration-assistant::imports.external_default_target_label'),
         );
 
-        $session = ImportSession::query()->create([
+        return ImportSession::query()->create([
             'uuid' => (string) Str::uuid(),
             'user_id' => auth()->id(),
             'target_type' => $target->type,
@@ -65,48 +126,11 @@ final class ExecuteExternalPageImportAction
             ],
             'resolution_map' => ['resolved' => [], 'unresolved' => []],
             'page_decisions' => $this->pageDecisionsFromPreview($preview),
+            'relation_decisions' => [],
             'validation_results' => ['blocking_errors' => []],
             'reviewed_at' => now(),
             'validated_at' => now(),
         ]);
-
-        try {
-            $report = resolve(PageImportService::class)->import(
-                $this->packageFromPreview($preview, $defaultPageAttributes),
-                new ResolutionMap(resolved: [], unresolved: []),
-                is_int($target->id) ? $target->id : null,
-            );
-
-            $failureReason = $report->isSuccess() ? null : implode(' / ', array_slice($report->errors, 0, 5));
-
-            $session->forceFill([
-                'result_summary' => $report->toArray(),
-                'status' => $report->isSuccess() ? ImportSessionStatus::Completed : ImportSessionStatus::Failed,
-                'failure_reason' => $failureReason,
-                'executed_at' => now(),
-            ])->save();
-
-            if ($report->createdPageIds !== []) {
-                CreateImportRollbackReportAction::run($session, $report);
-            }
-
-            if ($report->isSuccess()) {
-                event(new ImportCompleted($session));
-            } else {
-                event(new ImportFailed($session, (string) $failureReason));
-            }
-
-            return new ExternalPageImportExecutionResult($session->refresh(), $report);
-        } catch (Throwable $throwable) {
-            $session->forceFill([
-                'status' => ImportSessionStatus::Failed,
-                'failure_reason' => $throwable->getMessage(),
-            ])->save();
-
-            event(new ImportFailed($session, $throwable->getMessage()));
-
-            throw $throwable;
-        }
     }
 
     /**
