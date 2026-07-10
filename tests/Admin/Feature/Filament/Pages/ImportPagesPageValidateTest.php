@@ -72,10 +72,10 @@ it('advances from review (trivial map) to validate and stores the summary', func
     $site = Site::factory()->create(['name' => 'Acme Site']);
     $uuid = (string) Str::uuid();
 
-    stageValidatePackage('exchanger/imports/validate-basic.zip', $uuid, (int) $site->getKey(), '/validate-basic');
+    stageValidatePackage('migration-assistant/imports/staged/validate-basic.zip', $uuid, (int) $site->getKey(), '/validate-basic');
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', 'exchanger/imports/validate-basic.zip')
+        ->set('data.archive', 'migration-assistant/imports/staged/validate-basic.zip')
         ->set('data.archive_filename', 'validate-basic.zip')
         ->set('data.workspace_name', 'Validate WS')
         ->call('parseAndAdvance')
@@ -97,10 +97,10 @@ it('blocks dispatch without a matching confirmation string', function (): void {
     $site = Site::factory()->create(['name' => 'Beta Site']);
     $uuid = (string) Str::uuid();
 
-    stageValidatePackage('exchanger/imports/validate-confirm.zip', $uuid, (int) $site->getKey(), '/validate-confirm');
+    stageValidatePackage('migration-assistant/imports/staged/validate-confirm.zip', $uuid, (int) $site->getKey(), '/validate-confirm');
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', 'exchanger/imports/validate-confirm.zip')
+        ->set('data.archive', 'migration-assistant/imports/staged/validate-confirm.zip')
         ->set('data.archive_filename', 'validate-confirm.zip')
         ->set('data.workspace_name', 'Confirm WS')
         ->call('parseAndAdvance')
@@ -129,10 +129,10 @@ it('blocks dispatch while blocking_errors present and succeeds when clean', func
     $site = Site::factory()->create(['name' => 'Gamma Site']);
     $uuid = (string) Str::uuid();
 
-    stageValidatePackage('exchanger/imports/validate-clean.zip', $uuid, (int) $site->getKey(), '/validate-clean');
+    stageValidatePackage('migration-assistant/imports/staged/validate-clean.zip', $uuid, (int) $site->getKey(), '/validate-clean');
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', 'exchanger/imports/validate-clean.zip')
+        ->set('data.archive', 'migration-assistant/imports/staged/validate-clean.zip')
         ->set('data.archive_filename', 'validate-clean.zip')
         ->set('data.workspace_name', 'Clean WS')
         ->call('parseAndAdvance')

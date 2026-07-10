@@ -16,6 +16,7 @@ use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
 use Illuminate\Support\Facades\Storage;
 use Lorisleiva\Actions\Concerns\AsAction;
+use RuntimeException;
 
 /**
  * @method static PageImportWizardStateData run(PageImportDecisionData $decisionData, bool $forceValidation = false)
@@ -63,8 +64,12 @@ final class AdvancePageImportToValidationAction
             return $this->state($decisionData, 'upload');
         }
 
+        $archivePath = (string) $session->source_package_path;
+        throw_unless(BindMigrationArchiveUploadAction::isCanonicalUploadPath($archivePath), RuntimeException::class, 'Import session has an invalid source package.');
+
+        $disk = config('migration-assistant.disk', 'local');
         $package = (new PackageReader)->read(
-            Storage::disk('local')->path((string) $session->source_package_path),
+            Storage::disk(is_string($disk) ? $disk : 'local')->path($archivePath),
         );
 
         $resolutionMap = $this->hydrateResolutionMap(is_array($session->resolution_map) ? $session->resolution_map : []);

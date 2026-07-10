@@ -75,14 +75,14 @@ function bootExecuteWizardToDispatch(string $archiveName, string $workspaceName)
     $uuid = (string) Str::uuid();
 
     stageExecutePackage(
-        sprintf('exchanger/imports/%s', $archiveName),
+        sprintf('migration-assistant/imports/staged/%s', $archiveName),
         $uuid,
         (int) $site->getKey(),
         '/execute-' . Str::random(6),
     );
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', sprintf('exchanger/imports/%s', $archiveName))
+        ->set('data.archive', sprintf('migration-assistant/imports/staged/%s', $archiveName))
         ->set('data.archive_filename', $archiveName)
         ->set('data.workspace_name', $workspaceName)
         ->call('parseAndAdvance')

@@ -121,7 +121,7 @@ it('skips resolve and lands on validate when the map is trivial', function (): v
     $site = Site::factory()->create();
     $uuid = (string) Str::uuid();
 
-    $relativePath = 'exchanger/imports/trivial.zip';
+    $relativePath = 'migration-assistant/imports/staged/trivial.zip';
     $absolutePath = Storage::disk('local')->path($relativePath);
     if (! is_dir(dirname($absolutePath))) {
         mkdir(dirname($absolutePath), 0777, true);
@@ -146,10 +146,10 @@ it('transitions review → resolve when the map has unresolved refs', function (
     $uuid = (string) Str::uuid();
     $layoutId = 777;
 
-    stageResolvePackage('exchanger/imports/resolve.zip', $uuid, (int) $site->getKey(), $layoutId, '/resolve-step');
+    stageResolvePackage('migration-assistant/imports/staged/resolve.zip', $uuid, (int) $site->getKey(), $layoutId, '/resolve-step');
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', 'exchanger/imports/resolve.zip')
+        ->set('data.archive', 'migration-assistant/imports/staged/resolve.zip')
         ->set('data.archive_filename', 'resolve.zip')
         ->set('data.workspace_name', 'Resolve test')
         ->call('parseAndAdvance')
@@ -187,7 +187,7 @@ it('blocks dispatch when a relation decision is invalid and persists decisions w
     $site = Site::factory()->create();
     $uuid = (string) Str::uuid();
 
-    $relativePath = 'exchanger/imports/relation-decisions.zip';
+    $relativePath = 'migration-assistant/imports/staged/relation-decisions.zip';
     $absolutePath = Storage::disk('local')->path($relativePath);
     if (! is_dir(dirname($absolutePath))) {
         mkdir(dirname($absolutePath), 0777, true);
