@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 return [
+    'external_target_actor_required' => 'An authenticated actor is required to select an external import target.',
+    'external_target_blueprint_invalid' => 'The selected page blueprint is invalid for this import target.',
+    'external_target_language_invalid' => 'The selected language does not belong to the import site.',
+    'external_target_layout_invalid' => 'The selected layout does not belong to the import site.',
+    'external_target_site_not_authorized' => 'You are not authorized to import pages into the selected site.',
     'enums' => [
         'import_session_kind' => [
             'page-import' => 'Page import',
