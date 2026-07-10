@@ -9,6 +9,7 @@ use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
 use Capell\Core\Models\Theme;
+use Capell\MigrationAssistant\Actions\BuildImportRecoveryStatusAction;
 use Capell\MigrationAssistant\Actions\ReclaimStaleImportSessionsAction;
 use Capell\MigrationAssistant\Contracts\ImportSessionExecutor;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
@@ -293,7 +294,11 @@ it('requeues stale running sessions abandoned by terminated workers', function (
         'source_package_path' => 'migration-assistant/imports/recent.zip',
     ]);
 
-    expect(ReclaimStaleImportSessionsAction::run(30, 10))->toBe(1)
+    $status = BuildImportRecoveryStatusAction::run();
+
+    expect($status->staleCount)->toBe(1)
+        ->and($status->oldestAgeMinutes)->toBeGreaterThanOrEqual(30)
+        ->and(ReclaimStaleImportSessionsAction::run(30, 10))->toBe(1)
         ->and($stale->refresh()->status)->toBe(ImportSessionStatus::Queued)
         ->and($recent->refresh()->status)->toBe(ImportSessionStatus::Running);
 
