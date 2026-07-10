@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User;
 
-class MigrationAssistantRoleOnlyUserForPolicyTest extends User
+class MigrationAssistantRoleOnlyUserForPolicy extends User
 {
     /** @use HasFactory<Factory<static>> */
     use HasFactory;

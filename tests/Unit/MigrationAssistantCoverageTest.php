@@ -38,7 +38,7 @@ use Capell\MigrationAssistant\Services\Import\ManifestValidationReport;
 use Capell\MigrationAssistant\Services\Import\Resolvers\KeyedMatchResolver;
 use Capell\MigrationAssistant\Services\Import\SpreadsheetReader;
 use Capell\MigrationAssistant\Support\ImportTargetRegistry;
-use Capell\MigrationAssistant\Tests\Fixtures\MigrationAssistantRoleOnlyUserForPolicyTest;
+use Capell\MigrationAssistant\Tests\Fixtures\MigrationAssistantRoleOnlyUserForPolicy;
 use Capell\Tests\Fixtures\Models\User;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Filament\Tables\Columns\TextColumn;
@@ -424,7 +424,7 @@ it('requires global admin status and import-session permission for policy reads'
 
 it('falls back to the super admin role when host users do not expose global admin helpers', function (): void {
     $policy = new ImportSessionPolicy;
-    $user = new MigrationAssistantRoleOnlyUserForPolicyTest;
+    $user = new MigrationAssistantRoleOnlyUserForPolicy;
 
     expect($policy->viewAny($user))->toBeTrue();
 });
