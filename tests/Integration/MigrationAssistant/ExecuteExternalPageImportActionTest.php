@@ -121,10 +121,12 @@ it('creates rollback reports for failed external executions with created pages',
     {
         public function import(PackageReadResult $package, ResolutionMap $resolutionMap, ?int $targetContextId = null): ImportExecutionReport
         {
+            $page = Page::factory()->create();
+
             return new ImportExecutionReport(
                 pagesCreated: 1,
                 pagesSkipped: 0,
-                createdPageIds: [123],
+                createdPageIds: [$page->getKey()],
                 errors: ['Second row failed.'],
             );
         }
@@ -145,7 +147,7 @@ it('creates rollback reports for failed external executions with created pages',
 
     expect($result->session->status)->toBe(ImportSessionStatus::Failed)
         ->and($rollbackReport->created_models)->toBe([
-            ['class' => Page::class, 'id' => 123],
+            ['class' => Page::class, 'id' => $result->report->createdPageIds[0]],
         ])
         ->and($summary['errors'])->toBe(['Second row failed.']);
 });

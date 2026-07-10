@@ -32,6 +32,7 @@ use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
 use Capell\MigrationAssistant\Listeners\SendImportSessionNotifications;
+use Capell\MigrationAssistant\Models\ImportRollbackAudit;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Policies\ImportSessionPolicy;
@@ -74,6 +75,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
                 '2026_05_10_190859_01_create_import_sessions_table',
                 '2026_05_10_190859_02_create_import_rollback_reports_table',
                 '2026_06_04_000001_rename_import_rollback_reports_table',
+                '2026_07_10_120000_harden_import_rollback_provenance',
             ]);
     }
 
@@ -100,6 +102,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
     {
         $this->surface()->models([
             ImportRollbackReport::class,
+            ImportRollbackAudit::class,
             ImportSession::class,
         ]);
 

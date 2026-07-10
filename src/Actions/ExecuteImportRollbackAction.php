@@ -5,55 +5,90 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Actions;
 
 use Capell\MigrationAssistant\Data\RollbackExecutionResultData;
+use Capell\MigrationAssistant\Models\ImportRollbackAudit;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
-use Carbon\CarbonInterface;
-use DateTimeInterface;
+use Capell\MigrationAssistant\Support\RollbackProvenance;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Throwable;
 
 /**
- * @method static RollbackExecutionResultData run(ImportRollbackReport $report, bool $dryRun = false)
+ * @method static RollbackExecutionResultData run(ImportRollbackReport $report, ?Authenticatable $actor = null, bool $dryRun = false)
  */
 final class ExecuteImportRollbackAction
 {
     use AsAction;
 
-    public function handle(ImportRollbackReport $report, bool $dryRun = false): RollbackExecutionResultData
-    {
-        $createdModels = array_reverse($this->createdModels($report));
-        $matched = 0;
-        $deleted = 0;
-        $skipped = [];
+    public function handle(
+        ImportRollbackReport $report,
+        ?Authenticatable $actor = null,
+        bool $dryRun = false,
+    ): RollbackExecutionResultData {
+        return DB::transaction(function () use ($report, $actor, $dryRun): RollbackExecutionResultData {
+            $lockedReport = ImportRollbackReport::query()
+                ->with('importSession')
+                ->lockForUpdate()
+                ->findOrFail($report->getKey());
+            $provenance = is_array($lockedReport->provenance) ? $lockedReport->provenance : [];
 
-        DB::transaction(function () use ($createdModels, $report, $dryRun, &$matched, &$deleted, &$skipped): void {
-            foreach ($createdModels as $createdModel) {
-                $model = $this->findModel($createdModel);
+            if (! $this->hasValidProvenance($lockedReport, $provenance)) {
+                return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
+            }
+
+            $entries = $provenance['entries'] ?? null;
+
+            if (! is_array($entries) || ! array_is_list($entries)) {
+                return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
+            }
+
+            $matched = 0;
+            $skipped = [];
+            $deletable = [];
+
+            foreach (array_reverse($entries) as $entry) {
+                if (! is_array($entry) || ! $this->isValidEntry($entry)) {
+                    return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
+                }
+
+                $model = RollbackProvenance::findEntryModel($entry, lockForUpdate: true);
 
                 if (! $model instanceof Model) {
-                    $skipped[] = $this->skip($createdModel, 'missing');
+                    $skipped[] = $this->skip($entry, 'missing');
 
                     continue;
                 }
 
                 $matched++;
+                $reason = RollbackProvenance::matchesEntry($model, $entry);
 
-                if ($this->wasEditedAfterImport($model, $report)) {
-                    $skipped[] = $this->skip($createdModel, 'edited_after_import');
+                if ($reason !== null) {
+                    $skipped[] = $this->skip($entry, $reason);
 
                     continue;
                 }
 
-                if (! $dryRun) {
+                if (! $this->actorCanDelete($actor, $model, (int) $entry['site_id'])) {
+                    $skipped[] = $this->skip($entry, 'unauthorized');
+
+                    continue;
+                }
+
+                $deletable[] = $model;
+            }
+
+            $deleted = 0;
+
+            if (! $dryRun) {
+                foreach ($deletable as $model) {
                     $model->delete();
                     $deleted++;
                 }
-            }
 
-            if (! $dryRun) {
-                $summary = is_array($report->summary) ? $report->summary : [];
+                $summary = is_array($lockedReport->summary) ? $lockedReport->summary : [];
                 $summary['rollback_execution'] = [
                     'deleted' => $deleted,
                     'executed_at' => now()->toISOString(),
@@ -61,99 +96,123 @@ final class ExecuteImportRollbackAction
                     'skipped' => $skipped,
                 ];
 
-                $report->forceFill(['summary' => $summary])->save();
+                $lockedReport->forceFill(['summary' => $summary])->save();
             }
+
+            $result = new RollbackExecutionResultData(
+                matched: $matched,
+                deleted: $deleted,
+                skipped: $skipped,
+                dryRun: $dryRun,
+            );
+
+            $this->audit($lockedReport, $actor, $result, $skipped === [] ? 'completed' : 'completed_with_skips');
+
+            return $result;
         });
-
-        return new RollbackExecutionResultData(
-            matched: $matched,
-            deleted: $deleted,
-            skipped: $skipped,
-            dryRun: $dryRun,
-        );
     }
 
     /**
-     * @return list<array{class: string, id: int|string}>
+     * @param  array<array-key, mixed>  $provenance
      */
-    private function createdModels(ImportRollbackReport $report): array
+    private function hasValidProvenance(ImportRollbackReport $report, array $provenance): bool
     {
-        $createdModels = is_array($report->created_models) ? $report->created_models : [];
+        $session = $report->importSession;
 
-        return array_values(array_filter(
-            $createdModels,
-            static fn (mixed $entry): bool => is_array($entry)
-                && is_string($entry['class'] ?? null)
-                && (is_int($entry['id'] ?? null) || is_string($entry['id'] ?? null)),
-        ));
+        return $session !== null
+            && ($provenance['version'] ?? null) === 1
+            && ($provenance['report_uuid'] ?? null) === $report->uuid
+            && ($provenance['session_uuid'] ?? null) === $session->uuid
+            && ($provenance['session_user_id'] ?? null) === $session->user_id
+            && is_string($provenance['executed_at'] ?? null)
+            && RollbackProvenance::hasValidSignature($provenance, $report->provenance_signature);
     }
 
     /**
-     * @param  array{class: string, id: int|string}  $createdModel
+     * @param  array<array-key, mixed>  $entry
      */
-    private function findModel(array $createdModel): ?Model
+    private function isValidEntry(array $entry): bool
     {
-        $class = $createdModel['class'];
-
-        if (! is_subclass_of($class, Model::class)) {
-            return null;
-        }
-
-        return $class::query()->find($createdModel['id']);
+        return is_string($entry['type'] ?? null)
+            && (is_int($entry['id'] ?? null) || is_string($entry['id'] ?? null))
+            && is_int($entry['site_id'] ?? null)
+            && is_string($entry['created_at'] ?? null)
+            && is_string($entry['updated_at'] ?? null);
     }
 
-    private function wasEditedAfterImport(Model $model, ImportRollbackReport $report): bool
+    private function actorCanDelete(?Authenticatable $actor, Model $model, int $siteId): bool
     {
-        $executedAt = $this->dateAttribute($report, 'executed_at');
-        $updatedAtColumn = $model->getUpdatedAtColumn();
-        $createdAtColumn = $model->getCreatedAtColumn();
-        $updatedAt = (is_string($updatedAtColumn) ? $this->dateAttribute($model, $updatedAtColumn) : null)
-            ?? (is_string($createdAtColumn) ? $this->dateAttribute($model, $createdAtColumn) : null);
+        return $actor !== null
+            && $this->actorCanAccessSite($actor, $siteId)
+            && Gate::forUser($actor)->allows('delete', $model);
+    }
 
-        if (! $executedAt instanceof CarbonInterface) {
+    private function actorCanAccessSite(Authenticatable $actor, int $siteId): bool
+    {
+        try {
+            if (method_exists($actor, 'isGlobalAdmin') && $actor->isGlobalAdmin() === true) {
+                return true;
+            }
+
+            if (! method_exists($actor, 'getAssignedSiteIds')) {
+                return false;
+            }
+
+            $assignedSiteIds = $actor->getAssignedSiteIds();
+
+            return $assignedSiteIds instanceof Collection && $assignedSiteIds->contains($siteId);
+        } catch (Throwable) {
             return false;
         }
-
-        if (! $updatedAt instanceof CarbonInterface) {
-            return $executedAt->lessThan(now());
-        }
-
-        return $updatedAt->greaterThan($executedAt);
-    }
-
-    private function dateAttribute(Model $model, string $attribute): ?CarbonInterface
-    {
-        $value = $model->getAttribute($attribute);
-
-        if ($value instanceof CarbonInterface) {
-            return $value;
-        }
-
-        if ($value instanceof DateTimeInterface) {
-            return Carbon::instance($value);
-        }
-
-        if (! is_string($value) || trim($value) === '') {
-            return null;
-        }
-
-        try {
-            return Carbon::parse($value);
-        } catch (Throwable) {
-            return null;
-        }
     }
 
     /**
-     * @param  array{class: string, id: int|string}  $createdModel
-     * @return array{class: string, id: int|string, reason: string}
+     * @param  array<array-key, mixed>  $entry
+     * @return array{type: string, id: int|string, reason: string}
      */
-    private function skip(array $createdModel, string $reason): array
+    private function skip(array $entry, string $reason): array
     {
         return [
-            'class' => $createdModel['class'],
-            'id' => $createdModel['id'],
+            'type' => (string) $entry['type'],
+            'id' => $entry['id'],
             'reason' => $reason,
         ];
+    }
+
+    private function rejectedResult(
+        ImportRollbackReport $report,
+        ?Authenticatable $actor,
+        bool $dryRun,
+        string $reason,
+    ): RollbackExecutionResultData {
+        $result = new RollbackExecutionResultData(
+            matched: 0,
+            deleted: 0,
+            skipped: [['type' => 'report', 'id' => $report->getKey(), 'reason' => $reason]],
+            dryRun: $dryRun,
+        );
+
+        $this->audit($report, $actor, $result, 'rejected');
+
+        return $result;
+    }
+
+    private function audit(
+        ImportRollbackReport $report,
+        ?Authenticatable $actor,
+        RollbackExecutionResultData $result,
+        string $outcome,
+    ): void {
+        $actorId = $actor?->getAuthIdentifier();
+
+        ImportRollbackAudit::query()->create([
+            'import_rollback_report_id' => $report->getKey(),
+            'actor_id' => is_int($actorId) ? $actorId : null,
+            'dry_run' => $result->dryRun,
+            'outcome' => $outcome,
+            'matched' => $result->matched,
+            'deleted' => $result->deleted,
+            'skipped' => $result->skipped,
+        ]);
     }
 }

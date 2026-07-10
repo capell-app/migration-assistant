@@ -8,6 +8,7 @@ use Capell\Core\Contracts\Extensions\ChecksExtensionHealth;
 use Capell\Core\Data\Diagnostics\DoctorCheckResultData;
 use Capell\MigrationAssistant\Data\PackageManifest;
 use Capell\MigrationAssistant\Enums\PackageType;
+use Capell\MigrationAssistant\Models\ImportRollbackAudit;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ManifestValidator;
@@ -34,6 +35,7 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
     private const array MODELS_BY_MORPH_ALIAS = [
         'import_session' => ImportSession::class,
         'import_rollback_report' => ImportRollbackReport::class,
+        'import_rollback_audit' => ImportRollbackAudit::class,
     ];
 
     /**
@@ -123,8 +125,8 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
      */
     public function rollbackReportCheck(): DoctorCheckResultData
     {
-        $missingTables = $this->missingTables([ImportRollbackReport::class]);
-        $unregisteredAliases = $this->unregisteredMorphAliases([ImportRollbackReport::class]);
+        $missingTables = $this->missingTables([ImportRollbackReport::class, ImportRollbackAudit::class]);
+        $unregisteredAliases = $this->unregisteredMorphAliases([ImportRollbackReport::class, ImportRollbackAudit::class]);
         $passed = $missingTables === [] && $unregisteredAliases === [];
 
         return new DoctorCheckResultData(
