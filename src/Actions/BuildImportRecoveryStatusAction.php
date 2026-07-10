@@ -9,13 +9,15 @@ use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Lorisleiva\Actions\Concerns\AsObject;
 
+/** @method static ImportRecoveryStatusData run() */
 final class BuildImportRecoveryStatusAction
 {
     use AsObject;
 
     public function handle(): ImportRecoveryStatusData
     {
-        $staleAfterMinutes = max(20, (int) config('migration-assistant.recovery.stale_after_minutes', 30));
+        $configuredMinutes = config('migration-assistant.recovery.stale_after_minutes', 30);
+        $staleAfterMinutes = is_numeric($configuredMinutes) ? max(20, (int) $configuredMinutes) : 30;
         $query = ImportSession::query()
             ->where('status', ImportSessionStatus::Running->value)
             ->where('updated_at', '<=', now()->subMinutes($staleAfterMinutes));
