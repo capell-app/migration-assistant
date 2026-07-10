@@ -149,10 +149,27 @@
             "throttledRoutes": []
         },
         "sensitiveData": {
-            "encryptedFields": [],
+            "encryptedFields": [
+                "import_sessions.target_url",
+                "import_sessions.source_package_path",
+                "import_sessions.working_dir",
+                "import_sessions.manifest",
+                "import_sessions.resolution_map",
+                "import_sessions.page_decisions",
+                "import_sessions.relation_decisions",
+                "import_sessions.validation_results",
+                "import_sessions.result_summary",
+                "import_sessions.failure_reason",
+                "import_rollback_reports.source_filename",
+                "import_rollback_reports.created_models",
+                "import_rollback_reports.summary",
+                "import_rollback_reports.manual_instructions"
+            ],
             "hashedTokenFields": [],
             "redactedOutputClasses": [],
-            "plaintextJustifications": []
+            "plaintextJustifications": [
+                "Import jobs serialize only import_sessions.id; session content is loaded from encrypted storage at execution time."
+            ]
         },
         "publicOutput": {
             "cacheSafe": true,
