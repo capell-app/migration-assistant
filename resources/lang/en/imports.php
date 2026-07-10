@@ -29,6 +29,12 @@ return [
     'external_page_attributes_required' => 'External import row :row is missing required Capell page attributes: :attributes.',
     'external_page_target_required' => 'External import execution only supports page targets; got :target.',
     'external_preview_has_errors' => 'External import preview has errors and cannot be executed: :errors.',
+    'execution_actor_inactive' => 'The import initiator no longer has an active account.',
+    'execution_actor_missing' => 'The import initiator no longer exists.',
+    'execution_permission_revoked' => 'The import initiator no longer has permission to import pages.',
+    'execution_site_access_revoked' => 'The import initiator no longer has access to every target site.',
+    'execution_target_drifted' => 'The import target changed or no longer exists.',
+    'execution_target_missing' => 'The import no longer has an authorized target site.',
     'health' => [
         'none' => 'none',
         'ok' => 'ok',
