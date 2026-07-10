@@ -79,9 +79,11 @@ class ImportRollbackReport extends Model
     protected function casts(): array
     {
         return [
-            'created_models' => 'array',
+            'source_filename' => 'encrypted',
+            'created_models' => 'encrypted:array',
             'provenance' => 'array',
-            'summary' => 'array',
+            'summary' => 'encrypted:array',
+            'manual_instructions' => 'encrypted',
             'executed_at' => 'immutable_datetime',
         ];
     }

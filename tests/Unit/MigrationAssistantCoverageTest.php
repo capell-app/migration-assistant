@@ -260,8 +260,9 @@ it('keeps external preview, target registry, and notifications serializable', fu
         'result_summary' => ['pages_created' => '3'],
     ]);
 
+    $session->forceFill(['failure_reason' => 'Checksum mismatch'])->save();
     $completed = new ImportCompletedNotification($session);
-    $failed = new ImportFailedNotification($session, 'Checksum mismatch');
+    $failed = new ImportFailedNotification($session);
 
     expect($preview->toArray())->toMatchArray([
         'target' => 'pages',
@@ -279,7 +280,6 @@ it('keeps external preview, target registry, and notifications serializable', fu
         ->and($completed->toMail(new stdClass)->introLines[0])->toContain('3')
         ->and($failed->via(new stdClass))->toBe(['mail', 'database'])
         ->and($failed->toArray(new stdClass))->toMatchArray([
-            'failure_reason' => 'Checksum mismatch',
             'outcome' => 'failed',
         ]);
 });
@@ -468,7 +468,8 @@ it('maps external type fields and builds failed notification mail fallback URLs'
         'status' => ImportSessionStatus::Failed,
         'source_filename' => 'failed.zip',
     ]);
-    $notification = new ImportFailedNotification($session, 'Package checksum failed.');
+    $session->forceFill(['failure_reason' => 'Package checksum failed.'])->save();
+    $notification = new ImportFailedNotification($session);
 
     expect($mappedType)->toBe([
         'name' => 'Landing Page',
