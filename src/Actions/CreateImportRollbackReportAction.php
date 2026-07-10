@@ -23,19 +23,24 @@ final class CreateImportRollbackReportAction
         $uuid = (string) Str::uuid();
         $provenance = RollbackProvenance::create($uuid, $session, $report);
 
-        return ImportRollbackReport::query()->create([
+        $rollbackReport = new ImportRollbackReport([
             'uuid' => $uuid,
             'import_session_id' => $session->getKey(),
             'user_id' => $session->user_id,
             'source_filename' => $session->source_filename,
             'source_package_checksum' => $session->source_package_checksum,
             'created_models' => $report->createdModels(),
-            'provenance' => $provenance,
-            'provenance_signature' => RollbackProvenance::sign($provenance),
             'summary' => $report->toArray(),
             'manual_instructions' => $this->instructionsFor($report),
             'executed_at' => $session->executed_at ?? now(),
         ]);
+
+        $rollbackReport->forceFill([
+            'provenance' => $provenance,
+            'provenance_signature' => RollbackProvenance::sign($provenance),
+        ])->save();
+
+        return $rollbackReport;
     }
 
     private function instructionsFor(ImportExecutionReport $report): string

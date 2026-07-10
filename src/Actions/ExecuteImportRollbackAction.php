@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Actions;
 
+use BackedEnum;
+use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Data\RollbackExecutionResultData;
+use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Models\ImportRollbackAudit;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Support\RollbackProvenance;
@@ -29,6 +32,7 @@ final class ExecuteImportRollbackAction
         bool $dryRun = false,
     ): RollbackExecutionResultData {
         return DB::transaction(function () use ($report, $actor, $dryRun): RollbackExecutionResultData {
+            $actor = $this->freshActor($actor);
             $lockedReport = ImportRollbackReport::query()
                 ->with('importSession')
                 ->lockForUpdate()
@@ -45,15 +49,21 @@ final class ExecuteImportRollbackAction
                 return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
             }
 
+            foreach ($entries as $entry) {
+                if (! is_array($entry) || ! $this->isValidEntry($entry)) {
+                    return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
+                }
+            }
+
+            if (! $this->actorCanRollbackEntries($actor, $entries)) {
+                return $this->rejectedResult($lockedReport, $actor, $dryRun, 'unauthorized');
+            }
+
             $matched = 0;
             $skipped = [];
             $deletable = [];
 
             foreach (array_reverse($entries) as $entry) {
-                if (! is_array($entry) || ! $this->isValidEntry($entry)) {
-                    return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
-                }
-
                 $model = RollbackProvenance::findEntryModel($entry, lockForUpdate: true);
 
                 if (! $model instanceof Model) {
@@ -71,10 +81,8 @@ final class ExecuteImportRollbackAction
                     continue;
                 }
 
-                if (! $this->actorCanDelete($actor, $model, (int) $entry['site_id'])) {
-                    $skipped[] = $this->skip($entry, 'unauthorized');
-
-                    continue;
+                if (! Gate::forUser($actor)->allows('delete', $model)) {
+                    return $this->rejectedResult($lockedReport, $actor, $dryRun, 'unauthorized');
                 }
 
                 $deletable[] = $model;
@@ -120,6 +128,14 @@ final class ExecuteImportRollbackAction
         $session = $report->importSession;
 
         return $session !== null
+            && $this->hasExactKeys($provenance, [
+                'entries',
+                'executed_at',
+                'report_uuid',
+                'session_user_id',
+                'session_uuid',
+                'version',
+            ])
             && ($provenance['version'] ?? null) === 1
             && ($provenance['report_uuid'] ?? null) === $report->uuid
             && ($provenance['session_uuid'] ?? null) === $session->uuid
@@ -133,25 +149,49 @@ final class ExecuteImportRollbackAction
      */
     private function isValidEntry(array $entry): bool
     {
-        return is_string($entry['type'] ?? null)
+        $type = $entry['type'] ?? null;
+
+        return $this->hasExactKeys($entry, ['created_at', 'id', 'site_id', 'type', 'updated_at'])
+            && is_string($type)
+            && RollbackProvenance::isAllowedType($type)
             && (is_int($entry['id'] ?? null) || is_string($entry['id'] ?? null))
             && is_int($entry['site_id'] ?? null)
             && is_string($entry['created_at'] ?? null)
             && is_string($entry['updated_at'] ?? null);
     }
 
-    private function actorCanDelete(?Authenticatable $actor, Model $model, int $siteId): bool
+    /**
+     * @param  list<array<array-key, mixed>>  $entries
+     */
+    private function actorCanRollbackEntries(?Authenticatable $actor, array $entries): bool
     {
-        return $actor !== null
-            && $this->actorCanAccessSite($actor, $siteId)
-            && Gate::forUser($actor)->allows('delete', $model);
+        if ($actor === null || ! $this->actorIsActive($actor)) {
+            return false;
+        }
+
+        if ($entries === []) {
+            return $this->isGlobalActor($actor) && $this->hasGlobalRollbackPermission($actor);
+        }
+
+        $siteIds = array_values(array_unique(array_map(
+            static fn (array $entry): int => (int) $entry['site_id'],
+            $entries,
+        )));
+
+        foreach ($siteIds as $siteId) {
+            if (! $this->actorCanRollbackSite($actor, $siteId)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    private function actorCanAccessSite(Authenticatable $actor, int $siteId): bool
+    private function actorCanRollbackSite(Authenticatable $actor, int $siteId): bool
     {
         try {
-            if (method_exists($actor, 'isGlobalAdmin') && $actor->isGlobalAdmin() === true) {
-                return true;
+            if ($this->isGlobalActor($actor)) {
+                return $this->hasGlobalRollbackPermission($actor);
             }
 
             if (! method_exists($actor, 'getAssignedSiteIds')) {
@@ -160,10 +200,96 @@ final class ExecuteImportRollbackAction
 
             $assignedSiteIds = $actor->getAssignedSiteIds();
 
-            return $assignedSiteIds instanceof Collection && $assignedSiteIds->contains($siteId);
+            if (! $assignedSiteIds instanceof Collection || ! $assignedSiteIds->contains($siteId)) {
+                return false;
+            }
+
+            if (! method_exists($actor, 'hasPermissionForSite')) {
+                return $this->hasGlobalRollbackPermission($actor);
+            }
+
+            $site = Site::query()->withoutGlobalScopes()->find($siteId);
+
+            return $site instanceof Site
+                && $actor->hasPermissionForSite($site, MigrationAssistantPermission::ImportSessionRollback->value) === true;
         } catch (Throwable) {
             return false;
         }
+    }
+
+    private function hasGlobalRollbackPermission(Authenticatable $actor): bool
+    {
+        if (! method_exists($actor, 'checkPermissionTo')) {
+            return false;
+        }
+
+        try {
+            return $actor->checkPermissionTo(MigrationAssistantPermission::ImportSessionRollback->value) === true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function isGlobalActor(Authenticatable $actor): bool
+    {
+        try {
+            return method_exists($actor, 'isGlobalAdmin') && $actor->isGlobalAdmin() === true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function actorIsActive(Authenticatable $actor): bool
+    {
+        if (method_exists($actor, 'isActive') && $actor->isActive() !== true) {
+            return false;
+        }
+
+        if (! $actor instanceof Model) {
+            return true;
+        }
+
+        $attributes = $actor->getAttributes();
+
+        foreach (['is_active', 'active'] as $attribute) {
+            if (array_key_exists($attribute, $attributes) && $attributes[$attribute] === false) {
+                return false;
+            }
+        }
+
+        if (($attributes['disabled_at'] ?? null) !== null || ($attributes['deactivated_at'] ?? null) !== null) {
+            return false;
+        }
+
+        $status = $attributes['status'] ?? null;
+        $status = $status instanceof BackedEnum ? $status->value : $status;
+
+        return ! is_string($status)
+            || ! in_array(mb_strtolower($status), ['disabled', 'inactive', 'suspended', 'blocked'], true);
+    }
+
+    private function freshActor(?Authenticatable $actor): ?Authenticatable
+    {
+        if (! $actor instanceof Model) {
+            return $actor;
+        }
+
+        $freshActor = $actor->newQuery()->find($actor->getAuthIdentifier());
+
+        return $freshActor instanceof Authenticatable ? $freshActor : null;
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $value
+     * @param  list<string>  $expectedKeys
+     */
+    private function hasExactKeys(array $value, array $expectedKeys): bool
+    {
+        $actualKeys = array_keys($value);
+        sort($actualKeys);
+        sort($expectedKeys);
+
+        return $actualKeys === $expectedKeys;
     }
 
     /**
@@ -190,6 +316,7 @@ final class ExecuteImportRollbackAction
             deleted: 0,
             skipped: [['type' => 'report', 'id' => $report->getKey(), 'reason' => $reason]],
             dryRun: $dryRun,
+            rejected: true,
         );
 
         $this->audit($report, $actor, $result, 'rejected');

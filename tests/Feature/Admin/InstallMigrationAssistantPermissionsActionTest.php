@@ -27,6 +27,7 @@ it('registers every permission listed in plan section 6.9', function (): void {
         'import-session.view',
         'import-session.cancel',
         'import-session.retry',
+        'import-session.rollback',
     ];
 
     expect(InstallMigrationAssistantPermissionsAction::permissionNames())

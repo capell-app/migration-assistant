@@ -8,8 +8,9 @@ use Capell\MigrationAssistant\Actions\ExecuteImportRollbackAction;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Foundation\Auth\User;
+use Illuminate\Support\Facades\Auth;
 use Override;
 
 final class ExecuteMigrationAssistantRollbackCommand extends Command
@@ -43,7 +44,7 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
 
         $actor = $this->actor();
 
-        if (! $actor instanceof User) {
+        if (! $actor instanceof Authenticatable) {
             $this->components->error((string) __('migration-assistant::commands.rollback_execute.actor_required'));
 
             return self::FAILURE;
@@ -54,7 +55,13 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
         if ((bool) $this->option('json')) {
             $this->line(json_encode($result->toArray(), JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
 
-            return self::SUCCESS;
+            return $result->rejected ? self::FAILURE : self::SUCCESS;
+        }
+
+        if ($result->rejected) {
+            $this->components->error((string) __('migration-assistant::commands.rollback_execute.rejected'));
+
+            return self::FAILURE;
         }
 
         $this->components->info((string) __('migration-assistant::commands.rollback_execute.summary', [
@@ -91,7 +98,7 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
             : '';
     }
 
-    private function actor(): ?User
+    private function actor(): ?Authenticatable
     {
         $actorId = $this->option('actor');
 
@@ -99,6 +106,8 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
             return null;
         }
 
-        return User::query()->find((int) $actorId);
+        $actor = Auth::guard()->getProvider()->retrieveById((int) $actorId);
+
+        return $actor instanceof Authenticatable ? $actor : null;
     }
 }

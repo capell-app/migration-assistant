@@ -94,6 +94,27 @@ it('creates an import rollback report from an execution report', function (): vo
         ->and($rollbackReport->manual_instructions)->toContain('roll back');
 });
 
+it('keeps signed rollback provenance immutable after report creation', function (): void {
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Completed,
+        'source_filename' => 'pages.zip',
+        'executed_at' => now(),
+    ]);
+    $page = Page::factory()->create();
+    $rollbackReport = CreateImportRollbackReportAction::run(
+        $session,
+        new ImportExecutionReport(1, 0, [$page->getKey()], []),
+    );
+
+    expect(function () use ($rollbackReport): void {
+        $rollbackReport->forceFill([
+            'provenance' => ['version' => 999],
+        ])->save();
+    })->toThrow(LogicException::class, 'cannot be changed');
+});
+
 it('encrypts session and rollback diagnostic payloads at rest', function (): void {
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),
