@@ -17,6 +17,7 @@ use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction
 use Capell\MigrationAssistant\Console\Commands\ExecuteMigrationAssistantRollbackCommand;
 use Capell\MigrationAssistant\Console\Commands\ExportMigrationAssistantPackageCommand;
 use Capell\MigrationAssistant\Console\Commands\ImportMigrationAssistantPackageCommand;
+use Capell\MigrationAssistant\Console\Commands\ReclaimStaleImportSessionsCommand;
 use Capell\MigrationAssistant\Console\Commands\ShowMigrationAssistantRollbackReportCommand;
 use Capell\MigrationAssistant\Console\Commands\ShowMigrationAssistantStatusCommand;
 use Capell\MigrationAssistant\Contracts\MigrationAssistantContextResolver;
@@ -67,6 +68,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
                 ExecuteMigrationAssistantRollbackCommand::class,
                 ExportMigrationAssistantPackageCommand::class,
                 ImportMigrationAssistantPackageCommand::class,
+                ReclaimStaleImportSessionsCommand::class,
                 ShowMigrationAssistantRollbackReportCommand::class,
                 ShowMigrationAssistantStatusCommand::class,
             ])

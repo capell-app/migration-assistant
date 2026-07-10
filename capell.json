@@ -67,6 +67,7 @@
                 "migration-assistant:export",
                 "migration-assistant:import",
                 "migration-assistant:status",
+                "migration-assistant:reclaim-stale",
                 "migration-assistant:rollback-report",
                 "migration-assistant:rollback-execute"
             ],
@@ -74,9 +75,16 @@
                 "Capell\\MigrationAssistant\\Console\\Commands\\ExportMigrationAssistantPackageCommand",
                 "Capell\\MigrationAssistant\\Console\\Commands\\ImportMigrationAssistantPackageCommand",
                 "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantStatusCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ReclaimStaleImportSessionsCommand",
                 "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantRollbackReportCommand",
                 "Capell\\MigrationAssistant\\Console\\Commands\\ExecuteMigrationAssistantRollbackCommand"
             ]
+        },
+        {
+            "type": "scheduled-job",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantRecoveryScheduleContribution",
+            "command": "migration-assistant:reclaim-stale",
+            "frequency": "everyTenMinutes"
         },
         {
             "type": "permission",

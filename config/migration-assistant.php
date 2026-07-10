@@ -10,6 +10,11 @@ return [
         'name' => Env::get('MIGRATOR_QUEUE', 'migration-assistant'),
     ],
 
+    'recovery' => [
+        'stale_after_minutes' => 30,
+        'batch_limit' => 100,
+    ],
+
     'disk' => Env::get('MIGRATOR_DISK', 'local'),
 
     'paths' => [

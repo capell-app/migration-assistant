@@ -9,6 +9,7 @@ use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
 use Capell\Core\Models\Theme;
+use Capell\MigrationAssistant\Actions\ReclaimStaleImportSessionsAction;
 use Capell\MigrationAssistant\Data\DependencyGraph;
 use Capell\MigrationAssistant\Data\PackageManifest;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
@@ -93,6 +94,31 @@ it('marks running sessions failed when the worker reports a job failure', functi
 
     expect($session->status)->toBe(ImportSessionStatus::Failed)
         ->and($session->failure_reason)->toBe('worker timed out');
+});
+
+it('requeues stale running sessions abandoned by terminated workers', function (): void {
+    Queue::fake();
+
+    $stale = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Running,
+        'source_package_path' => 'migration-assistant/imports/stale.zip',
+    ]);
+    $stale->forceFill(['updated_at' => now()->subMinutes(31)])->saveQuietly();
+
+    $recent = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Running,
+        'source_package_path' => 'migration-assistant/imports/recent.zip',
+    ]);
+
+    expect(ReclaimStaleImportSessionsAction::run(30, 10))->toBe(1)
+        ->and($stale->refresh()->status)->toBe(ImportSessionStatus::Queued)
+        ->and($recent->refresh()->status)->toBe(ImportSessionStatus::Running);
+
+    Queue::assertPushed(ExecuteImportPlanJob::class, fn (ExecuteImportPlanJob $job): bool => $job->importSessionId === $stale->getKey());
 });
 
 it('does not execute sessions that are no longer queued', function (): void {

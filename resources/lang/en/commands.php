@@ -16,6 +16,10 @@ return [
             'executed_at' => 'Executed at',
         ],
     ],
+    'reclaim_stale' => [
+        'description' => 'Requeue import sessions abandoned by terminated workers.',
+        'completed' => 'Requeued :count stale import session(s).',
+    ],
     'export' => [
         'description' => 'Export a Capell migration package from page or site ids.',
         'require_scope' => 'Provide either one or more --page ids or one or more --site ids.',
