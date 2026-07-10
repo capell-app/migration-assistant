@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Actions\Imports;
 
-use Capell\Core\Models\Blueprint;
-use Capell\Core\Models\Layout;
 use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
+use Capell\MigrationAssistant\Data\ExternalPageImportTargetData;
 use Capell\MigrationAssistant\Data\ExternalImportPreview;
 use Capell\MigrationAssistant\Data\Imports\ExternalPageImportExecutionResult;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
@@ -19,40 +18,41 @@ use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsAction;
 use RuntimeException;
 use Throwable;
 
 /**
- * @method static ExternalPageImportExecutionResult run(ExternalImportPreview $preview, array<string, mixed> $defaultPageAttributes = [], ?string $sourceFilename = null, ?string $targetLabel = null)
+ * @method static ExternalPageImportExecutionResult run(ExternalImportPreview $preview, ExternalPageImportTargetData $target, ?Authenticatable $actor = null, ?string $sourceFilename = null, ?string $targetLabel = null)
  */
 final class ExecuteExternalPageImportAction
 {
     use AsAction;
 
-    /**
-     * @param  array<string, mixed>  $defaultPageAttributes
-     */
     public function handle(
         ExternalImportPreview $preview,
-        array $defaultPageAttributes = [],
+        ExternalPageImportTargetData $target,
+        ?Authenticatable $actor = null,
         ?string $sourceFilename = null,
         ?string $targetLabel = null,
     ): ExternalPageImportExecutionResult {
-        $this->assertPreviewCanExecute($preview, $defaultPageAttributes);
+        $actor ??= auth()->user();
+        $pageTarget = AuthorizeExternalPageImportTargetAction::run($target, $actor);
+        $this->assertPreviewCanExecute($preview);
 
-        $target = resolve(PageImportTargetResolver::class)->create(
+        $sessionTarget = resolve(PageImportTargetResolver::class)->create(
             $targetLabel ?? (string) __('migration-assistant::imports.external_default_target_label'),
         );
 
         $session = ImportSession::query()->create([
             'uuid' => (string) Str::uuid(),
-            'user_id' => auth()->id(),
-            'target_type' => $target->type,
-            'target_id' => is_int($target->id) ? $target->id : null,
-            'target_label' => $target->label,
-            'target_url' => $target->url,
+            'user_id' => $this->actorId($actor),
+            'target_type' => $sessionTarget->type,
+            'target_id' => is_int($sessionTarget->id) ? $sessionTarget->id : null,
+            'target_label' => $sessionTarget->label,
+            'target_url' => $sessionTarget->url,
             'kind' => ImportSessionKind::PageImport,
             'status' => ImportSessionStatus::Running,
             'source_environment' => 'external',
@@ -72,9 +72,9 @@ final class ExecuteExternalPageImportAction
 
         try {
             $report = resolve(PageImportService::class)->import(
-                $this->packageFromPreview($preview, $defaultPageAttributes),
+                $this->packageFromPreview($preview, $pageTarget),
                 new ResolutionMap(resolved: [], unresolved: []),
-                is_int($target->id) ? $target->id : null,
+                is_int($sessionTarget->id) ? $sessionTarget->id : null,
             );
 
             $failureReason = $report->isSuccess() ? null : implode(' / ', array_slice($report->errors, 0, 5));
@@ -109,10 +109,7 @@ final class ExecuteExternalPageImportAction
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $defaultPageAttributes
-     */
-    private function assertPreviewCanExecute(ExternalImportPreview $preview, array $defaultPageAttributes): void
+    private function assertPreviewCanExecute(ExternalImportPreview $preview): void
     {
         if ($preview->target !== 'page') {
             throw new RuntimeException((string) __('migration-assistant::imports.external_page_target_required', [
@@ -125,77 +122,9 @@ final class ExecuteExternalPageImportAction
                 'errors' => implode(' / ', $preview->errors),
             ]));
         }
-
-        foreach ($preview->rows as $row) {
-            if (($row['action'] ?? null) !== 'create') {
-                continue;
-            }
-
-            $attributes = array_replace_recursive(
-                $defaultPageAttributes,
-                is_array($row['attributes'] ?? null) ? $row['attributes'] : [],
-            );
-            $missing = $this->missingRequiredPageAttributes($attributes);
-
-            if ($missing === []) {
-                $missing = $this->missingPageReferences($attributes);
-            }
-
-            if ($missing !== []) {
-                throw new RuntimeException((string) __('migration-assistant::imports.external_page_attributes_required', [
-                    'row' => $this->stringFromScalar($row['row'] ?? null) ?? '?',
-                    'attributes' => implode(', ', $missing),
-                ]));
-            }
-        }
     }
 
-    /**
-     * @param  array<string, mixed>  $attributes
-     * @return list<string>
-     */
-    private function missingRequiredPageAttributes(array $attributes): array
-    {
-        $required = ['name', 'blueprint_id', 'layout_id', 'site_id'];
-        $missing = [];
-
-        foreach ($required as $attribute) {
-            $value = $attributes[$attribute] ?? null;
-
-            if ($value === null || $value === '') {
-                $missing[] = $attribute;
-            }
-        }
-
-        return $missing;
-    }
-
-    /**
-     * @param  array<string, mixed>  $attributes
-     * @return list<string>
-     */
-    private function missingPageReferences(array $attributes): array
-    {
-        $references = [
-            'blueprint_id' => Blueprint::class,
-            'layout_id' => Layout::class,
-            'site_id' => Site::class,
-        ];
-        $missing = [];
-
-        foreach ($references as $attribute => $modelClass) {
-            if (! $modelClass::query()->whereKey($attributes[$attribute])->exists()) {
-                $missing[] = $attribute;
-            }
-        }
-
-        return $missing;
-    }
-
-    /**
-     * @param  array<string, mixed>  $defaultPageAttributes
-     */
-    private function packageFromPreview(ExternalImportPreview $preview, array $defaultPageAttributes): PackageReadResult
+    private function packageFromPreview(ExternalImportPreview $preview, ExternalPageImportTargetData $target): PackageReadResult
     {
         $payload = [];
 
@@ -206,8 +135,8 @@ final class ExecuteExternalPageImportAction
 
             $rowNumber = is_numeric($row['row'] ?? null) ? (int) $row['row'] : count($payload) + 1;
             $attributes = array_replace_recursive(
-                $defaultPageAttributes,
                 is_array($row['attributes'] ?? null) ? $row['attributes'] : [],
+                $target->pageAttributes(),
             );
             $sourceParentId = $this->sourceParentIdFrom($attributes);
 
@@ -329,5 +258,12 @@ final class ExecuteExternalPageImportAction
         }
 
         return null;
+    }
+
+    private function actorId(?Authenticatable $actor): ?int
+    {
+        $identifier = $actor?->getAuthIdentifier();
+
+        return is_numeric($identifier) ? (int) $identifier : null;
     }
 }
