@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Jobs;
 
 use Capell\MigrationAssistant\Actions\ClaimImportSessionForExecutionAction;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
+use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Events\ImportCompleted;
@@ -90,7 +91,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
         try {
             $archivePath = (string) $session->source_package_path;
-            if ($archivePath === '') {
+            if (! BindMigrationArchiveUploadAction::isCanonicalUploadPath($archivePath)) {
                 $this->markFailed($session, 'Import session has no source package path.');
 
                 return;
@@ -122,6 +123,8 @@ final class ExecuteImportPlanJob implements ShouldQueue
             } else {
                 event(new ImportFailed($session, (string) $failureReason));
             }
+
+            $this->deleteTerminalArchive($session);
         } catch (Throwable $throwable) {
             if ($this->hasQueuedRetryAttemptRemaining()) {
                 $this->releaseSessionForRetry($session);
@@ -130,6 +133,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
             }
 
             $this->markFailed($session, $throwable->getMessage());
+            $this->deleteTerminalArchive($session);
 
             throw $throwable;
         } finally {
@@ -157,6 +161,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
         }
 
         $this->markFailed($session, $exception->getMessage());
+        $this->deleteTerminalArchive($session);
     }
 
     private function targetContextId(ImportSession $session): ?int
@@ -356,6 +361,18 @@ final class ExecuteImportPlanJob implements ShouldQueue
         ])->save();
 
         event(new ImportFailed($session, $reason));
+    }
+
+    private function deleteTerminalArchive(ImportSession $session): void
+    {
+        $archivePath = (string) $session->source_package_path;
+
+        if (! str_starts_with($archivePath, 'migration-assistant/imports/uploads/')) {
+            return;
+        }
+
+        $disk = config('migration-assistant.disk', 'local');
+        Storage::disk(is_string($disk) ? $disk : 'local')->delete($archivePath);
     }
 
     private function hasQueuedRetryAttemptRemaining(): bool

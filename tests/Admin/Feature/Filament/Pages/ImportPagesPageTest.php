@@ -61,7 +61,7 @@ it('transitions to review step after parsing a package', function (): void {
     $site = Site::factory()->create();
     $uuid = (string) Str::uuid();
 
-    $relativePath = 'exchanger/imports/test-package.zip';
+    $relativePath = 'migration-assistant/imports/staged/test-package.zip';
     $absolutePath = Storage::disk('local')->path($relativePath);
     if (! is_dir(dirname($absolutePath))) {
         mkdir(dirname($absolutePath), 0777, true);
@@ -79,4 +79,37 @@ it('transitions to review step after parsing a package', function (): void {
         ->assertSet(sprintf('pageDecisions.%s.action', $uuid), PageReviewRow::ACTION_CREATE);
 
     Queue::assertNotPushed(ExecuteImportPlanJob::class);
+});
+
+it('rejects hostile Livewire archive paths without reading local storage', function (): void {
+    Storage::disk('local')->put('private/never-import.zip', 'not a migration package');
+
+    Livewire::test(ImportPagesPage::class)
+        ->set('data.archive', '../../private/never-import.zip')
+        ->set('data.archive_filename', 'never-import.zip')
+        ->set('data.workspace_name', 'Hostile import')
+        ->call('parseAndAdvance')
+        ->assertSet('step', ImportPagesPage::STEP_UPLOAD);
+
+    Storage::disk('local')->assertExists('private/never-import.zip');
+});
+
+it('rejects replayed Livewire migration uploads after the token is consumed', function (): void {
+    $site = Site::factory()->create();
+    $uuid = (string) Str::uuid();
+    $relativePath = 'migration-assistant/imports/staged/replayed-package.zip';
+    $absolutePath = Storage::disk('local')->path($relativePath);
+    mkdir(dirname($absolutePath), 0777, true);
+    writeImportPackage($absolutePath, $uuid, (int) $site->getKey(), '/replayed-package');
+
+    Livewire::test(ImportPagesPage::class)
+        ->set('data.archive', $relativePath)
+        ->set('data.archive_filename', 'replayed-package.zip')
+        ->set('data.workspace_name', 'Replay test')
+        ->call('parseAndAdvance')
+        ->assertSet('step', ImportPagesPage::STEP_REVIEW)
+        ->call('backToUpload')
+        ->set('data.archive', $relativePath)
+        ->call('parseAndAdvance')
+        ->assertSet('step', ImportPagesPage::STEP_UPLOAD);
 });

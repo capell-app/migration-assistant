@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Console\Commands;
 
 use Capell\MigrationAssistant\Actions\Imports\AdvancePageImportToValidationAction;
+use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
 use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\StartPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\StartSiteImportAction;
@@ -63,11 +64,11 @@ final class ImportMigrationAssistantPackageCommand extends Command
         }
 
         $storedArchivePath = $this->storeArchive($archivePath);
-        $state = [
+        $state = BindMigrationArchiveUploadAction::run([
             'archive' => $storedArchivePath,
             'archive_filename' => basename($archivePath),
             'workspace_name' => $this->stringOption('workspace-name') ?? __('capell-admin::exchanger.import_workspace_default_name'),
-        ];
+        ]);
 
         $startedState = $kind === ImportSessionKind::SiteImport
             ? StartSiteImportAction::run($state)
@@ -221,14 +222,9 @@ final class ImportMigrationAssistantPackageCommand extends Command
 
     private function storeArchive(string $archivePath): string
     {
-        $relativePath = config('migration-assistant.paths.imports', 'migration-assistant/imports');
-
-        if (! is_string($relativePath) || $relativePath === '') {
-            $relativePath = 'migration-assistant/imports';
-        }
-
-        $storedPath = trim($relativePath, '/') . '/' . Str::uuid() . '-' . basename($archivePath);
-        Storage::disk('local')->put($storedPath, file_get_contents($archivePath) ?: '');
+        $storedPath = BindMigrationArchiveUploadAction::STAGING_DIRECTORY . '/' . Str::uuid() . '-' . basename($archivePath);
+        $disk = config('migration-assistant.disk', 'local');
+        Storage::disk(is_string($disk) ? $disk : 'local')->put($storedPath, file_get_contents($archivePath) ?: '');
 
         return $storedPath;
     }

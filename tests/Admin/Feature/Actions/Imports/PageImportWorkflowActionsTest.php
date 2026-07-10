@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Actions\Imports\AdvancePageImportToValidationAction;
+use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
 use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\RefreshPageImportStatusAction;
 use Capell\MigrationAssistant\Actions\Imports\ResolvePageImportSessionAction;
@@ -166,7 +167,7 @@ function startActionImportWizard(string $archiveName, string $workspaceName, ?in
 {
     $site = Site::factory()->create(['name' => 'Action Site']);
     $pageUuid = (string) Str::uuid();
-    $relativePath = sprintf('exchanger/imports/%s', $archiveName);
+    $relativePath = sprintf('migration-assistant/imports/staged/%s', $archiveName);
 
     stageActionImportPackage(
         $relativePath,
@@ -176,11 +177,11 @@ function startActionImportWizard(string $archiveName, string $workspaceName, ?in
         $layoutId,
     );
 
-    $state = StartPageImportAction::run([
+    $state = StartPageImportAction::run(BindMigrationArchiveUploadAction::run([
         'archive' => $relativePath,
         'archive_filename' => $archiveName,
         'workspace_name' => $workspaceName,
-    ]);
+    ]));
 
     return [$state, $pageUuid, $site];
 }
@@ -231,15 +232,15 @@ it('moves upload state to review state after parsing a package', function (): vo
 it('moves site upload state to review state using a site import session', function (): void {
     $pageUuid = (string) Str::uuid();
     $sourceSiteId = 654;
-    $relativePath = 'exchanger/imports/site-action-review.zip';
+    $relativePath = 'migration-assistant/imports/staged/site-action-review.zip';
 
     stageActionSiteImportPackage($relativePath, $pageUuid, $sourceSiteId);
 
-    $state = StartSiteImportAction::run([
+    $state = StartSiteImportAction::run(BindMigrationArchiveUploadAction::run([
         'archive' => $relativePath,
         'archive_filename' => 'site-action-review.zip',
         'workspace_name' => 'Site Action Review',
-    ]);
+    ]));
 
     $session = actionImportSessionForState($state);
 
@@ -257,27 +258,27 @@ it('moves site upload state to review state using a site import session', functi
 
 it('rejects page imports when the uploaded package is a site export', function (): void {
     $pageUuid = (string) Str::uuid();
-    $relativePath = 'exchanger/imports/site-export-uploaded-as-page.zip';
+    $relativePath = 'migration-assistant/imports/staged/site-export-uploaded-as-page.zip';
 
     stageActionSiteImportPackage($relativePath, $pageUuid, 765);
 
-    expect(fn (): mixed => StartPageImportAction::run([
+    expect(fn (): mixed => StartPageImportAction::run(BindMigrationArchiveUploadAction::run([
         'archive' => $relativePath,
         'archive_filename' => 'site-export-uploaded-as-page.zip',
         'workspace_name' => 'Wrong Kind',
-    ]))->toThrow(RuntimeException::class, 'Expected a page-export package for page-import; got site-export.');
+    ])))->toThrow(RuntimeException::class, 'Expected a page-export package for page-import; got site-export.');
 
     expect(ImportSession::query()->count())->toBe(0);
 });
 
 it('does not create an import session when the uploaded archive cannot be parsed', function (): void {
-    Storage::disk('local')->put('exchanger/imports/broken-import.zip', 'not a zip');
+    Storage::disk('local')->put('migration-assistant/imports/staged/broken-import.zip', 'not a zip');
 
-    expect(fn (): mixed => StartPageImportAction::run([
-        'archive' => 'exchanger/imports/broken-import.zip',
+    expect(fn (): mixed => StartPageImportAction::run(BindMigrationArchiveUploadAction::run([
+        'archive' => 'migration-assistant/imports/staged/broken-import.zip',
         'archive_filename' => 'broken-import.zip',
         'workspace_name' => 'Broken Import',
-    ]))->toThrow(RuntimeException::class);
+    ])))->toThrow(RuntimeException::class);
 
     expect(ImportSession::query()->count())->toBe(0);
 });

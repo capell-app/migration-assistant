@@ -7,6 +7,7 @@ namespace Capell\MigrationAssistant\Filament\Pages;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Capell\MigrationAssistant\Actions\Imports\AdvancePageImportToValidationAction;
+use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
 use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\RefreshPageImportStatusAction;
 use Capell\MigrationAssistant\Actions\Imports\StartPageImportAction;
@@ -142,7 +143,7 @@ class ImportPagesPage extends Page implements HasForms
                         FileUpload::make('archive')
                             ->label(__('capell-admin::exchanger.package_archive'))
                             ->disk('local')
-                            ->directory('exchanger/imports')
+                            ->directory(BindMigrationArchiveUploadAction::STAGING_DIRECTORY)
                             ->acceptedFileTypes(['application/zip', 'application/x-zip-compressed'])
                             ->required()
                             ->storeFileNamesIn('archive_filename'),
@@ -176,7 +177,7 @@ class ImportPagesPage extends Page implements HasForms
     public function parseAndAdvance(): void
     {
         try {
-            $this->applyWizardState($this->startImport($this->data));
+            $this->applyWizardState($this->startImport(BindMigrationArchiveUploadAction::run($this->data)));
         } catch (Throwable $throwable) {
             if ($throwable->getMessage() === $this->uploadRequiredError()) {
                 Notification::make()->danger()->title(__('capell-admin::exchanger.upload_required'))->send();

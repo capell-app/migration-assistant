@@ -90,7 +90,7 @@ it('runs the site import wizard through to queued execution', function (): void 
     $pageUuid = (string) Str::uuid();
     $sourceSiteId = 654;
     $workspaceName = 'Site Import Workspace';
-    $relativePath = 'exchanger/imports/site-import-wizard.zip';
+    $relativePath = 'migration-assistant/imports/staged/site-import-wizard.zip';
 
     stageSiteImportWizardPackage($relativePath, $pageUuid, $sourceSiteId);
 

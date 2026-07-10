@@ -237,8 +237,7 @@ it('covers advance-to-validation decision sanitizers and guard branches', functi
 it('derives start page import helper values from upload state and review rows', function (): void {
     $action = new StartPageImportAction;
 
-    $archiveDiskPathFrom = migrationAssistantReflectionMethod(StartPageImportAction::class, 'archiveDiskPathFrom');
-    $sourceFilenameFrom = migrationAssistantReflectionMethod(StartPageImportAction::class, 'sourceFilenameFrom');
+    $archiveTokenFrom = migrationAssistantReflectionMethod(StartPageImportAction::class, 'archiveTokenFrom');
     $workspaceNameFrom = migrationAssistantReflectionMethod(StartPageImportAction::class, 'workspaceNameFrom');
     $pageDecisionsFromReviewRows = migrationAssistantReflectionMethod(StartPageImportAction::class, 'pageDecisionsFromReviewRows');
     $relationDecisionsFromResolveRows = migrationAssistantReflectionMethod(StartPageImportAction::class, 'relationDecisionsFromResolveRows');
@@ -290,18 +289,12 @@ it('derives start page import helper values from upload state and review rows', 
 
     throw_if($defaultWorkspaceName === '', RuntimeException::class, 'Expected default import workspace translation to be non-empty.');
 
-    expect($archiveDiskPathFrom->invoke($action, ['archive' => ['first' => 'exchanger/imports/pages.zip']]))
-        ->toBe('exchanger/imports/pages.zip')
-        ->and($archiveDiskPathFrom->invoke($action, ['archive' => 'exchanger/imports/direct.zip']))
-        ->toBe('exchanger/imports/direct.zip')
-        ->and($archiveDiskPathFrom->invoke($action, []))
+    expect($archiveTokenFrom->invoke($action, ['archive' => ['first' => 'upload-token']]))
+        ->toBe('upload-token')
+        ->and($archiveTokenFrom->invoke($action, ['archive' => 'direct-token']))
+        ->toBe('direct-token')
+        ->and($archiveTokenFrom->invoke($action, []))
         ->toBe('')
-        ->and($sourceFilenameFrom->invoke($action, ['archive_filename' => ['first' => 'pages.zip']]))
-        ->toBe('pages.zip')
-        ->and($sourceFilenameFrom->invoke($action, ['archive_filename' => 'direct.zip']))
-        ->toBe('direct.zip')
-        ->and($sourceFilenameFrom->invoke($action, ['archive_filename' => '']))
-        ->toBeNull()
         ->and($workspaceNameFrom->invoke($action, ['workspace_name' => 'Imported Workspace']))
         ->toBe('Imported Workspace')
         ->and($workspaceNameFrom->invoke($action, ['workspace_name' => '']))
