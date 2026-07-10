@@ -10,6 +10,7 @@ use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
 use Capell\Core\Models\Theme;
 use Capell\MigrationAssistant\Actions\ReclaimStaleImportSessionsAction;
+use Capell\MigrationAssistant\Contracts\ImportSessionExecutor;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Data\DependencyGraph;
 use Capell\MigrationAssistant\Data\PackageManifest;
@@ -26,6 +27,7 @@ use Capell\MigrationAssistant\Services\Import\MediaIngestService;
 use Capell\MigrationAssistant\Services\Import\PackageReader;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\SiteImportService;
+use Capell\MigrationAssistant\Support\ImportSessionExecutorRegistry;
 use Capell\Tests\Fixtures\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
@@ -106,6 +108,57 @@ it('fails safely when the initiator is deleted after dispatch', function (): voi
     $session->refresh();
 
     expect($session->status)->toBe(ImportSessionStatus::Failed)
+        ->and($session->failure_reason)->toBe(__('migration-assistant::imports.execution_actor_missing'));
+});
+
+it('does not invoke a registered import executor after its queued actor is revoked', function (): void {
+    Notification::fake();
+
+    $actor = User::factory()->create();
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'user_id' => $actor->getKey(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Queued,
+        'source_environment' => 'executor-requires-actor',
+        'source_package_path' => 'migration-assistant/imports/executor.zip',
+    ]);
+    $actor->delete();
+    $wasExecuted = false;
+    $executor = new class(function () use (&$wasExecuted): void {
+        $wasExecuted = true;
+    }) implements ImportSessionExecutor
+    {
+        public function __construct(private readonly Closure $onExecute) {}
+
+        public function supports(ImportSession $session): bool
+        {
+            return $session->source_environment === 'executor-requires-actor';
+        }
+
+        public function canRetry(ImportSession $session): bool
+        {
+            return true;
+        }
+
+        public function execute(ImportSession $session): void
+        {
+            ($this->onExecute)();
+        }
+    };
+    $registry = new ImportSessionExecutorRegistry;
+    $registry->register($executor);
+
+    (new ExecuteImportPlanJob((int) $session->getKey()))->handle(
+        resolve(PackageReader::class),
+        resolve(PageImportService::class),
+        resolve(MediaIngestService::class),
+        resolve(SiteImportService::class),
+        $registry,
+    );
+
+    expect($wasExecuted)->toBeFalse()
+        ->and($session->refresh()->status)->toBe(ImportSessionStatus::Failed)
         ->and($session->failure_reason)->toBe(__('migration-assistant::imports.execution_actor_missing'));
 });
 

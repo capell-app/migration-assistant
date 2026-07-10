@@ -7,6 +7,7 @@ namespace Capell\MigrationAssistant\Jobs;
 use Capell\MigrationAssistant\Actions\ClaimImportSessionForExecutionAction;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
+use Capell\MigrationAssistant\Actions\ReauthorizeImportSessionActorAction;
 use Capell\MigrationAssistant\Actions\ReauthorizeImportSessionExecutionAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
@@ -95,6 +96,8 @@ final class ExecuteImportPlanJob implements ShouldQueue
             $executor = ($executorRegistry ?? resolve(ImportSessionExecutorRegistry::class))->executorFor($session);
 
             if ($executor !== null) {
+                $actor = ReauthorizeImportSessionActorAction::run($session);
+                Auth::guard()->setUser($actor);
                 $executor->execute($session);
 
                 return;
