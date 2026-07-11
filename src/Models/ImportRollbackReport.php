@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 use Override;
 
 /**
@@ -45,8 +46,6 @@ class ImportRollbackReport extends Model
         'source_filename',
         'source_package_checksum',
         'created_models',
-        'provenance',
-        'provenance_signature',
         'summary',
         'manual_instructions',
         'executed_at',
@@ -67,13 +66,24 @@ class ImportRollbackReport extends Model
         return $this->belongsTo(ImportSession::class);
     }
 
+    protected static function booted(): void
+    {
+        static::updating(static function (self $report): void {
+            if ($report->isDirty(['uuid', 'import_session_id', 'provenance', 'provenance_signature'])) {
+                throw new LogicException('Rollback provenance cannot be changed after the report is created.');
+            }
+        });
+    }
+
     #[Override]
     protected function casts(): array
     {
         return [
-            'created_models' => 'array',
+            'source_filename' => 'encrypted',
+            'created_models' => 'encrypted:array',
             'provenance' => 'array',
-            'summary' => 'array',
+            'summary' => 'encrypted:array',
+            'manual_instructions' => 'encrypted',
             'executed_at' => 'immutable_datetime',
         ];
     }

@@ -10,6 +10,7 @@ use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Data\ExternalImportPreview;
+use Capell\MigrationAssistant\Data\ExternalPageImportTargetData;
 use Capell\MigrationAssistant\Data\Imports\ExternalPageImportExecutionResult;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
@@ -26,23 +27,28 @@ use RuntimeException;
 use Throwable;
 
 /**
- * @method static ExternalPageImportExecutionResult run(ExternalImportPreview $preview, array<string, mixed> $defaultPageAttributes = [], ?string $sourceFilename = null, ?string $targetLabel = null, ?ImportSession $existingSession = null, bool $finalize = true)
+ * @method static ExternalPageImportExecutionResult run(ExternalImportPreview $preview, ExternalPageImportTargetData|array<string, mixed> $defaultPageAttributes, ?string $sourceFilename = null, ?string $targetLabel = null, ?ImportSession $existingSession = null, bool $finalize = true)
  */
 final class ExecuteExternalPageImportAction
 {
     use AsAction;
 
     /**
-     * @param  array<string, mixed>  $defaultPageAttributes
+     * @param  ExternalPageImportTargetData|array<string, mixed>  $defaultPageAttributes
      */
     public function handle(
         ExternalImportPreview $preview,
-        array $defaultPageAttributes = [],
+        ExternalPageImportTargetData|array $defaultPageAttributes,
         ?string $sourceFilename = null,
         ?string $targetLabel = null,
         ?ImportSession $existingSession = null,
         bool $finalize = true,
     ): ExternalPageImportExecutionResult {
+        $authorizedTarget = AuthorizeExternalPageImportTargetAction::run(
+            $this->targetData($defaultPageAttributes),
+        );
+        $defaultPageAttributes = $authorizedTarget->pageAttributes();
+
         $this->assertPreviewCanExecute($preview, $defaultPageAttributes);
 
         $session = $existingSession ?? $this->createSession($preview, $sourceFilename, $targetLabel);
@@ -156,8 +162,8 @@ final class ExecuteExternalPageImportAction
             }
 
             $attributes = array_replace_recursive(
-                $defaultPageAttributes,
                 is_array($row['attributes'] ?? null) ? $row['attributes'] : [],
+                $defaultPageAttributes,
             );
             $missing = $this->missingRequiredPageAttributes($attributes);
 
@@ -172,6 +178,32 @@ final class ExecuteExternalPageImportAction
                 ]));
             }
         }
+    }
+
+    /**
+     * @param  ExternalPageImportTargetData|array<string, mixed>  $target
+     */
+    private function targetData(ExternalPageImportTargetData|array $target): ExternalPageImportTargetData
+    {
+        if ($target instanceof ExternalPageImportTargetData) {
+            return $target;
+        }
+
+        foreach (['site_id', 'layout_id', 'blueprint_id', 'language_id'] as $key) {
+            if (! is_numeric($target[$key] ?? null)) {
+                throw new RuntimeException((string) __('migration-assistant::imports.external_page_attributes_required', [
+                    'row' => '?',
+                    'attributes' => $key,
+                ]));
+            }
+        }
+
+        return new ExternalPageImportTargetData(
+            siteId: (int) $target['site_id'],
+            layoutId: (int) $target['layout_id'],
+            blueprintId: (int) $target['blueprint_id'],
+            languageId: (int) $target['language_id'],
+        );
     }
 
     /**
@@ -230,8 +262,8 @@ final class ExecuteExternalPageImportAction
 
             $rowNumber = is_numeric($row['row'] ?? null) ? (int) $row['row'] : count($payload) + 1;
             $attributes = array_replace_recursive(
-                $defaultPageAttributes,
                 is_array($row['attributes'] ?? null) ? $row['attributes'] : [],
+                $defaultPageAttributes,
             );
             $sourceParentId = $this->sourceParentIdFrom($attributes);
 

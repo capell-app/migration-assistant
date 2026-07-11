@@ -34,7 +34,7 @@ class SendImportSessionNotifications
     {
         $this->dispatch(
             $event->session,
-            new ImportFailedNotification($event->session, $event->reason),
+            new ImportFailedNotification($event->session),
             'failed',
         );
     }

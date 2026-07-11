@@ -97,7 +97,8 @@
                 "page.import.publish-live",
                 "import-session.view",
                 "import-session.cancel",
-                "import-session.retry"
+                "import-session.retry",
+                "import-session.rollback"
             ]
         },
         {
@@ -134,7 +135,8 @@
         "page.import.publish-live",
         "import-session.view",
         "import-session.cancel",
-        "import-session.retry"
+        "import-session.retry",
+        "import-session.rollback"
     ],
     "capabilities": [
         "migration-assistant",
@@ -195,7 +197,8 @@
                 "page.import.publish-live",
                 "import-session.view",
                 "import-session.cancel",
-                "import-session.retry"
+                "import-session.retry",
+                "import-session.rollback"
             ]
         }
     },

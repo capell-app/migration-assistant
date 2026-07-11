@@ -67,6 +67,7 @@ it('creates an import rollback report from an execution report', function (): vo
         'uuid' => (string) Str::uuid(),
         'kind' => ImportSessionKind::PageImport,
         'status' => ImportSessionStatus::Completed,
+        'source_filename' => 'customer-secret.zip',
         'source_filename' => 'pages.zip',
         'source_package_checksum' => 'sha256-example',
         'executed_at' => now(),
@@ -94,6 +95,27 @@ it('creates an import rollback report from an execution report', function (): vo
         ->and($rollbackReport->manual_instructions)->toContain('roll back');
 });
 
+it('keeps signed rollback provenance immutable after report creation', function (): void {
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Completed,
+        'source_filename' => 'pages.zip',
+        'executed_at' => now(),
+    ]);
+    $page = Page::factory()->create();
+    $rollbackReport = CreateImportRollbackReportAction::run(
+        $session,
+        new ImportExecutionReport(1, 0, [$page->getKey()], []),
+    );
+
+    expect(function () use ($rollbackReport): void {
+        $rollbackReport->forceFill([
+            'provenance' => ['version' => 999],
+        ])->save();
+    })->toThrow(LogicException::class, 'cannot be changed');
+});
+
 it('encrypts session and rollback diagnostic payloads at rest', function (): void {
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),
@@ -116,6 +138,9 @@ it('encrypts session and rollback diagnostic payloads at rest', function (): voi
         ->and((string) $rawSession->failure_reason)->not->toContain('provider-secret')
         ->and($rawReport)->not->toBeNull()
         ->and((string) $rawReport->summary)->not->toContain('report-secret')
+        ->and((string) $rawReport->source_filename)->not->toContain('customer-secret.zip')
+        ->and((string) $rawReport->created_models)->not->toBe('[]')
+        ->and((string) $rawReport->manual_instructions)->not->toBe($report->manual_instructions)
         ->and($session->refresh()->target_url)->toBe('https://example.test/import?token=url-secret')
         ->and($report->refresh()->summary)->toHaveKey('errors')
         ->and(serialize(new ExecuteImportPlanJob((int) $session->getKey())))

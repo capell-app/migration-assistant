@@ -8,13 +8,17 @@ use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Data\ExportOptions;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
+use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Export\PageExportService;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
+use Capell\Tests\Fixtures\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 it('shows import session status from the console', function (): void {
     $session = ImportSession::query()->create([
@@ -90,7 +94,7 @@ it('shows rollback report data from the console', function (): void {
 });
 
 it('executes rollback reports from the console', function (): void {
-    $actor = test()->actingAsAdmin()->authenticatedUser();
+    $actor = migrationAssistantConsoleRollbackActor();
     $page = Page::factory()->create();
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),
@@ -123,6 +127,36 @@ it('executes rollback reports from the console', function (): void {
         ->and($result['matched'] ?? null)->toBe(1)
         ->and($result['deleted'] ?? null)->toBe(1)
         ->and(Page::query()->whereKey($page->getKey())->exists())->toBeFalse();
+});
+
+it('returns a failure code when a rollback report has been tampered with', function (): void {
+    $actor = migrationAssistantConsoleRollbackActor();
+    $page = Page::factory()->create();
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(),
+        'user_id' => $actor->getKey(),
+        'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Completed,
+        'source_filename' => 'pages.zip',
+        'executed_at' => now(),
+    ]);
+    $report = CreateImportRollbackReportAction::run(
+        $session,
+        new ImportExecutionReport(1, 0, [migrationAssistantConsoleModelIntKey($page)], []),
+    );
+    $provenance = $report->provenance ?? [];
+    $provenance['entries'][0]['id'] = 999999;
+    $report->forceFill(['provenance' => $provenance])->saveQuietly();
+
+    $exitCode = Artisan::call('migration-assistant:rollback-execute', [
+        'session' => $session->uuid,
+        '--actor' => $actor->getKey(),
+        '--json' => true,
+    ]);
+
+    expect($exitCode)->toBe(1)
+        ->and(migrationAssistantConsoleJsonObject()['rejected'] ?? null)->toBeTrue()
+        ->and(Page::query()->whereKey($page->getKey())->exists())->toBeTrue();
 });
 
 it('exports page packages from the console', function (): void {
@@ -247,4 +281,14 @@ function migrationAssistantConsoleString(mixed $value): string
     return is_string($value) || is_int($value) || is_float($value)
         ? (string) $value
         : '';
+}
+
+function migrationAssistantConsoleRollbackActor(): User
+{
+    Permission::findOrCreate(MigrationAssistantPermission::ImportSessionRollback->value);
+    $actor = User::factory()->create();
+    $actor->assignRole(Role::findOrCreate('super_admin'));
+    $actor->givePermissionTo(MigrationAssistantPermission::ImportSessionRollback->value);
+
+    return $actor;
 }

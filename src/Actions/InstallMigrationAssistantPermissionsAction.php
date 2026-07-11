@@ -35,6 +35,8 @@ class InstallMigrationAssistantPermissionsAction
 
     public const string PERMISSION_IMPORT_SESSION_RETRY = 'import-session.retry';
 
+    public const string PERMISSION_IMPORT_SESSION_ROLLBACK = 'import-session.rollback';
+
     /**
      * @return list<string>
      */

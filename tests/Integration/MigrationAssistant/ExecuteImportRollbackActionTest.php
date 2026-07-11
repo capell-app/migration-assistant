@@ -8,13 +8,16 @@ use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Actions\ExecuteImportRollbackAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
+use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Models\ImportRollbackAudit;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
-use Illuminate\Foundation\Auth\User;
+use Capell\Tests\Fixtures\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function (): void {
     Gate::before(static fn (): bool => true);
@@ -122,20 +125,40 @@ it('requires an actor with access to the target site before deleting signed impo
     $page = Page::factory()->create();
     $report = migrationAssistantRollbackReport($page, migrationAssistantRollbackActor());
     $unauthorizedActor = User::factory()->create();
+    $unauthorizedActor->givePermissionTo(MigrationAssistantPermission::ImportSessionRollback->value);
 
     $result = ExecuteImportRollbackAction::run($report, actor: $unauthorizedActor);
 
-    expect($result->matched)->toBe(1)
+    expect($result->matched)->toBe(0)
         ->and($result->deleted)->toBe(0)
+        ->and($result->rejected)->toBeTrue()
         ->and($result->skipped[0]['reason'] ?? null)->toBe('unauthorized')
         ->and(Page::query()->whereKey($page->getKey())->exists())->toBeTrue();
 });
 
-function migrationAssistantRollbackActor(): User
-{
-    $actor = test()->actingAsAdmin()->authenticatedUser();
+it('requires explicit rollback authority even when the actor may delete the target model', function (): void {
+    $actor = migrationAssistantRollbackActor(canRollback: false);
+    $page = Page::factory()->create();
+    $report = migrationAssistantRollbackReport($page, $actor);
 
-    assert($actor instanceof User);
+    $result = ExecuteImportRollbackAction::run($report, actor: $actor);
+
+    expect($result->matched)->toBe(0)
+        ->and($result->deleted)->toBe(0)
+        ->and($result->rejected)->toBeTrue()
+        ->and($result->skipped[0]['reason'] ?? null)->toBe('unauthorized')
+        ->and(Page::query()->whereKey($page->getKey())->exists())->toBeTrue();
+});
+
+function migrationAssistantRollbackActor(bool $canRollback = true): User
+{
+    Permission::findOrCreate(MigrationAssistantPermission::ImportSessionRollback->value);
+    $actor = User::factory()->create();
+    $actor->assignRole(Role::findOrCreate('super_admin'));
+
+    if ($canRollback) {
+        $actor->givePermissionTo(MigrationAssistantPermission::ImportSessionRollback->value);
+    }
 
     return $actor;
 }

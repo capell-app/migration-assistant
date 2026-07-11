@@ -110,6 +110,7 @@ it('declares migration assistant install surfaces and contribution traceability'
         'import-session.view',
         'import-session.cancel',
         'import-session.retry',
+        'import-session.rollback',
     ];
 
     expect($manifest)

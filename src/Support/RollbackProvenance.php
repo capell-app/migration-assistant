@@ -104,6 +104,11 @@ final class RollbackProvenance
         return $query->first();
     }
 
+    public static function isAllowedType(string $type): bool
+    {
+        return self::hasTargetType($type);
+    }
+
     /**
      * @return array{type: string, id: int|string, site_id: int, created_at: string, updated_at: string}
      */

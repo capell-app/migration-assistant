@@ -11,6 +11,7 @@ use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Notifications\ImportCompletedNotification;
 use Capell\MigrationAssistant\Notifications\ImportFailedNotification;
 use Capell\Tests\Fixtures\Models\User;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -57,19 +58,40 @@ it('notifies the initiating user on a failed import', function (): void {
 
     $initiator = User::factory()->create();
     $session = makeImportSessionForNotification($initiator->getKey());
+    $session->forceFill(['failure_reason' => 'checksum mismatch token=notification-secret'])->save();
 
-    (new SendImportSessionNotifications)->handleFailed(new ImportFailed($session, 'checksum mismatch'));
+    (new SendImportSessionNotifications)->handleFailed(new ImportFailed($session, 'checksum mismatch token=notification-secret'));
 
     Notification::assertSentTo(
         $initiator,
         ImportFailedNotification::class,
         function (ImportFailedNotification $notification, array $channels): bool {
             $payload = $notification->toArray(new User);
-            expect($payload['failure_reason'])->toBe('checksum mismatch');
+            expect($notification)->toBeInstanceOf(ShouldBeEncrypted::class)
+                ->and($payload)->toBe([
+                    'import_session_id' => $payload['import_session_id'],
+                    'outcome' => 'failed',
+                ])
+                ->and(serialize($notification))->not->toContain('notification-secret');
 
             return true;
         },
     );
+});
+
+it('queues completed notifications with only an opaque session reference', function (): void {
+    $session = makeImportSessionForNotification();
+    $session->forceFill([
+        'result_summary' => ['private_url' => 'https://example.test/import?token=summary-secret'],
+    ])->save();
+    $notification = new ImportCompletedNotification($session);
+
+    expect($notification)->toBeInstanceOf(ShouldBeEncrypted::class)
+        ->and($notification->toArray(new User))->toBe([
+            'import_session_id' => $session->getKey(),
+            'outcome' => 'completed',
+        ])
+        ->and(serialize($notification))->not->toContain('summary-secret');
 });
 
 it('honours channel preferences and sends only the database channel when mail is disabled', function (): void {

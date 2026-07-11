@@ -7,10 +7,14 @@ namespace Capell\MigrationAssistant\Filament\Resources\ImportSessions\Tables;
 use Capell\Admin\Filament\Components\Tables\Columns\DateColumn;
 use Capell\Admin\Filament\Components\Tables\Columns\IdentifierColumn;
 use Capell\Admin\Filament\Contracts\TableConfigurator;
+use Capell\MigrationAssistant\Actions\BuildImportRecoveryStatusAction;
+use Capell\MigrationAssistant\Actions\ReclaimStaleImportSessionsAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Models\ImportSession;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -23,6 +27,24 @@ class ImportSessionsTable implements TableConfigurator
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns(static::getTableColumns())
+            ->headerActions([
+                Action::make('recover_stale_imports')
+                    ->label(function (): string {
+                        $status = BuildImportRecoveryStatusAction::run();
+
+                        return (string) __('migration-assistant::recovery.imports_action', [
+                            'count' => $status->staleCount,
+                            'age' => $status->oldestAgeMinutes ?? 0,
+                        ]);
+                    })
+                    ->visible(fn (): bool => BuildImportRecoveryStatusAction::run()->staleCount > 0)
+                    ->authorize(fn (): bool => auth()->user()?->can('viewAny', ImportSession::class) === true)
+                    ->requiresConfirmation()
+                    ->action(function (): void {
+                        $count = ReclaimStaleImportSessionsAction::run();
+                        Notification::make()->title(__('migration-assistant::recovery.imports_recovered', ['count' => $count]))->success()->send();
+                    }),
+            ])
             ->filters([
                 SelectFilter::make('kind')
                     ->label(__('capell-admin::exchanger.kind'))
