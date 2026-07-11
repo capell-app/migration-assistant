@@ -110,7 +110,11 @@
     "database": {
         "migrations": true,
         "settings": false,
-        "requiredTables": ["import_sessions", "import_rollback_reports", "import_rollback_audits"]
+        "requiredTables": [
+            "import_sessions",
+            "import_rollback_reports",
+            "import_rollback_audits"
+        ]
     },
     "commands": {
         "install": null,

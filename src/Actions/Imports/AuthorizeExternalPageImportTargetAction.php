@@ -10,8 +10,8 @@ use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Data\ExternalPageImportTargetData;
-use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Lorisleiva\Actions\Concerns\AsAction;
 use RuntimeException;
 

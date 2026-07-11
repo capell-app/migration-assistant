@@ -14,12 +14,15 @@ use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
 use Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider;
 use Capell\Tests\AbstractTestCase;
+use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Composer\InstalledVersions;
 use Livewire\LivewireServiceProvider;
 use Override;
 
 abstract class MigrationAssistantTestCase extends AbstractTestCase
 {
+    use CreatesAdminUser;
+
     protected function getPackageServiceName(): string
     {
         return 'capell-migration-assistant';

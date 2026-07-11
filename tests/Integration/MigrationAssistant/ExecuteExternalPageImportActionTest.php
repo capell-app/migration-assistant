@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
+use Capell\Admin\Support\SiteScope;
 use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Actions\Imports\ExecuteExternalPageImportAction;
-use Capell\MigrationAssistant\Data\ExternalPageImportTargetData;
-use Capell\MigrationAssistant\Data\ExternalImportReadResult;
 use Capell\MigrationAssistant\Data\ExternalImportPreview;
+use Capell\MigrationAssistant\Data\ExternalImportReadResult;
+use Capell\MigrationAssistant\Data\ExternalPageImportTargetData;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
@@ -18,10 +19,15 @@ use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Assert;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function (): void {
+    Notification::fake();
     $this->actingAsAdmin();
 });
 
@@ -85,7 +91,7 @@ it('rejects external previews without an authenticated actor before writing', fu
     auth()->logout();
 
     ExecuteExternalPageImportAction::run($preview, migrationAssistantExternalTarget($site, $layout, $type));
-})->throws(\Illuminate\Auth\Access\AuthorizationException::class, 'authenticated actor');
+})->throws(AuthorizationException::class, 'authenticated actor');
 
 it('rejects external previews before writing when page references are missing', function (): void {
     $type = Blueprint::factory()->page()->create();
@@ -164,7 +170,20 @@ it('rejects a target site outside the actor scope and ignores row supplied targe
     $authorizedBlueprint = Blueprint::factory()->page()->create();
     $otherBlueprint = Blueprint::factory()->page()->create();
     $actor = $this->actingAsUser()->authenticatedUser();
-    $actor->assignedSiteIds = collect([(int) $authorizedSite->getKey()]);
+    $role = Role::findOrCreate('site_editor');
+    $roleAssignmentsTable = (string) config('permission.table_names.model_has_roles', 'model_has_roles');
+    $teamColumn = (string) config('permission.column_names.team_foreign_key', 'team_id');
+    DB::table($roleAssignmentsTable)->insert([
+        $teamColumn => $authorizedSite->getKey(),
+        'role_id' => $role->getKey(),
+        'model_type' => $actor->getMorphClass(),
+        'model_id' => $actor->getKey(),
+    ]);
+    $actor->unsetRelation('roles');
+
+    expect($actor->getAssignedSiteIds()->all())->toBe([$authorizedSite->getKey()])
+        ->and(SiteScope::isGlobalActor($actor))->toBeFalse()
+        ->and(SiteScope::actorCanUseSite($actor, $otherSite))->toBeFalse();
 
     $preview = new ExternalImportPreview(
         target: 'page',
@@ -185,7 +204,7 @@ it('rejects a target site outside the actor scope and ignores row supplied targe
     expect(fn (): mixed => ExecuteExternalPageImportAction::run(
         $preview,
         migrationAssistantExternalTarget($otherSite, $otherLayout, $otherBlueprint),
-    ))->toThrow(\Illuminate\Auth\Access\AuthorizationException::class, 'not authorized');
+    ))->toThrow(AuthorizationException::class, 'not authorized');
 
     $result = ExecuteExternalPageImportAction::run(
         $preview,
