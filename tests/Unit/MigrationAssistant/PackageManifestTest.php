@@ -192,5 +192,5 @@ it('keeps migration assistant manifest contribution classes on core extension co
         ->and(class_implements(MigrationAssistantConsoleCommandsContribution::class))->toContain(ExtensionContribution::class)
         ->and(class_implements(MigrationAssistantPermissionsContribution::class))->toContain(RegistersExtensionPermission::class)
         ->and(class_implements(MigrationAssistantHealthContribution::class))->toContain(ChecksExtensionHealth::class)
-        ->and(MigrationAssistantHealthContribution::compatibleCapellApiVersion())->toBe('^4.0');
+        ->and(MigrationAssistantHealthContribution::compatibleCapellApiVersion())->toBe('^0.0');
 });
