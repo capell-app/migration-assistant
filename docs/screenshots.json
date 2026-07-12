@@ -1,0 +1,86 @@
+{
+    "package": "migration-assistant",
+    "composerName": "capell-app/migration-assistant",
+    "generatedFor": "deployment-screenshot-runner",
+    "requiresInstalledPackage": true,
+    "outputDirectory": "packages/migration-assistant/docs/screenshots",
+    "entries": [
+        {
+            "id": "import-session-index-or-host-admin-surface",
+            "title": "Import session index or host admin surface.",
+            "package": "migration-assistant",
+            "surface": "admin",
+            "targetType": "admin-surface",
+            "target": null,
+            "required": false,
+            "notes": "Optional Beta evidence target. The current file is shared by several unproven claims; replace it with an independently captured import-session surface before using it as release evidence.",
+            "useCase": "An administrator reviews import sessions and their current migration state.",
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface-dark.png"
+        },
+        {
+            "id": "import-validation-summary",
+            "title": "Import validation summary.",
+            "package": "migration-assistant",
+            "surface": "admin",
+            "targetType": "admin-surface",
+            "target": null,
+            "required": false,
+            "notes": "Optional Beta evidence target. The current file duplicates other Migration Assistant placeholders; replace it with an independently captured validation summary before using it as release evidence.",
+            "useCase": "An operator reviews validation errors and warnings before executing an import.",
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/import-validation-summary.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-validation-summary-dark.png"
+        },
+        {
+            "id": "recovery-page-imports",
+            "title": "Recovery page imports.",
+            "package": "migration-assistant",
+            "surface": "admin",
+            "targetType": "admin-surface",
+            "target": "ImportPagesPage",
+            "required": true,
+            "notes": "Show recovery-center page import validation, relation resolution, execution state, and rollback reporting.",
+            "useCase": "An operator imports pages through Recovery Center and reviews validation, relation resolution, execution, and rollback state.",
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/recovery-page-imports.png"
+        },
+        {
+            "id": "relation-resolution-review",
+            "title": "Relation resolution review.",
+            "package": "migration-assistant",
+            "surface": "admin",
+            "targetType": "admin-surface",
+            "target": null,
+            "required": false,
+            "notes": "Optional Beta evidence target. The current file duplicates other Migration Assistant placeholders; replace it with an independently captured relation review before using it as release evidence.",
+            "useCase": "An operator maps imported references to existing Capell records before execution.",
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/relation-resolution-review.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/relation-resolution-review-dark.png"
+        },
+        {
+            "id": "import-rollback-report-view",
+            "title": "Rollback report view.",
+            "package": "migration-assistant",
+            "surface": "admin",
+            "targetType": "admin-surface",
+            "target": null,
+            "required": false,
+            "notes": "Optional Beta evidence target. The current file duplicates other Migration Assistant placeholders; replace it with an independently captured rollback report before using it as release evidence.",
+            "useCase": "An operator reviews what rollback changed and what manual cleanup remains.",
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/import-rollback-report-view.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-rollback-report-view-dark.png"
+        },
+        {
+            "id": "package-export-intent-screen",
+            "title": "Package export intent screen.",
+            "package": "migration-assistant",
+            "surface": "admin",
+            "targetType": "admin-surface",
+            "target": null,
+            "required": false,
+            "notes": "Optional Beta evidence target. The current file duplicates other Migration Assistant placeholders; replace it with an independently captured export-intent screen before using it as release evidence.",
+            "useCase": "An operator prepares an export package and confirms included resources before download.",
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/package-export-intent-screen.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/package-export-intent-screen-dark.png"
+        }
+    ]
+}

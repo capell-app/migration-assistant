@@ -1,0 +1,90 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'external_target_actor_required' => 'An authenticated actor is required to select an external import target.',
+    'external_target_blueprint_invalid' => 'The selected page blueprint is invalid for this import target.',
+    'external_target_language_invalid' => 'The selected language does not belong to the import site.',
+    'external_target_layout_invalid' => 'The selected layout does not belong to the import site.',
+    'external_target_site_not_authorized' => 'You are not authorized to import pages into the selected site.',
+    'enums' => [
+        'import_session_kind' => [
+            'page-import' => 'Page import',
+            'site-import' => 'Site import',
+        ],
+        'import_session_status' => [
+            'draft' => 'Draft',
+            'parsed' => 'Parsed',
+            'mapped' => 'Mapped',
+            'validated' => 'Validated',
+            'queued' => 'Queued',
+            'running' => 'Running',
+            'completed' => 'Completed',
+            'failed' => 'Failed',
+            'abandoned' => 'Abandoned',
+        ],
+        'package_type' => [
+            'page-export' => 'Page export',
+            'site-export' => 'Site export',
+        ],
+    ],
+    'expected_package_type' => 'Expected a :expected package for :kind; got :actual.',
+    'external_default_target_label' => 'External page import',
+    'external_page_attributes_required' => 'External import row :row is missing required Capell page attributes: :attributes.',
+    'external_page_target_required' => 'External import execution only supports page targets; got :target.',
+    'external_preview_has_errors' => 'External import preview has errors and cannot be executed: :errors.',
+    'execution_actor_inactive' => 'The import initiator no longer has an active account.',
+    'execution_actor_missing' => 'The import initiator no longer exists.',
+    'execution_permission_revoked' => 'The import initiator no longer has permission to import pages.',
+    'execution_site_access_revoked' => 'The import initiator no longer has access to every target site.',
+    'execution_target_drifted' => 'The import target changed or no longer exists.',
+    'execution_target_missing' => 'The import no longer has an authorized target site.',
+    'health' => [
+        'none' => 'none',
+        'ok' => 'ok',
+        'failed_status' => 'failed',
+        'package_reader' => [
+            'label' => 'Migration Assistant package reader',
+            'passed' => 'Package reader services, source readers, manifest validation, and size limits are ready.',
+            'failed' => 'Package reader is not ready. Missing services: :services. Missing tables: :tables. Invalid limits: :limits. Unsupported source readers: :extensions. Manifest validation: :manifest.',
+            'remediation' => 'Ensure MigrationAssistantServiceProvider registers the package reader, manifest validator, CSV/XML readers, and positive package size limits.',
+        ],
+        'rollback_report' => [
+            'label' => 'Migration Assistant rollback reports',
+            'passed' => 'Rollback report storage and model morph aliases are ready.',
+            'failed' => 'Rollback report support is not ready. Missing tables: :tables. Unregistered morph aliases: :aliases.',
+            'remediation' => 'Run the Migration Assistant migrations and ensure the rollback report model is registered with Capell.',
+        ],
+        'media_ingest' => [
+            'label' => 'Migration Assistant media ingest',
+            'passed' => 'A positive per-file media size limit is configured for checksum-verified media ingest.',
+            'failed' => 'No positive media size limit is configured; media ingest cannot enforce per-file limits.',
+            'remediation' => 'Set migration-assistant.limits.max_media_bytes to a positive byte count.',
+        ],
+        'storage_tables' => [
+            'label' => 'Migration Assistant storage tables',
+            'passed' => 'The import session and rollback report tables are present.',
+            'failed' => 'Missing tables: :tables.',
+            'remediation' => 'Run the Capell migrations to create the Migration Assistant storage tables.',
+        ],
+        'morph_aliases' => [
+            'label' => 'Migration Assistant model morph aliases',
+            'passed' => 'Import session and rollback report models are registered in the morph map.',
+            'failed' => 'Unregistered morph aliases: :aliases.',
+            'remediation' => 'Ensure MigrationAssistantServiceProvider registers the import models.',
+        ],
+        'source_readers' => [
+            'label' => 'Migration Assistant source readers',
+            'passed' => 'Source readers are registered for the CSV and XML formats.',
+            'failed' => 'No source reader is registered for: :extensions.',
+            'remediation' => 'Ensure MigrationAssistantServiceProvider registers the CSV and XML source readers.',
+        ],
+        'media_limit' => [
+            'label' => 'Migration Assistant media ingest limit',
+            'passed' => 'A positive per-file media size limit is configured for media ingest.',
+            'failed' => 'No positive media size limit is configured; media ingest cannot enforce per-file limits.',
+            'remediation' => 'Set migration-assistant.limits.max_media_bytes to a positive byte count.',
+        ],
+    ],
+];

@@ -1,0 +1,260 @@
+{
+    "manifest-version": 3,
+    "name": "capell-app/migration-assistant",
+    "slug": "migration-assistant",
+    "displayName": "Migration Assistant",
+    "kind": "package",
+    "capellApiVersion": "^0.0.1",
+    "version": "0.0.x-dev",
+    "description": "Migration Assistant is Capell's content-migration engine: upload a content package or flat file (CSV/XML), review and resolve incoming relations, run a dry-run validation, then execute on a queue with live progress. Every run produces a rollback report capturing exactly which records were created, so nothing is a one-way door. It is also the foundation other importers build on — the WordPress Importer plugs straight in — making it the first thing you install when bringing existing pages into Capell. Media is deduplicated by checksum and large payloads are size-guarded, so imports stay safe and idempotent.",
+    "product": {
+        "group": "Capell Operations",
+        "tier": "premium",
+        "bundle": "operations"
+    },
+    "namespace": "Capell\\MigrationAssistant",
+    "surfaces": ["admin", "console"],
+    "dependencies": {
+        "requires": ["capell-app/admin", "capell-app/core"],
+        "supports": [
+            "capell-app/media-library",
+            "capell-app/seo-suite",
+            "capell-app/site-discovery",
+            "capell-app/url-manager",
+            "capell-app/wordpress-importer"
+        ],
+        "conflicts": []
+    },
+    "providers": {
+        "metadata": [],
+        "install": [],
+        "runtime": [
+            "Capell\\MigrationAssistant\\Providers\\MigrationAssistantServiceProvider"
+        ],
+        "admin": [],
+        "frontend": []
+    },
+    "contributes": [
+        {
+            "type": "admin-page",
+            "class": "Capell\\MigrationAssistant\\Manifest\\ImportPagesPageContribution",
+            "pageClass": "Capell\\MigrationAssistant\\Filament\\Pages\\ImportPagesPage",
+            "labelKey": "capell-admin::exchanger.import_pages"
+        },
+        {
+            "type": "admin-page",
+            "class": "Capell\\MigrationAssistant\\Manifest\\ImportSitesPageContribution",
+            "pageClass": "Capell\\MigrationAssistant\\Filament\\Pages\\ImportSitesPage",
+            "labelKey": "capell-admin::exchanger.import_sites"
+        },
+        {
+            "type": "admin-resource",
+            "class": "Capell\\MigrationAssistant\\Manifest\\ImportSessionResourceContribution",
+            "resourceClass": "Capell\\MigrationAssistant\\Filament\\Resources\\ImportSessions\\ImportSessionResource"
+        },
+        {
+            "type": "model",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantModelsContribution",
+            "modelClasses": [
+                "Capell\\MigrationAssistant\\Models\\ImportSession",
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackReport",
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackAudit"
+            ]
+        },
+        {
+            "type": "configurator",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantConsoleCommandsContribution",
+            "commands": [
+                "migration-assistant:export",
+                "migration-assistant:import",
+                "migration-assistant:status",
+                "migration-assistant:reclaim-stale",
+                "migration-assistant:rollback-report",
+                "migration-assistant:rollback-execute"
+            ],
+            "commandClasses": [
+                "Capell\\MigrationAssistant\\Console\\Commands\\ExportMigrationAssistantPackageCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ImportMigrationAssistantPackageCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantStatusCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ReclaimStaleImportSessionsCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantRollbackReportCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\ExecuteMigrationAssistantRollbackCommand"
+            ]
+        },
+        {
+            "type": "scheduled-job",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantRecoveryScheduleContribution",
+            "command": "migration-assistant:reclaim-stale",
+            "frequency": "everyTenMinutes"
+        },
+        {
+            "type": "permission",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantPermissionsContribution",
+            "permissions": [
+                "page.export",
+                "page.import",
+                "page.import.update-shared-relations",
+                "page.import.publish-live",
+                "import-session.view",
+                "import-session.cancel",
+                "import-session.retry",
+                "import-session.rollback"
+            ]
+        },
+        {
+            "type": "health-check",
+            "class": "Capell\\MigrationAssistant\\Manifest\\MigrationAssistantHealthContribution",
+            "checkClass": "Capell\\MigrationAssistant\\Health\\MigrationAssistantHealthCheck"
+        }
+    ],
+    "database": {
+        "migrations": true,
+        "settings": false,
+        "requiredTables": [
+            "import_sessions",
+            "import_rollback_reports",
+            "import_rollback_audits"
+        ]
+    },
+    "commands": {
+        "install": null,
+        "setup": null,
+        "demo": null,
+        "doctor": null,
+        "status": "migration-assistant:status",
+        "export": "migration-assistant:export",
+        "import": "migration-assistant:import",
+        "rollback-report": "migration-assistant:rollback-report",
+        "rollback-execute": "migration-assistant:rollback-execute"
+    },
+    "settings": [],
+    "permissions": [
+        "page.export",
+        "page.import",
+        "page.import.update-shared-relations",
+        "page.import.publish-live",
+        "import-session.view",
+        "import-session.cancel",
+        "import-session.retry",
+        "import-session.rollback"
+    ],
+    "capabilities": [
+        "migration-assistant",
+        "migration-assistant-admin",
+        "migration-assistant-console"
+    ],
+    "security": {
+        "riskTier": "standard",
+        "publicSurface": {
+            "routeNames": [],
+            "auth": "none",
+            "csrfExemptRoutes": [],
+            "signedRoutes": [],
+            "tokenizedRoutes": [],
+            "webhookRoutes": [],
+            "throttledRoutes": []
+        },
+        "sensitiveData": {
+            "encryptedFields": [
+                "import_sessions.target_url",
+                "import_sessions.source_package_path",
+                "import_sessions.working_dir",
+                "import_sessions.manifest",
+                "import_sessions.resolution_map",
+                "import_sessions.page_decisions",
+                "import_sessions.relation_decisions",
+                "import_sessions.validation_results",
+                "import_sessions.result_summary",
+                "import_sessions.failure_reason",
+                "import_rollback_reports.source_filename",
+                "import_rollback_reports.created_models",
+                "import_rollback_reports.summary",
+                "import_rollback_reports.manual_instructions"
+            ],
+            "hashedTokenFields": [],
+            "redactedOutputClasses": [],
+            "plaintextJustifications": [
+                "Import jobs serialize only import_sessions.id; session content is loaded from encrypted storage at execution time."
+            ]
+        },
+        "publicOutput": {
+            "cacheSafe": true,
+            "forbidAuthoringSurface": true,
+            "forbidSecrets": true,
+            "forbidPublicBladeQueries": true
+        },
+        "externalHttpClients": {
+            "requiresTimeouts": false,
+            "requiresSecretRedaction": false,
+            "clients": []
+        },
+        "adminSurface": {
+            "authorization": "permissions",
+            "permissions": [
+                "page.export",
+                "page.import",
+                "page.import.update-shared-relations",
+                "page.import.publish-live",
+                "import-session.view",
+                "import-session.cancel",
+                "import-session.retry",
+                "import-session.rollback"
+            ]
+        }
+    },
+    "performance": {
+        "frontendRenderBudgetMs": 0,
+        "adminQueryBudget": 120,
+        "cacheTags": [],
+        "cacheSafety": {
+            "cacheable": false,
+            "variesBy": [],
+            "sensitiveOutput": false,
+            "invalidationSources": [],
+            "queueInvalidation": false
+        }
+    },
+    "healthChecks": [
+        {
+            "key": "migration-assistant.package-reader",
+            "label": "Import packages pass manifest, integrity, and size validation",
+            "class": "Capell\\MigrationAssistant\\Health\\MigrationAssistantHealthCheck",
+            "severity": "critical",
+            "surface": "admin"
+        },
+        {
+            "key": "migration-assistant.rollback-report",
+            "label": "Rollback reports include all created records captured by the import execution report",
+            "class": "Capell\\MigrationAssistant\\Health\\MigrationAssistantHealthCheck",
+            "severity": "critical",
+            "surface": "admin"
+        },
+        {
+            "key": "migration-assistant.media-ingest",
+            "label": "Media import validates checksums, limits, and idempotent reuse",
+            "class": "Capell\\MigrationAssistant\\Health\\MigrationAssistantHealthCheck",
+            "severity": "warning",
+            "surface": "admin"
+        }
+    ],
+    "commercial": {
+        "proposedLicense": "paid",
+        "requestedCertification": "first-party",
+        "supportPolicy": "priority",
+        "privateDocsRequested": true
+    },
+    "marketplace": {
+        "summary": "Safely move pages and media into Capell — preview every change, validate before you write, and keep a rollback report for every import.",
+        "screenshots": [
+            {
+                "path": "docs/assets/marketplace/extension-card.jpg",
+                "alt": "Migration Assistant extension preview image",
+                "caption": "Migration Assistant extension preview"
+            }
+        ],
+        "categories": ["admin", "console", "operations"]
+    },
+    "contributionTraceability": {
+        "deferredContributions": []
+    }
+}

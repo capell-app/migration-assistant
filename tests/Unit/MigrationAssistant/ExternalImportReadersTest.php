@@ -1,0 +1,99 @@
+<?php
+
+declare(strict_types=1);
+
+use Capell\MigrationAssistant\Services\Import\CsvReader;
+use Capell\MigrationAssistant\Services\Import\ExternalImportPreviewBuilder;
+use Capell\MigrationAssistant\Services\Import\FieldMapper;
+use Capell\MigrationAssistant\Services\Import\XmlReader;
+use Capell\MigrationAssistant\Support\ImportSourceRegistry;
+use Capell\MigrationAssistant\Tests\Fixtures\PathAwareXmlFixtureReader;
+
+it('reads CSV imports into source rows', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-csv-');
+    file_put_contents($path, "title,slug,content\nAbout,about,Hello world\n");
+
+    $result = (new CsvReader)->read($path);
+
+    expect($result->sourceType)->toBe('csv')
+        ->and($result->columns)->toBe(['title', 'slug', 'content'])
+        ->and($result->rows)->toBe([
+            ['title' => 'About', 'slug' => 'about', 'content' => 'Hello world'],
+        ]);
+});
+
+it('reads XML imports into flattened source rows', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-xml-');
+    file_put_contents($path, <<<'XML'
+<?xml version="1.0"?>
+<items>
+    <item><title>About</title><meta><slug>about</slug></meta></item>
+    <item><title>Contact</title><meta><slug>contact</slug></meta></item>
+</items>
+XML);
+
+    $result = (new XmlReader)->read($path);
+
+    expect($result->sourceType)->toBe('xml')
+        ->and($result->columns)->toContain('title', 'meta.slug')
+        ->and($result->rows[0]['title'])->toBe('About')
+        ->and($result->rows[0]['meta.slug'])->toBe('about');
+});
+
+it('rejects XML imports with doctype declarations', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-xml-');
+    file_put_contents($path, <<<'XML'
+<?xml version="1.0"?>
+<!DOCTYPE items [
+    <!ENTITY laugh "laugh">
+]>
+<items>
+    <item><title>&laugh;</title></item>
+</items>
+XML);
+
+    (new XmlReader)->read($path);
+})->throws(RuntimeException::class, 'DOCTYPE');
+
+it('maps external rows and builds a preview summary', function (): void {
+    $mapped = (new FieldMapper)->map([
+        'post_title' => 'Imported page',
+        'post_content' => '<p>Hello</p>',
+    ]);
+
+    expect($mapped['name'])->toBe('Imported page')
+        ->and($mapped['meta']['content'])->toBe('<p>Hello</p>');
+
+    $path = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-preview-');
+    file_put_contents($path, "title,content\nPreview,Body\n");
+
+    $preview = (new ExternalImportPreviewBuilder)->build((new CsvReader)->read($path));
+
+    expect($preview->creates)->toBe(1)
+        ->and($preview->errors)->toBe([])
+        ->and($preview->rows[0]['attributes']['name'])->toBe('Preview');
+});
+
+it('prefers path-aware source readers only when a readable path matches', function (): void {
+    $registry = new ImportSourceRegistry;
+    $registry->register(new PathAwareXmlFixtureReader);
+    $registry->register(new XmlReader);
+
+    $matchingPath = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-fixture-xml-') . '.xml';
+    file_put_contents($matchingPath, <<<'XML'
+<?xml version="1.0"?>
+<fixture />
+XML);
+
+    $genericPath = tempnam(sys_get_temp_dir(), 'capell-migration-assistant-generic-xml-') . '.xml';
+    file_put_contents($genericPath, <<<'XML'
+<?xml version="1.0"?>
+<items>
+    <item><title>Generic</title></item>
+</items>
+XML);
+
+    expect($registry->readerFor($matchingPath))->toBeInstanceOf(PathAwareXmlFixtureReader::class)
+        ->and($registry->readerFor($genericPath))->toBeInstanceOf(XmlReader::class)
+        ->and($registry->readerFor('unreadable.xml'))->toBeInstanceOf(PathAwareXmlFixtureReader::class);
+});

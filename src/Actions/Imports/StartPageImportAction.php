@@ -1,0 +1,206 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Capell\MigrationAssistant\Actions\Imports;
+
+use Capell\MigrationAssistant\Actions\BuildPageReviewRowsAction;
+use Capell\MigrationAssistant\Actions\BuildRelationResolveRowsAction;
+use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
+use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
+use Capell\MigrationAssistant\Data\PageReviewRow;
+use Capell\MigrationAssistant\Data\RelationResolveRow;
+use Capell\MigrationAssistant\Enums\ImportSessionKind;
+use Capell\MigrationAssistant\Enums\ImportSessionStatus;
+use Capell\MigrationAssistant\Enums\PackageType;
+use Capell\MigrationAssistant\Models\ImportSession;
+use Capell\MigrationAssistant\Services\Import\ManifestValidator;
+use Capell\MigrationAssistant\Services\Import\PackageReader;
+use Capell\MigrationAssistant\Services\Import\ResolutionMapBuilder;
+use Capell\MigrationAssistant\Services\Import\Resolvers\RelationMatchResolverRegistry;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Lorisleiva\Actions\Concerns\AsAction;
+use RuntimeException;
+use Throwable;
+
+/**
+ * @method static PageImportWizardStateData run(array<string, mixed> $state, ImportSessionKind $kind = ImportSessionKind::PageImport)
+ */
+final class StartPageImportAction
+{
+    use AsAction;
+
+    public const string ERROR_UPLOAD_REQUIRED = 'upload_required';
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    public function handle(array $state, ImportSessionKind $kind = ImportSessionKind::PageImport): PageImportWizardStateData
+    {
+        $token = $this->archiveTokenFrom($state);
+        throw_if($token === '', RuntimeException::class, self::ERROR_UPLOAD_REQUIRED);
+        $upload = BindMigrationArchiveUploadAction::consume($token);
+        $archiveDiskPath = (string) $upload['path'];
+
+        try {
+            $package = (new PackageReader)->read(Storage::disk($this->diskName())->path($archiveDiskPath));
+
+            $validation = (new ManifestValidator)->validate($package->manifest);
+            if (! $validation->isValid()) {
+                throw new RuntimeException(implode(' / ', $validation->errors));
+            }
+
+            $this->assertPackageTypeMatchesImportKind($package->manifest, $kind);
+
+            $resolutionMap = (new ResolutionMapBuilder(
+                resolve(RelationMatchResolverRegistry::class),
+            ))->build($package->payload);
+
+            $reviewRows = resolve(BuildPageReviewRowsAction::class)->run($package, $resolutionMap);
+            $resolveRows = BuildRelationResolveRowsAction::run($resolutionMap);
+
+            $target = resolve(PageImportTargetResolver::class)->create($this->workspaceNameFrom($state));
+
+            $session = ImportSession::query()->create([
+                'uuid' => (string) Str::uuid(),
+                'user_id' => auth()->id(),
+                'target_type' => $target->type,
+                'target_id' => is_int($target->id) ? $target->id : null,
+                'target_label' => $target->label,
+                'target_url' => $target->url,
+                'kind' => $kind,
+                'status' => $resolutionMap->hasUnresolved() ? ImportSessionStatus::Mapped : ImportSessionStatus::Parsed,
+                'source_filename' => is_string($upload['filename'] ?? null) ? $upload['filename'] : null,
+                'source_package_path' => $archiveDiskPath,
+                'manifest' => $package->manifest,
+                'resolution_map' => $resolutionMap->toArray(),
+            ]);
+
+            if ($target->legacyWorkspaceId !== null) {
+                $session->setAttribute('workspace_id', $target->legacyWorkspaceId);
+                $session->save();
+            }
+
+            return new PageImportWizardStateData(
+                step: 'review',
+                sessionId: (int) $session->getKey(),
+                reviewRows: array_map(
+                    static fn (PageReviewRow $row): array => $row->toArray(),
+                    $reviewRows,
+                ),
+                pageDecisions: $this->pageDecisionsFromReviewRows($reviewRows),
+                resolveRows: array_values(array_map(
+                    static fn (RelationResolveRow $row): array => $row->toArray(),
+                    $resolveRows,
+                )),
+                relationDecisions: $this->relationDecisionsFromResolveRows($resolveRows),
+                notice: $resolutionMap->hasUnresolved()
+                ? PageImportWizardStateData::NOTICE_UNRESOLVED_REFERENCES
+                : null,
+                noticeCount: $resolutionMap->hasUnresolved() ? count($resolutionMap->unresolved) : null,
+            );
+        } catch (Throwable $throwable) {
+            Storage::disk($this->diskName())->delete($archiveDiskPath);
+
+            throw $throwable;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function archiveTokenFrom(array $state): string
+    {
+        if (is_array($state['archive'] ?? null)) {
+            return (string) array_values($state['archive'])[0];
+        }
+
+        return (string) ($state['archive'] ?? '');
+    }
+
+    private function diskName(): string
+    {
+        $disk = config('migration-assistant.disk', 'local');
+
+        return is_string($disk) ? $disk : 'local';
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function workspaceNameFrom(array $state): string
+    {
+        $workspaceName = (string) ($state['workspace_name'] ?? '');
+
+        if ($workspaceName !== '') {
+            return $workspaceName;
+        }
+
+        return sprintf(
+            '%s — %s',
+            __('capell-admin::exchanger.import_workspace_default_name'),
+            now()->format('Y-m-d H:i'),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $manifest
+     */
+    private function assertPackageTypeMatchesImportKind(array $manifest, ImportSessionKind $kind): void
+    {
+        $actualPackageType = $manifest['package_type'] ?? null;
+        $expectedPackageType = $this->expectedPackageTypeFor($kind);
+
+        if ($actualPackageType === $expectedPackageType->value) {
+            return;
+        }
+
+        throw new RuntimeException((string) __('migration-assistant::imports.expected_package_type', [
+            'actual' => is_string($actualPackageType) ? $actualPackageType : 'unknown',
+            'expected' => $expectedPackageType->value,
+            'kind' => $kind->value,
+        ]));
+    }
+
+    private function expectedPackageTypeFor(ImportSessionKind $kind): PackageType
+    {
+        return match ($kind) {
+            ImportSessionKind::PageImport => PackageType::PageExport,
+            ImportSessionKind::SiteImport => PackageType::SiteExport,
+        };
+    }
+
+    /**
+     * @param  list<PageReviewRow>  $reviewRows
+     * @return array<string, array{action: string}>
+     */
+    private function pageDecisionsFromReviewRows(array $reviewRows): array
+    {
+        $decisions = [];
+
+        foreach ($reviewRows as $row) {
+            $decisions[$row->uuid] = ['action' => $row->suggestedAction];
+        }
+
+        return $decisions;
+    }
+
+    /**
+     * @param  list<RelationResolveRow>  $resolveRows
+     * @return array<string, array{action: string, target_id?: int|string|null}>
+     */
+    private function relationDecisionsFromResolveRows(array $resolveRows): array
+    {
+        $decisions = [];
+
+        foreach ($resolveRows as $row) {
+            $decisions[$row->ref] = [
+                'action' => $row->suggestedAction,
+                'target_id' => $row->topMatch['local_id'] ?? null,
+            ];
+        }
+
+        return $decisions;
+    }
+}
