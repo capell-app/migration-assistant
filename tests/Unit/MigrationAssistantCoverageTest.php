@@ -112,7 +112,7 @@ it('declares migration assistant admin pages tables and health compatibility', f
         ->and((new ImportSitesPage)->getTitle())->toBeString()
         ->and(ImportSessionResource::getModel())->toBe(ImportSession::class)
         ->and(ImportSessionResource::getPages())->toHaveKeys(['index', 'view'])
-        ->and(MigrationAssistantHealthCheck::compatibleCapellApiVersion())->toBe('^0.0');
+        ->and(MigrationAssistantHealthCheck::compatibleCapellApiVersion())->toBe('^4.0');
 });
 
 it('keeps relation resolution blocked until required decisions are usable', function (): void {
