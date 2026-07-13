@@ -53,7 +53,7 @@ function writeImportPackage(string $absolutePath, string $uuid, int $siteId, str
 
 beforeEach(function (): void {
     migrationAssistantActingAsImportPagesUser();
-    Storage::fake('local');
+    $this->fakeMigrationAssistantLocalStorage();
     Queue::fake();
 });
 

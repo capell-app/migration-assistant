@@ -65,7 +65,7 @@ function stageExecutePackage(string $relativePath, string $uuid, int $siteId, st
 
 beforeEach(function (): void {
     migrationAssistantActingAsImportPagesUser();
-    Storage::fake('local');
+    $this->fakeMigrationAssistantLocalStorage();
     Queue::fake();
 });
 

@@ -82,7 +82,7 @@ function stageSiteImportWizardPackage(string $relativePath, string $pageUuid, in
 
 beforeEach(function (): void {
     migrationAssistantActingAsImportPagesUser();
-    Storage::fake('local');
+    $this->fakeMigrationAssistantLocalStorage();
     Queue::fake();
 });
 

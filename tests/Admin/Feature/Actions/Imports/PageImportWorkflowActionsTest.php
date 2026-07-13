@@ -211,7 +211,7 @@ function actionImportSessionForState(PageImportWizardStateData $state): ImportSe
 
 beforeEach(function (): void {
     migrationAssistantActingAsImportPagesUser();
-    Storage::fake('local');
+    $this->fakeMigrationAssistantLocalStorage();
     Queue::fake();
 });
 

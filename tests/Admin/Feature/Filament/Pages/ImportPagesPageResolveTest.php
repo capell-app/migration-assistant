@@ -113,7 +113,7 @@ function stageResolvePackage(string $relativePath, string $pageUuid, int $siteId
 
 beforeEach(function (): void {
     migrationAssistantActingAsImportPagesUser();
-    Storage::fake('local');
+    $this->fakeMigrationAssistantLocalStorage();
     Queue::fake();
 });
 
