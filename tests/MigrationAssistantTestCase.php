@@ -16,6 +16,7 @@ use Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider;
 use Capell\Tests\AbstractTestCase;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Composer\InstalledVersions;
+use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
 use Livewire\LivewireServiceProvider;
 use Override;
@@ -32,14 +33,11 @@ abstract class MigrationAssistantTestCase extends AbstractTestCase
     protected function fakeMigrationAssistantLocalStorage(): void
     {
         $testToken = getenv('TEST_TOKEN') ?: 'sequential';
+        $storageToken = substr(hash('sha256', $testToken . '|' . getmypid()), 0, 16);
 
-        Storage::fake('local', [
-            'root' => storage_path(sprintf(
-                'framework/testing/disks/migration-assistant-local-%s-%d',
-                $testToken,
-                getmypid(),
-            )),
-        ]);
+        ParallelTesting::resolveTokenUsing(static fn (): string => $storageToken);
+
+        Storage::fake('local');
     }
 
     /** @return array<int, class-string> */
