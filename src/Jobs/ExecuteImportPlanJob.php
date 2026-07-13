@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
+use UnexpectedValueException;
 
 /**
  * Runs the page-import execute phase on the migration-assistant queue. The
@@ -97,6 +98,11 @@ final class ExecuteImportPlanJob implements ShouldQueue
 
             if ($executor !== null) {
                 $actor = ReauthorizeImportSessionActorAction::run($session);
+
+                if (! $actor instanceof Authenticatable) {
+                    throw new UnexpectedValueException('Expected an authorized import actor.');
+                }
+
                 Auth::guard()->setUser($actor);
                 $executor->execute($session);
 

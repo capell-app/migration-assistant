@@ -67,7 +67,6 @@ it('creates an import rollback report from an execution report', function (): vo
         'uuid' => (string) Str::uuid(),
         'kind' => ImportSessionKind::PageImport,
         'status' => ImportSessionStatus::Completed,
-        'source_filename' => 'customer-secret.zip',
         'source_filename' => 'pages.zip',
         'source_package_checksum' => 'sha256-example',
         'executed_at' => now(),
@@ -130,6 +129,16 @@ it('encrypts session and rollback diagnostic payloads at rest', function (): voi
     $rawSession = DB::table('import_sessions')->where('id', $session->getKey())->first();
     $rawReport = DB::table('import_rollback_reports')->where('id', $report->getKey())->first();
 
+    if (! is_object($rawSession) || ! is_object($rawReport)) {
+        throw new LogicException('Expected persisted import session and rollback report rows.');
+    }
+
+    $sessionKey = $session->getKey();
+
+    if (! is_int($sessionKey)) {
+        throw new LogicException('Expected an integer import session key.');
+    }
+
     expect($rawSession)
         ->not->toBeNull()
         ->and((string) $rawSession->target_url)->not->toContain('url-secret')
@@ -143,7 +152,7 @@ it('encrypts session and rollback diagnostic payloads at rest', function (): voi
         ->and((string) $rawReport->manual_instructions)->not->toBe($report->manual_instructions)
         ->and($session->refresh()->target_url)->toBe('https://example.test/import?token=url-secret')
         ->and($report->refresh()->summary)->toHaveKey('errors')
-        ->and(serialize(new ExecuteImportPlanJob((int) $session->getKey())))
+        ->and(serialize(new ExecuteImportPlanJob($sessionKey)))
         ->not->toContain('url-secret')
         ->not->toContain('manifest-secret');
 });

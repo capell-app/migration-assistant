@@ -14,6 +14,7 @@ use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
 use Capell\Tests\Fixtures\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
@@ -46,6 +47,11 @@ it('fails closed when rollback provenance is tampered, including in dry runs', f
     $page = Page::factory()->create();
     $report = migrationAssistantRollbackReport($page, $actor);
     $provenance = $report->provenance ?? [];
+
+    if (! is_array($provenance) || ! is_array($provenance['entries'] ?? null) || ! is_array($provenance['entries'][0] ?? null)) {
+        throw new LogicException('Expected rollback provenance entries.');
+    }
+
     $provenance['entries'][0]['id'] = 999999;
 
     $report->forceFill(['provenance' => $provenance])->saveQuietly();
@@ -177,7 +183,18 @@ function migrationAssistantRollbackReport(Page $page, User $actor): ImportRollba
     return CreateImportRollbackReportAction::run($session, new ImportExecutionReport(
         pagesCreated: 1,
         pagesSkipped: 0,
-        createdPageIds: [$page->getKey()],
+        createdPageIds: [migrationAssistantRollbackModelKey($page)],
         errors: [],
     ));
+}
+
+function migrationAssistantRollbackModelKey(Model $model): int|string
+{
+    $key = $model->getKey();
+
+    if (! is_int($key) && ! is_string($key)) {
+        throw new LogicException('Expected a scalar model key.');
+    }
+
+    return $key;
 }

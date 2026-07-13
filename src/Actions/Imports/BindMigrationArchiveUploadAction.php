@@ -22,6 +22,7 @@ final class BindMigrationArchiveUploadAction
 
     private const int TOKEN_TTL_SECONDS = 1800;
 
+    /** @return array{actor_session: string, path: string, filename: string|null} */
     public static function consume(string $token): array
     {
         throw_unless(Str::isUuid($token), RuntimeException::class, self::ERROR_INVALID_UPLOAD);
@@ -33,14 +34,20 @@ final class BindMigrationArchiveUploadAction
             throw_unless($lock->get(), RuntimeException::class, self::ERROR_INVALID_UPLOAD);
             $upload = Cache::pull($action->cacheKey($token));
         } finally {
-            optional($lock)->release();
+            $lock->release();
         }
 
         throw_unless(is_array($upload) && ($upload['actor_session'] ?? null) === $action->actorSessionHash(), RuntimeException::class, self::ERROR_INVALID_UPLOAD);
         $path = $upload['path'] ?? null;
         throw_unless(is_string($path) && $action->isOwnedPath($path) && Storage::disk($action->diskName())->exists($path), RuntimeException::class, self::ERROR_INVALID_UPLOAD);
 
-        return $upload;
+        $filename = $upload['filename'] ?? null;
+
+        return [
+            'actor_session' => $upload['actor_session'],
+            'path' => $path,
+            'filename' => is_string($filename) ? $filename : null,
+        ];
     }
 
     public static function isCanonicalUploadPath(string $path): bool
@@ -48,7 +55,10 @@ final class BindMigrationArchiveUploadAction
         return str_starts_with($path, self::UPLOAD_DIRECTORY . '/') && ! str_contains($path, '..');
     }
 
-    /** @param array<string, mixed> $state @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
     public function handle(array $state): array
     {
         $stagedPath = $this->pathFrom($state['archive'] ?? null);
@@ -81,7 +91,14 @@ final class BindMigrationArchiveUploadAction
 
     private function actorSessionHash(): string
     {
-        return hash_hmac('sha256', (string) auth()->id() . '|' . session()->getId(), (string) config('app.key'));
+        $actorId = auth()->id();
+        $applicationKey = config('app.key');
+
+        return hash_hmac(
+            'sha256',
+            (is_int($actorId) || is_string($actorId) ? $actorId : '') . '|' . session()->getId(),
+            is_string($applicationKey) ? $applicationKey : '',
+        );
     }
 
     private function cacheKey(string $token): string
@@ -101,7 +118,9 @@ final class BindMigrationArchiveUploadAction
 
     private function pathFrom(mixed $value): string
     {
-        return is_array($value) ? (string) array_values($value)[0] : (string) $value;
+        $path = is_array($value) ? array_values($value)[0] ?? null : $value;
+
+        return is_string($path) ? $path : '';
     }
 
     private function filenameFrom(mixed $value): ?string

@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use JsonException;
 use Lorisleiva\Actions\Concerns\AsAction;
+use UnexpectedValueException;
 
 /**
  * Revalidates the queued import's original actor against live account,
@@ -69,17 +70,19 @@ final class ReauthorizeImportSessionExecutionAction
             return;
         }
 
+        $attributes = $actor->getAttributes();
+
         foreach (['is_active', 'active'] as $attribute) {
-            if ($actor->getAttribute($attribute) === false) {
+            if (array_key_exists($attribute, $attributes) && $attributes[$attribute] === false) {
                 throw $this->denied('execution_actor_inactive');
             }
         }
 
-        if ($actor->getAttribute('disabled_at') !== null || $actor->getAttribute('deactivated_at') !== null) {
+        if (($attributes['disabled_at'] ?? null) !== null || ($attributes['deactivated_at'] ?? null) !== null) {
             throw $this->denied('execution_actor_inactive');
         }
 
-        $status = $actor->getAttribute('status');
+        $status = $attributes['status'] ?? null;
         $status = $status instanceof BackedEnum ? $status->value : $status;
 
         if (is_string($status) && in_array(mb_strtolower($status), ['disabled', 'inactive', 'suspended', 'blocked'], true)) {
@@ -177,7 +180,15 @@ final class ReauthorizeImportSessionExecutionAction
         }
 
         $siteIds = array_values(array_unique($siteIds));
-        $sites = Site::query()->whereKey($siteIds)->get()->keyBy(static fn (Site $site): int|string => $site->getKey());
+        $sites = Site::query()->whereKey($siteIds)->get()->keyBy(static function (Site $site): int|string {
+            $key = $site->getKey();
+
+            if (! is_int($key) && ! is_string($key)) {
+                throw new UnexpectedValueException('Expected a scalar site key.');
+            }
+
+            return $key;
+        });
 
         if ($sites->count() !== count($siteIds)) {
             throw $this->denied('execution_target_drifted');
@@ -192,7 +203,8 @@ final class ReauthorizeImportSessionExecutionAction
     private function targetSiteId(array $descriptor, ResolutionMap $resolutionMap): int|string|null
     {
         $sharedRelations = is_array($descriptor['shared_relations'] ?? null) ? $descriptor['shared_relations'] : [];
-        $siteReference = $sharedRelations['site']['ref'] ?? null;
+        $siteRelation = is_array($sharedRelations['site'] ?? null) ? $sharedRelations['site'] : [];
+        $siteReference = $siteRelation['ref'] ?? null;
 
         if (is_string($siteReference)) {
             return $resolutionMap->localIdFor($siteReference);

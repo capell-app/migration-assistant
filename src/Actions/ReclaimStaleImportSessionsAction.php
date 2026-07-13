@@ -43,7 +43,11 @@ final class ReclaimStaleImportSessionsAction
                 continue;
             }
 
-            dispatch(new ExecuteImportPlanJob((int) $sessionId));
+            if (! is_int($sessionId)) {
+                continue;
+            }
+
+            dispatch(new ExecuteImportPlanJob($sessionId));
             $reclaimed++;
         }
 

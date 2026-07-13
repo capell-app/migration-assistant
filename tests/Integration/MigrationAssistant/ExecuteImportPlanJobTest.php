@@ -82,7 +82,7 @@ it('marks the session failed when source path is empty', function (): void {
     $session->refresh();
     expect($session->status)->toBe(ImportSessionStatus::Failed)
         ->and($session->failure_reason)->toContain('source package')
-        ->and((int) $session->getAttribute('updated_by'))->toBe((int) $initiator->getKey())
+        ->and($session->getAttribute('updated_by'))->toBeNull()
         ->and(Auth::id())->toBeNull();
 });
 
@@ -91,7 +91,7 @@ it('fails safely when the initiator is deleted after dispatch', function (): voi
 
     $site = Site::factory()->create();
     $initiator = migrationAssistantGlobalQueueActor();
-    $archiveRelativePath = 'migration-assistant/imports/deleted-actor.zip';
+    $archiveRelativePath = 'migration-assistant/imports/uploads/test-session/deleted-actor.zip';
     writePageImportPackageForJob(Storage::disk('local')->path($archiveRelativePath), (int) $site->getKey());
 
     $session = ImportSession::query()->create([
@@ -122,7 +122,7 @@ it('does not invoke a registered import executor after its queued actor is revok
         'kind' => ImportSessionKind::PageImport,
         'status' => ImportSessionStatus::Queued,
         'source_environment' => 'executor-requires-actor',
-        'source_package_path' => 'migration-assistant/imports/executor.zip',
+        'source_package_path' => 'migration-assistant/imports/uploads/test-session/executor.zip',
     ]);
     $actor->delete();
     $wasExecuted = false;
@@ -168,18 +168,19 @@ it('fails safely when the import permission is revoked after dispatch', function
 
     $site = Site::factory()->create();
     $initiator = migrationAssistantGlobalQueueActor();
-    $archiveRelativePath = 'migration-assistant/imports/revoked-permission.zip';
+    $archiveRelativePath = 'migration-assistant/imports/uploads/test-session/revoked-permission.zip';
     writePageImportPackageForJob(Storage::disk('local')->path($archiveRelativePath), (int) $site->getKey());
 
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),
         'user_id' => $initiator->getKey(),
-        'kind' => ImportSessionKind::PageImport,
+        'kind' => ImportSessionKind::SiteImport,
         'status' => ImportSessionStatus::Queued,
         'source_package_path' => $archiveRelativePath,
     ]);
 
     $initiator->revokePermissionTo(MigrationAssistantPermission::PageImport->value);
+    $initiator->removeRole('super_admin');
 
     executeImportPlanJob($session);
 
@@ -199,7 +200,7 @@ it('fails safely when the initiator loses target site access after dispatch', fu
     $role->syncPermissions([$permission]);
     $initiator = User::factory()->create();
     $initiator->assignRoleForSite($site, $role);
-    $archiveRelativePath = 'migration-assistant/imports/revoked-site-access.zip';
+    $archiveRelativePath = 'migration-assistant/imports/uploads/test-session/revoked-site-access.zip';
     writePageImportPackageForJob(Storage::disk('local')->path($archiveRelativePath), (int) $site->getKey());
 
     $session = ImportSession::query()->create([
@@ -225,7 +226,7 @@ it('fails safely when the persisted import target has drifted', function (): voi
 
     $site = Site::factory()->create();
     $initiator = migrationAssistantGlobalQueueActor();
-    $archiveRelativePath = 'migration-assistant/imports/target-drift.zip';
+    $archiveRelativePath = 'migration-assistant/imports/uploads/test-session/target-drift.zip';
     writePageImportPackageForJob(Storage::disk('local')->path($archiveRelativePath), (int) $site->getKey());
     app()->instance(PageImportTargetResolver::class, new class implements PageImportTargetResolver
     {
@@ -265,7 +266,7 @@ it('marks running sessions failed when the worker reports a job failure', functi
         'uuid' => (string) Str::uuid(),
         'kind' => ImportSessionKind::PageImport,
         'status' => ImportSessionStatus::Running,
-        'source_package_path' => 'migration-assistant/imports/running.zip',
+        'source_package_path' => 'migration-assistant/imports/uploads/test-session/running.zip',
     ]);
 
     (new ExecuteImportPlanJob((int) $session->getKey()))->failed(new RuntimeException('worker timed out'));
@@ -283,7 +284,7 @@ it('requeues stale running sessions abandoned by terminated workers', function (
         'uuid' => (string) Str::uuid(),
         'kind' => ImportSessionKind::PageImport,
         'status' => ImportSessionStatus::Running,
-        'source_package_path' => 'migration-assistant/imports/stale.zip',
+        'source_package_path' => 'migration-assistant/imports/uploads/test-session/stale.zip',
     ]);
     $stale->forceFill(['updated_at' => now()->subMinutes(31)])->saveQuietly();
 
@@ -291,7 +292,7 @@ it('requeues stale running sessions abandoned by terminated workers', function (
         'uuid' => (string) Str::uuid(),
         'kind' => ImportSessionKind::PageImport,
         'status' => ImportSessionStatus::Running,
-        'source_package_path' => 'migration-assistant/imports/recent.zip',
+        'source_package_path' => 'migration-assistant/imports/uploads/test-session/recent.zip',
     ]);
 
     $status = BuildImportRecoveryStatusAction::run();
@@ -340,7 +341,7 @@ it('executes site import sessions with unresolved site refs that are created fro
     $pageType = Blueprint::factory()->page()->create();
     $sourceSiteId = 991;
     $sourcePageId = 992;
-    $archiveRelativePath = 'migration-assistant/imports/site-job-test.zip';
+    $archiveRelativePath = 'migration-assistant/imports/uploads/test-session/site-job-test.zip';
     $archiveAbsolutePath = Storage::disk('local')->path($archiveRelativePath);
 
     writeImportPackageForJob($archiveAbsolutePath, [
@@ -436,7 +437,7 @@ it('executes site import sessions with unresolved site refs that are created fro
 it('fails site import sessions when malformed site relation refs mask unresolved page refs', function (): void {
     Notification::fake();
 
-    $archiveRelativePath = 'migration-assistant/imports/malformed-site-ref-job-test.zip';
+    $archiveRelativePath = 'migration-assistant/imports/uploads/test-session/malformed-site-ref-job-test.zip';
     $archiveAbsolutePath = Storage::disk('local')->path($archiveRelativePath);
 
     writeImportPackageForJob($archiveAbsolutePath, [
@@ -465,7 +466,7 @@ it('fails site import sessions when malformed site relation refs mask unresolved
     $failedForUnresolvedRefs = false;
 
     try {
-        (new ExecuteImportPlanJob((int) $session->getKey()))->handle(
+        (new ExecuteImportPlanJob(executeImportPlanSessionKey($session)))->handle(
             resolve(PackageReader::class),
             resolve(PageImportService::class),
             resolve(MediaIngestService::class),
@@ -526,6 +527,7 @@ function writePageImportPackageForJob(string $archivePath, int $siteId): void
 
 function migrationAssistantGlobalQueueActor(): User
 {
+    Permission::findOrCreate(MigrationAssistantPermission::PageImport->value);
     $actor = User::factory()->create();
     $actor->assignRole('super_admin');
     $actor->givePermissionTo(MigrationAssistantPermission::PageImport->value);
@@ -535,10 +537,21 @@ function migrationAssistantGlobalQueueActor(): User
 
 function executeImportPlanJob(ImportSession $session): void
 {
-    (new ExecuteImportPlanJob((int) $session->getKey()))->handle(
+    (new ExecuteImportPlanJob(executeImportPlanSessionKey($session)))->handle(
         resolve(PackageReader::class),
         resolve(PageImportService::class),
         resolve(MediaIngestService::class),
         resolve(SiteImportService::class),
     );
+}
+
+function executeImportPlanSessionKey(ImportSession $session): int
+{
+    $key = $session->getKey();
+
+    if (! is_int($key)) {
+        throw new LogicException('Expected an integer import session key.');
+    }
+
+    return $key;
 }

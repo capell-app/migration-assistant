@@ -13,6 +13,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use RuntimeException;
 use Throwable;
+use UnexpectedValueException;
 
 /**
  * Delivered when an {@see ImportSession} finishes with a successful
@@ -28,7 +29,13 @@ class ImportCompletedNotification extends Notification implements ShouldBeEncryp
 
     public function __construct(ImportSession $session)
     {
-        $this->importSessionId = (int) $session->getKey();
+        $sessionKey = $session->getKey();
+
+        if (! is_int($sessionKey)) {
+            throw new UnexpectedValueException('Expected an integer import session key.');
+        }
+
+        $this->importSessionId = $sessionKey;
     }
 
     /** @return array<int, string> */
@@ -70,7 +77,7 @@ class ImportCompletedNotification extends Notification implements ShouldBeEncryp
         $summary = is_array($summary) ? $summary : [];
         $pages = $summary['pages_created'] ?? $summary['pages'] ?? 0;
 
-        return ['pages' => is_int($pages) ? $pages : (int) $pages];
+        return ['pages' => is_int($pages) ? $pages : (is_string($pages) && ctype_digit($pages) ? (int) $pages : 0)];
     }
 
     private function resolveSessionUrl(): string

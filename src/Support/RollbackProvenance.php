@@ -33,7 +33,13 @@ final class RollbackProvenance
         $entries = [];
 
         foreach ($report->createdModels() as $createdModel) {
-            $model = self::findModel($createdModel['class'], $createdModel['id']);
+            $modelClass = $createdModel['class'];
+
+            if (! is_subclass_of($modelClass, Model::class)) {
+                throw new LogicException('Rollback provenance target must be an Eloquent model.');
+            }
+
+            $model = self::findModel($modelClass, $createdModel['id']);
 
             if (! $model instanceof Model) {
                 throw new LogicException('Rollback provenance can only be created for persisted allowlisted import targets.');

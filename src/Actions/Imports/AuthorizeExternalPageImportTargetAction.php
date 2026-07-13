@@ -12,6 +12,7 @@ use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Data\ExternalPageImportTargetData;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Model;
 use Lorisleiva\Actions\Concerns\AsAction;
 use RuntimeException;
 
@@ -38,7 +39,7 @@ final class AuthorizeExternalPageImportTargetAction
         }
 
         $layout = Layout::query()->find($requestedTarget->layoutId);
-        if (! $layout instanceof Layout || ($layout->site_id !== null && (int) $layout->site_id !== (int) $site->getKey())) {
+        if (! $layout instanceof Layout || ($layout->site_id !== null && $layout->site_id !== $this->integerKey($site))) {
             throw new RuntimeException((string) __('migration-assistant::imports.external_target_layout_invalid'));
         }
 
@@ -52,11 +53,22 @@ final class AuthorizeExternalPageImportTargetAction
         }
 
         return new ExternalPageImportTargetData(
-            siteId: (int) $site->getKey(),
-            layoutId: (int) $layout->getKey(),
-            blueprintId: (int) $blueprint->getKey(),
+            siteId: $this->integerKey($site),
+            layoutId: $this->integerKey($layout),
+            blueprintId: $this->integerKey($blueprint),
             languageId: $requestedTarget->languageId,
         );
+    }
+
+    private function integerKey(Model $model): int
+    {
+        $key = $model->getKey();
+
+        if (! is_int($key)) {
+            throw new RuntimeException('Expected an integer model key.');
+        }
+
+        return $key;
     }
 
     private function siteSupportsLanguage(Site $site, int $languageId): bool

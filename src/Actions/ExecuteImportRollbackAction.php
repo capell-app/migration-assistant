@@ -13,11 +13,11 @@ use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Support\RollbackProvenance;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Throwable;
+use UnexpectedValueException;
 
 /**
  * @method static RollbackExecutionResultData run(ImportRollbackReport $report, ?Authenticatable $actor = null, bool $dryRun = false)
@@ -33,10 +33,15 @@ final class ExecuteImportRollbackAction
     ): RollbackExecutionResultData {
         return DB::transaction(function () use ($report, $actor, $dryRun): RollbackExecutionResultData {
             $actor = $this->freshActor($actor);
+            $reportKey = $this->scalarKey($report);
             $lockedReport = ImportRollbackReport::query()
                 ->with('importSession')
                 ->lockForUpdate()
-                ->findOrFail($report->getKey());
+                ->find($reportKey);
+
+            if (! $lockedReport instanceof ImportRollbackReport) {
+                throw new UnexpectedValueException('Rollback report no longer exists.');
+            }
             $provenance = is_array($lockedReport->provenance) ? $lockedReport->provenance : [];
 
             if (! $this->hasValidProvenance($lockedReport, $provenance)) {
@@ -200,7 +205,7 @@ final class ExecuteImportRollbackAction
 
             $assignedSiteIds = $actor->getAssignedSiteIds();
 
-            if (! $assignedSiteIds instanceof Collection || ! $assignedSiteIds->contains($siteId)) {
+            if (! $assignedSiteIds->contains($siteId)) {
                 return false;
             }
 
@@ -298,9 +303,16 @@ final class ExecuteImportRollbackAction
      */
     private function skip(array $entry, string $reason): array
     {
+        $type = $entry['type'] ?? null;
+        $id = $entry['id'] ?? null;
+
+        if (! is_string($type) || (! is_int($id) && ! is_string($id))) {
+            throw new UnexpectedValueException('Expected a validated rollback entry.');
+        }
+
         return [
-            'type' => (string) $entry['type'],
-            'id' => $entry['id'],
+            'type' => $type,
+            'id' => $id,
             'reason' => $reason,
         ];
     }
@@ -314,7 +326,7 @@ final class ExecuteImportRollbackAction
         $result = new RollbackExecutionResultData(
             matched: 0,
             deleted: 0,
-            skipped: [['type' => 'report', 'id' => $report->getKey(), 'reason' => $reason]],
+            skipped: [['type' => 'report', 'id' => $this->scalarKey($report), 'reason' => $reason]],
             dryRun: $dryRun,
             rejected: true,
         );
@@ -322,6 +334,17 @@ final class ExecuteImportRollbackAction
         $this->audit($report, $actor, $result, 'rejected');
 
         return $result;
+    }
+
+    private function scalarKey(Model $model): int|string
+    {
+        $key = $model->getKey();
+
+        if (! is_int($key) && ! is_string($key)) {
+            throw new UnexpectedValueException('Expected a scalar model key.');
+        }
+
+        return $key;
     }
 
     private function audit(

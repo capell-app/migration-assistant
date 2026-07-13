@@ -48,10 +48,16 @@ function pageReviewPackage(string $path, string $contents): PackageReadResult
 
 function resolvedSiteMap(Site $site): ResolutionMap
 {
+    $siteKey = $site->getKey();
+
+    if (! is_int($siteKey)) {
+        throw new LogicException('Expected an integer site key.');
+    }
+
     return new ResolutionMap(
         resolved: [
-            'site:' . $site->getKey() => new MatchResolution(
-                localId: (int) $site->getKey(),
+            'site:' . $siteKey => new MatchResolution(
+                localId: $siteKey,
                 strategy: 'slug',
             ),
         ],

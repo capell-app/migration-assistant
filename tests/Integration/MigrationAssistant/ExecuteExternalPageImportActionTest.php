@@ -171,8 +171,10 @@ it('rejects a target site outside the actor scope and ignores row supplied targe
     $otherBlueprint = Blueprint::factory()->page()->create();
     $actor = $this->actingAsUser()->authenticatedUser();
     $role = Role::findOrCreate('site_editor');
-    $roleAssignmentsTable = (string) config('permission.table_names.model_has_roles', 'model_has_roles');
-    $teamColumn = (string) config('permission.column_names.team_foreign_key', 'team_id');
+    $configuredRoleAssignmentsTable = config('permission.table_names.model_has_roles', 'model_has_roles');
+    $configuredTeamColumn = config('permission.column_names.team_foreign_key', 'team_id');
+    $roleAssignmentsTable = is_string($configuredRoleAssignmentsTable) ? $configuredRoleAssignmentsTable : 'model_has_roles';
+    $teamColumn = is_string($configuredTeamColumn) ? $configuredTeamColumn : 'team_id';
     DB::table($roleAssignmentsTable)->insert([
         $teamColumn => $authorizedSite->getKey(),
         'role_id' => $role->getKey(),

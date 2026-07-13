@@ -13,6 +13,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use RuntimeException;
 use Throwable;
+use UnexpectedValueException;
 
 /**
  * Delivered when an {@see ImportSession} terminates in the Failed
@@ -27,7 +28,13 @@ class ImportFailedNotification extends Notification implements ShouldBeEncrypted
 
     public function __construct(ImportSession $session)
     {
-        $this->importSessionId = (int) $session->getKey();
+        $sessionKey = $session->getKey();
+
+        if (! is_int($sessionKey)) {
+            throw new UnexpectedValueException('Expected an integer import session key.');
+        }
+
+        $this->importSessionId = $sessionKey;
     }
 
     /** @return array<int, string> */
