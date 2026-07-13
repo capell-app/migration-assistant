@@ -5,8 +5,8 @@
     "license": "proprietary",
     "require": {
         "php": "^8.4",
-        "capell-app/admin": "^1.0",
-        "capell-app/core": "^1.0",
+        "capell-app/admin": "^4.0",
+        "capell-app/core": "^4.0",
         "illuminate/database": "^11.0|^12.0|^13.0",
         "illuminate/support": "^11.0|^12.0|^13.0",
         "lorisleiva/laravel-actions": "^2.8",
