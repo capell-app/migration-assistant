@@ -2,7 +2,7 @@
 
 <!-- prettier-ignore-start -->
 
-## What This Extension Adds
+## What This Plugin Adds
 
 Migration Assistant is an **Available**, **Schema-owning** Capell package in the **Capell Operations** product group. It ships as `capell-app/migration-assistant` and extends these surfaces: admin, console.
 
@@ -40,32 +40,32 @@ Screenshot contract: `docs/screenshots.json`.
 
 - Service providers: `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`.
 - Config files: `packages/migration-assistant/config/migration-assistant.php`.
-- Migrations: `packages/migration-assistant/database/migrations/2026_05_10_190859_01_create_import_sessions_table.php`, `packages/migration-assistant/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php`, `packages/migration-assistant/database/migrations/2026_06_04_000001_rename_import_rollback_reports_table.php`.
-- Models: `ImportRollbackReport`, `ImportSession`.
+- Migrations: `packages/migration-assistant/database/migrations/2026_05_10_190859_01_create_import_sessions_table.php`, `packages/migration-assistant/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php`, `packages/migration-assistant/database/migrations/2026_06_04_000001_rename_import_rollback_reports_table.php`, `packages/migration-assistant/database/migrations/2026_07_10_000002_encrypt_import_diagnostics.php`, `packages/migration-assistant/database/migrations/2026_07_10_120000_harden_import_rollback_provenance.php`.
+- Models: `ImportRollbackAudit`, `ImportRollbackReport`, `ImportSession`.
 - Filament classes: `ImportPagesPage`, `ImportSitesPage`, `ImportSessionResource`, `ListImportSessions`, `ViewImportSession`, `ImportSessionInfolist`, `ImportSessionsTable`.
 - Policies: `ImportSessionPolicy`.
-- Events: `ImportCompleted`, `ImportFailed`.
+- Events: `ImportCompleted`, `ImportCompleting`, `ImportFailed`.
 - Listeners: `SendImportSessionNotifications`.
-- Actions: `BuildImportValidationSummaryAction`, `BuildPageReviewRows`, `BuildRelationResolveRowsAction`, `CancelImportSessionAction`, `ClaimImportSessionForExecutionAction`, `CreateImportRollbackReportAction`, `ExecuteImportRollbackAction`, `AdvancePageImportToValidationAction`, `DispatchPageImportAction`, `ExecuteExternalPageImportAction`, `RefreshPageImportStatusAction`, `ResolvePageImportConfirmationTargetAction`, `and 5 more`.
-- Data objects: `DependencyGraph`, `ExportOptions`, `ExternalImportPreview`, `ExternalImportReadResult`, `ImportValidationSummary`, `ExternalPageImportExecutionResult`, `PageImportDecisionData`, `PageImportStatusData`, `PageImportWizardStateData`, `PackageManifest`, `PageImportTargetData`, `PageReviewRow`, `and 2 more`.
+- Actions: `BuildImportRecoveryStatusAction`, `BuildImportValidationSummaryAction`, `BuildPageReviewRowsAction`, `BuildRelationResolveRowsAction`, `CancelImportSessionAction`, `ClaimImportSessionForExecutionAction`, `CreateImportRollbackReportAction`, `ExecuteImportRollbackAction`, `AdvancePageImportToValidationAction`, `AuthorizeExternalPageImportTargetAction`, `BindMigrationArchiveUploadAction`, `DispatchPageImportAction`, `and 11 more`.
+- Data objects: `DependencyGraph`, `ExportOptions`, `ExternalImportPreview`, `ExternalImportReadResult`, `ExternalPageImportTargetData`, `ImportRecoveryStatusData`, `ImportValidationSummary`, `ExternalPageImportExecutionResult`, `PageImportDecisionData`, `PageImportStatusData`, `PageImportWizardStateData`, `PackageManifest`, `and 4 more`.
 - Jobs: `ExecuteImportPlanJob`.
 - Command signatures: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
-- Console command classes: `ExecuteMigrationAssistantRollbackCommand`, `ExportMigrationAssistantPackageCommand`, `ImportMigrationAssistantPackageCommand`, `ShowMigrationAssistantRollbackReportCommand`, `ShowMigrationAssistantStatusCommand`.
-- Manifest contributions: `admin-page: Capell\MigrationAssistant\Manifest\ImportPagesPageContribution`, `admin-page: Capell\MigrationAssistant\Manifest\ImportSitesPageContribution`, `admin-resource: Capell\MigrationAssistant\Manifest\ImportSessionResourceContribution`, `configurator: Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribution`, `health-check: Capell\MigrationAssistant\Manifest\MigrationAssistantHealthContribution`, `model: Capell\MigrationAssistant\Manifest\MigrationAssistantModelsContribution`, `permission: Capell\MigrationAssistant\Manifest\MigrationAssistantPermissionsContribution`.
+- Console command classes: `ExecuteMigrationAssistantRollbackCommand`, `ExportMigrationAssistantPackageCommand`, `ImportMigrationAssistantPackageCommand`, `ReclaimStaleImportSessionsCommand`, `ShowMigrationAssistantRollbackReportCommand`, `ShowMigrationAssistantStatusCommand`.
+- Manifest contributions: `admin-page: Capell\MigrationAssistant\Manifest\ImportPagesPageContribution`, `admin-page: Capell\MigrationAssistant\Manifest\ImportSitesPageContribution`, `admin-resource: Capell\MigrationAssistant\Manifest\ImportSessionResourceContribution`, `configurator: Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribution`, `health-check: Capell\MigrationAssistant\Manifest\MigrationAssistantHealthContribution`, `model: Capell\MigrationAssistant\Manifest\MigrationAssistantModelsContribution`, `permission: Capell\MigrationAssistant\Manifest\MigrationAssistantPermissionsContribution`, `scheduled-job: Capell\MigrationAssistant\Manifest\MigrationAssistantRecoveryScheduleContribution`.
 - Health checks: `Capell\MigrationAssistant\Health\MigrationAssistantHealthCheck`.
 
 ## Data Model
 
-- Required tables: `import_sessions`, `import_rollback_reports`.
-- Models: `ImportRollbackReport`, `ImportSession`.
-- Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`.
+- Required tables: `import_sessions`, `import_rollback_reports`, `import_rollback_audits`.
+- Models: `ImportRollbackAudit`, `ImportRollbackReport`, `ImportSession`.
+- Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`, `2026_07_10_000002_encrypt_import_diagnostics.php`, `2026_07_10_120000_harden_import_rollback_provenance.php`.
 - Migration impact: run host migrations through the package install flow before opening package surfaces.
 - Deletion/retention behaviour: Docs gap unless the package has an explicit pruning command, retention setting, or tested cascade path.
 
 ## Install Impact
 
 - Admin navigation: adds package-owned Filament classes when registered.
-- Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`.
+- Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`, `import-session.rollback`.
 - Public routes: none detected in package route files.
 - Database changes: package migrations are declared.
 - Settings: no package settings declared.
