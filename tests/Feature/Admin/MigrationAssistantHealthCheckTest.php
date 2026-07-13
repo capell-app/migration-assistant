@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
 
 it('reports a compatible capell api version', function (): void {
-    expect(MigrationAssistantHealthCheck::compatibleCapellApiVersion())->toBe('^4.0');
+    expect(MigrationAssistantHealthCheck::compatibleCapellApiVersion())->toBe('^1.0');
 });
 
 it('runs real diagnostics returning check results', function (): void {
