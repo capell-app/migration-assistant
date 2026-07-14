@@ -1,0 +1,39 @@
+{
+    "whatThisPluginAdds": {
+        "text": "Migration Assistant adds staged import sessions for mapping, validating, executing, reviewing, retrying, and rolling back external content imports.",
+        "evidence": [
+            "src/Filament/Resources/ImportSessions/ImportSessionResource.php",
+            "src/Actions/BuildImportValidationSummaryAction.php",
+            "src/Jobs/ExecuteImportPlanJob.php",
+            "src/Actions/ExecuteImportRollbackAction.php"
+        ]
+    },
+    "surfaceOutcome": {
+        "text": "Admins can upload or select source data, map it to Capell records, validate the plan, run the import, and inspect row-level results.",
+        "evidence": [
+            "src/Filament/Pages/ImportPagesPage.php",
+            "src/Filament/Pages/ImportSitesPage.php",
+            "tests/Admin/Feature/Filament/Pages/ImportPagesPageValidateTest.php",
+            "tests/Admin/Feature/Filament/Pages/ImportPagesPageExecuteTest.php"
+        ]
+    },
+    "whyItMatters": {
+        "developers": {
+            "text": "Source, target, and executor registries keep import formats and destinations replaceable while Actions own validation, authorization, recovery, and rollback.",
+            "evidence": [
+                "src/Support/ImportSourceRegistry.php",
+                "src/Support/ImportTargetRegistry.php",
+                "src/Support/ImportSessionExecutorRegistry.php",
+                "tests/Integration/MigrationAssistant/ExecuteImportRollbackActionTest.php"
+            ]
+        },
+        "teams": {
+            "text": "Teams can review migration problems before content is written and keep a recovery path when an import needs to be undone.",
+            "evidence": [
+                "docs/overview.admin.md",
+                "src/Actions/BuildImportRecoveryStatusAction.php",
+                "src/Actions/CreateImportRollbackReportAction.php"
+            ]
+        }
+    }
+}
