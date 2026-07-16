@@ -10,7 +10,8 @@ use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Support\ImportSessionExecutorRegistry;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 use RuntimeException;
 
 /**
@@ -23,7 +24,8 @@ use RuntimeException;
  */
 final class RetryImportSessionAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public static function canRetry(ImportSession $session): bool
     {

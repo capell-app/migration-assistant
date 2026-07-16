@@ -10,14 +10,16 @@ use Capell\MigrationAssistant\Data\Imports\PageImportStatusData;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportSession;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 
 /**
  * @method static PageImportStatusData run(?int $sessionId, array<string, mixed> $validationSummary, string $confirmation, string $confirmationExpected)
  */
 final class DispatchPageImportAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     /**
      * @param  array<string, mixed>  $validationSummary

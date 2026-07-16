@@ -6,20 +6,22 @@ namespace Capell\MigrationAssistant\Actions\Imports;
 
 use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 
 /**
  * @method static PageImportWizardStateData run(array<string, mixed> $state)
  */
 final class StartSiteImportAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     /**
      * @param  array<string, mixed>  $state
      */
     public function handle(array $state): PageImportWizardStateData
     {
-        return resolve(StartPageImportAction::class)->handle($state, ImportSessionKind::SiteImport);
+        return StartPageImportAction::run($state, ImportSessionKind::SiteImport);
     }
 }

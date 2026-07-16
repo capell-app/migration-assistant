@@ -64,7 +64,7 @@ final class ImportMigrationAssistantPackageCommand extends Command
         }
 
         $storedArchivePath = $this->storeArchive($archivePath);
-        $state = (new BindMigrationArchiveUploadAction)->handle([
+        $state = BindMigrationArchiveUploadAction::run([
             'archive' => $storedArchivePath,
             'archive_filename' => basename($archivePath),
             'workspace_name' => $this->stringOption('workspace-name') ?? __('capell-admin::exchanger.import_workspace_default_name'),

@@ -8,14 +8,16 @@ use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Data\Imports\PageImportStatusData;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Models\ImportSession;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 
 /**
  * @method static PageImportStatusData run(?int $sessionId, ?int $currentTargetId)
  */
 final class RefreshPageImportStatusAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public function handle(?int $sessionId, ?int $currentTargetId): PageImportStatusData
     {

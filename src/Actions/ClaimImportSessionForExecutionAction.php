@@ -6,11 +6,13 @@ namespace Capell\MigrationAssistant\Actions;
 
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Models\ImportSession;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 
 final class ClaimImportSessionForExecutionAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     /**
      * @param  list<ImportSessionStatus>  $allowedStatuses

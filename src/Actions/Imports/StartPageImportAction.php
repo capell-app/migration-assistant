@@ -20,7 +20,8 @@ use Capell\MigrationAssistant\Services\Import\ResolutionMapBuilder;
 use Capell\MigrationAssistant\Services\Import\Resolvers\RelationMatchResolverRegistry;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 use RuntimeException;
 use Throwable;
 
@@ -29,7 +30,8 @@ use Throwable;
  */
 final class StartPageImportAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public const string ERROR_UPLOAD_REQUIRED = 'upload_required';
 

@@ -22,7 +22,8 @@ use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Illuminate\Support\Str;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 use RuntimeException;
 use Throwable;
 
@@ -31,7 +32,8 @@ use Throwable;
  */
 final class ExecuteExternalPageImportAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     /**
      * @param  ExternalPageImportTargetData|array<string, mixed>  $defaultPageAttributes

@@ -177,7 +177,7 @@ class ImportPagesPage extends Page implements HasForms
     public function parseAndAdvance(): void
     {
         try {
-            $this->applyWizardState($this->startImport((new BindMigrationArchiveUploadAction)->handle($this->data)));
+            $this->applyWizardState($this->startImport(BindMigrationArchiveUploadAction::run($this->data)));
         } catch (Throwable $throwable) {
             if ($throwable->getMessage() === $this->uploadRequiredError()) {
                 Notification::make()->danger()->title(__('capell-admin::exchanger.upload_required'))->send();

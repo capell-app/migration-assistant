@@ -7,7 +7,8 @@ namespace Capell\MigrationAssistant\Actions;
 use Capell\MigrationAssistant\Data\RelationResolveRow;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 
 /**
  * Shape the ResolutionMap into rows for the wizard "Resolve relations"
@@ -18,7 +19,8 @@ use Lorisleiva\Actions\Concerns\AsAction;
  */
 class BuildRelationResolveRowsAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     /**
      * Map ref-prefix (e.g. "layout") to the relation-registry group key

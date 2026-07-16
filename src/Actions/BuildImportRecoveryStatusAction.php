@@ -7,11 +7,13 @@ namespace Capell\MigrationAssistant\Actions;
 use Capell\MigrationAssistant\Data\ImportRecoveryStatusData;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Models\ImportSession;
+use Lorisleiva\Actions\Concerns\AsFake;
 use Lorisleiva\Actions\Concerns\AsObject;
 
 /** @method static ImportRecoveryStatusData run() */
 final class BuildImportRecoveryStatusAction
 {
+    use AsFake;
     use AsObject;
 
     public function handle(): ImportRecoveryStatusData

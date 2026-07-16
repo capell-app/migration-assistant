@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Actions;
 
 use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 use Spatie\Permission\Models\Permission;
 
 /**
@@ -19,7 +20,8 @@ use Spatie\Permission\Models\Permission;
  */
 class InstallMigrationAssistantPermissionsAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public const string PERMISSION_PAGE_EXPORT = 'page.export';
 

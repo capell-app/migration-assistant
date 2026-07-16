@@ -7,12 +7,14 @@ namespace Capell\MigrationAssistant\Actions;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportSession;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 
 /** @method static int run(?int $staleAfterMinutes = null, ?int $limit = null) */
 final class ReclaimStaleImportSessionsAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public function handle(?int $staleAfterMinutes = null, ?int $limit = null): int
     {

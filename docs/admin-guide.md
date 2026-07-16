@@ -6,23 +6,23 @@ This guide is for editors running a content import and owners planning a migrati
 
 ### How to start an import
 
-1. Go to **Migration Assistant**.
-2. Start a new import session and choose the source you are importing from.
-3. The import opens as a session you can return to.
+1. Open **Recovery Center** and choose **Import pages** or **Import sites**.
+2. Upload the Capell package archive (`.zip`), give the workspace a name, and optionally add a note.
+3. Continue to create an import session you can return to from **Import sessions**.
 
 ![An administrator reviews import sessions and their current migration state.](screenshots/import-session-index-or-host-admin-surface.png)
 
-### How to map fields
+### How to review imported pages
 
-1. In the import session, open **field mapping**.
-2. Match each piece of old content (for example its title and body) to the right Capell field.
-3. Save the mapping.
+1. After the archive is read, review each proposed page action.
+2. Keep the proposed action, skip an item, or record a note where the preview needs a decision.
+3. Continue to relation resolution when the page review is complete.
 
 ### How to check validation before importing
 
-1. In the import session, open the validation summary.
-2. Read the list of errors and warnings it found in your source.
-3. Fix the source or the mapping for anything marked as an error, then check again.
+1. Complete page review and relation resolution, then open the validation step.
+2. Read the errors and warnings for the package and your decisions.
+3. Fix the package or review decisions for anything marked as an error, then validate again.
 4. Warnings are safe to proceed with, but worth reading first.
 
 ![An operator reviews validation errors and warnings before executing an import.](screenshots/import-validation-summary.png)
@@ -35,17 +35,17 @@ This guide is for editors running a content import and owners planning a migrati
 
 ![An operator maps imported references to existing records before execution.](screenshots/relation-resolution-review.png)
 
-### How to preview and run
+### How to validate and run
 
-1. Use **Preview** to see what will be imported.
-2. Check it carefully before running.
-3. When it looks right, **run** the import.
+1. Use the page review and validation steps to see what will be imported.
+2. Check the validation summary carefully before dispatching.
+3. Confirm the import when prompted, then let the queued job run.
 
 ### How to import pages through Recovery Center
 
-1. Open **Recovery Center** and choose to import pages.
-2. Work through validation, then match any references to existing records.
-3. Run the import and watch its progress.
+1. Open **Recovery Center** and choose **Import pages**.
+2. Upload a Capell page package, then work through page review, relation resolution, and validation.
+3. Dispatch the import and watch its progress.
 4. If something goes wrong, you can roll the import back from here.
 
 ![An operator imports pages through Recovery Center and reviews validation, relation resolution, execution, and rollback state.](screenshots/recovery-page-imports.png)
@@ -93,14 +93,14 @@ This guide is for editors running a content import and owners planning a migrati
 
 | Role       | First useful screen                             |
 | ---------- | ----------------------------------------------- |
-| Editor     | The import session: map, preview, and run       |
+| Editor     | Recovery Center: review, resolve, validate, and run |
 | Site owner | **Import sessions**: track progress and results |
 
 ## Troubleshooting for editors
 
 | What you see                           | What it means                               | What to do                                                                    |
 | -------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
-| Imported content is in the wrong field | The field mapping was off                   | Fix the mapping and re-run the import                                         |
-| Some items were skipped                | They didn't match the mapping or had errors | Review the results list, fix the source or mapping, and re-import those items |
-| The import session won't start         | The source or connection wasn't set up      | Re-check the source settings and try again                                    |
-| Images didn't come across              | Media wasn't included or mapped             | Confirm media is part of the import and re-run                                |
+| Imported content is not what you expected | The page review or relation decisions were incorrect | Fix the package or decisions, then create a new import session              |
+| Some items were skipped                   | The review or validation found a blocking issue          | Review the session result, fix the package or decisions, and import again   |
+| The import session will not start          | The archive was missing, unreadable, or not a valid package | Upload a valid Capell ZIP package and check the validation message          |
+| Images did not come across                 | The package did not contain usable media, or ingest rejected it | Check the rollback/result report and package media before trying again |

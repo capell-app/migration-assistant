@@ -177,7 +177,7 @@ function startActionImportWizard(string $archiveName, string $workspaceName, ?in
         $layoutId,
     );
 
-    $state = StartPageImportAction::run((new BindMigrationArchiveUploadAction)->handle([
+    $state = StartPageImportAction::run(BindMigrationArchiveUploadAction::run([
         'archive' => $relativePath,
         'archive_filename' => $archiveName,
         'workspace_name' => $workspaceName,
@@ -236,7 +236,7 @@ it('moves site upload state to review state using a site import session', functi
 
     stageActionSiteImportPackage($relativePath, $pageUuid, $sourceSiteId);
 
-    $state = StartSiteImportAction::run((new BindMigrationArchiveUploadAction)->handle([
+    $state = StartSiteImportAction::run(BindMigrationArchiveUploadAction::run([
         'archive' => $relativePath,
         'archive_filename' => 'site-action-review.zip',
         'workspace_name' => 'Site Action Review',
@@ -262,7 +262,7 @@ it('rejects page imports when the uploaded package is a site export', function (
 
     stageActionSiteImportPackage($relativePath, $pageUuid, 765);
 
-    expect(fn (): mixed => StartPageImportAction::run((new BindMigrationArchiveUploadAction)->handle([
+    expect(fn (): mixed => StartPageImportAction::run(BindMigrationArchiveUploadAction::run([
         'archive' => $relativePath,
         'archive_filename' => 'site-export-uploaded-as-page.zip',
         'workspace_name' => 'Wrong Kind',
@@ -274,7 +274,7 @@ it('rejects page imports when the uploaded package is a site export', function (
 it('does not create an import session when the uploaded archive cannot be parsed', function (): void {
     Storage::disk('local')->put('migration-assistant/imports/staged/broken-import.zip', 'not a zip');
 
-    expect(fn (): mixed => StartPageImportAction::run((new BindMigrationArchiveUploadAction)->handle([
+    expect(fn (): mixed => StartPageImportAction::run(BindMigrationArchiveUploadAction::run([
         'archive' => 'migration-assistant/imports/staged/broken-import.zip',
         'archive_filename' => 'broken-import.zip',
         'workspace_name' => 'Broken Import',

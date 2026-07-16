@@ -6,14 +6,16 @@ namespace Capell\MigrationAssistant\Actions\Imports;
 
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Models\ImportSession;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 
 /**
  * @method static ImportSession|null run(?int $sessionId)
  */
 final class ResolvePageImportSessionAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public function handle(?int $sessionId): ?ImportSession
     {

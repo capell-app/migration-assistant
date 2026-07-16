@@ -7,10 +7,12 @@ namespace Capell\MigrationAssistant\Actions\Imports;
 use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Models\ImportSession;
+use Lorisleiva\Actions\Concerns\AsFake;
 use Lorisleiva\Actions\Concerns\AsObject;
 
 final class ResolvePageImportConfirmationTargetAction
 {
+    use AsFake;
     use AsObject;
 
     public function handle(ImportSession $session): string

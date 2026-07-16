@@ -7,12 +7,14 @@ namespace Capell\MigrationAssistant\Actions\Imports;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 use RuntimeException;
 
 final class BindMigrationArchiveUploadAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public const string STAGING_DIRECTORY = 'migration-assistant/imports/staged';
 

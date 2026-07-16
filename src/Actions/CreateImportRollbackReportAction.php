@@ -9,14 +9,16 @@ use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
 use Capell\MigrationAssistant\Support\RollbackProvenance;
 use Illuminate\Support\Str;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 
 /**
  * @method static ImportRollbackReport run(ImportSession $session, ImportExecutionReport $report)
  */
 final class CreateImportRollbackReportAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public function handle(ImportSession $session, ImportExecutionReport $report): ImportRollbackReport
     {

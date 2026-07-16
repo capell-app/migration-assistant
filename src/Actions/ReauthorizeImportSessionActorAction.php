@@ -9,11 +9,13 @@ use Capell\MigrationAssistant\Models\ImportSession;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 
 final class ReauthorizeImportSessionActorAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public function handle(ImportSession $session): Authenticatable
     {

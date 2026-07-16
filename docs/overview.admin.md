@@ -1,27 +1,26 @@
 ## What it does for you
 
-Migration Assistant brings content from another system into Capell. You start an import, match the old content to where it should go, preview the result, and run it. Then you review what came across.
+Migration Assistant imports a Capell page or site archive into this Capell installation. It stages the archive as an import session, lets you review proposed page and relation decisions, validates the plan, then queues the import for execution.
 
-## Your screens
+## Start an import
 
-- **Import sessions**: each import you have started and its status.
-- **Field mapping**: where you match old content to Capell fields.
-- **Preview**: a check of what will be imported before you run it.
+Open **Recovery Center → Import pages** or **Import sites**. Upload a ZIP archive, enter a required workspace name, and optionally add a note. After the archive is read, work through the wizard in order:
 
-## What you can do
+1. Review the proposed page decisions.
+2. Resolve imported relations when the wizard surfaces them. If no relation decisions are needed, it moves directly to validation.
+3. Validate the plan and resolve any blocking errors.
+4. Enter the required confirmation text when shown, then dispatch the import.
 
-- Start an import from another system.
-- Map old fields to Capell fields.
-- Preview the import before running it.
-- Run the import.
-- Review the results and anything that was skipped.
+Dispatching queues the work; it does not complete the import in the browser. The wizard shows the queued/running/completed/failed status and links to the imported workspace when one is available.
 
-## Where to find it
+## Review an import session
 
-Go to **Migration Assistant** in the admin to start and review imports.
+Open **System → Import Sessions** to filter sessions by kind, status, or initiating user. Open a session to inspect its timeline, validation report, result summary, page decisions, relation decisions, and manifest. A failed session also shows its failure reason.
+
+If a queued or running session has become stale, the list may show **Recover stale imports**. This is a confirmed recovery action for stale sessions; it is not a rollback of completed imported content.
 
 ## Good to know
 
-- Import content from another system without re-typing it.
-- Preview before you **run** the import, so there are no surprises.
-- Check the **results** for anything that was skipped, and back up first.
+- Import pages and sites are separate entry points, but use the same review, resolution, validation, and queued-execution model.
+- Imported work is staged in the selected workspace. Publishing it live is a separate editorial operation with its own permission boundary.
+- Review every proposed decision and create a backup before importing. Migration Assistant does not make an archive safe to import merely because it is a ZIP file.

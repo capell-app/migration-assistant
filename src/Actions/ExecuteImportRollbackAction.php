@@ -15,7 +15,8 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 use Throwable;
 use UnexpectedValueException;
 
@@ -24,7 +25,8 @@ use UnexpectedValueException;
  */
 final class ExecuteImportRollbackAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public function handle(
         ImportRollbackReport $report,

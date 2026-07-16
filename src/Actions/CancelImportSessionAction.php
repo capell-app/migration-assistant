@@ -6,7 +6,8 @@ namespace Capell\MigrationAssistant\Actions;
 
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Models\ImportSession;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 use RuntimeException;
 
 /**
@@ -18,7 +19,8 @@ use RuntimeException;
  */
 final class CancelImportSessionAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public static function isCancellable(ImportSession $session): bool
     {

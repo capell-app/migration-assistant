@@ -15,7 +15,8 @@ use Capell\MigrationAssistant\Services\Import\PackageReader;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
 use Illuminate\Support\Facades\Storage;
-use Lorisleiva\Actions\Concerns\AsAction;
+use Lorisleiva\Actions\Concerns\AsFake;
+use Lorisleiva\Actions\Concerns\AsObject;
 use RuntimeException;
 
 /**
@@ -23,7 +24,8 @@ use RuntimeException;
  */
 final class AdvancePageImportToValidationAction
 {
-    use AsAction;
+    use AsFake;
+    use AsObject;
 
     public function handle(
         PageImportDecisionData $decisionData,
