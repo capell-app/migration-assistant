@@ -8,7 +8,7 @@ Start at the [package README](../README.md) when deciding whether to install thi
 
 | Doc                                                             | Use it for                                                                         |
 | --------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [Admin Guide](admin-guide.md)                                   | Import page or site packages through Recovery Center and review the outcome.      |
+| [Admin Guide](admin-guide.md)                                   | Import page or site packages through Recovery Center and review the outcome.       |
 | [Credits And Acknowledgements](credits-and-acknowledgements.md) | Upstream services, dependencies, and acknowledgements.                             |
 | [Extension Points](extension-points.md)                         | Package extension points, registration paths, and focused tests.                   |
 | [Import Export Workflow](import-export-workflow.md)             | Focused package workflow, setup, troubleshooting, or implementation details.       |

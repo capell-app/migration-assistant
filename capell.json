@@ -156,26 +156,24 @@
         },
         "sensitiveData": {
             "encryptedFields": [
-                "import_sessions.target_url",
-                "import_sessions.source_package_path",
-                "import_sessions.working_dir",
-                "import_sessions.manifest",
-                "import_sessions.resolution_map",
-                "import_sessions.page_decisions",
-                "import_sessions.relation_decisions",
-                "import_sessions.validation_results",
-                "import_sessions.result_summary",
-                "import_sessions.failure_reason",
-                "import_rollback_reports.source_filename",
-                "import_rollback_reports.created_models",
-                "import_rollback_reports.summary",
-                "import_rollback_reports.manual_instructions"
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackReport::$created_models",
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackReport::$manual_instructions",
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackReport::$source_filename",
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackReport::$summary",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$failure_reason",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$manifest",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$page_decisions",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$relation_decisions",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$resolution_map",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$result_summary",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$source_package_path",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$target_url",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$validation_results",
+                "Capell\\MigrationAssistant\\Models\\ImportSession::$working_dir"
             ],
             "hashedTokenFields": [],
             "redactedOutputClasses": [],
-            "plaintextJustifications": [
-                "Import jobs serialize only import_sessions.id; session content is loaded from encrypted storage at execution time."
-            ]
+            "plaintextJustifications": []
         },
         "publicOutput": {
             "cacheSafe": true,

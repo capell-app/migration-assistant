@@ -91,16 +91,16 @@ This guide is for editors running a content import and owners planning a migrati
 
 ### Who does what
 
-| Role       | First useful screen                             |
-| ---------- | ----------------------------------------------- |
+| Role       | First useful screen                                 |
+| ---------- | --------------------------------------------------- |
 | Editor     | Recovery Center: review, resolve, validate, and run |
-| Site owner | **Import sessions**: track progress and results |
+| Site owner | **Import sessions**: track progress and results     |
 
 ## Troubleshooting for editors
 
-| What you see                           | What it means                               | What to do                                                                    |
-| -------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
-| Imported content is not what you expected | The page review or relation decisions were incorrect | Fix the package or decisions, then create a new import session              |
-| Some items were skipped                   | The review or validation found a blocking issue          | Review the session result, fix the package or decisions, and import again   |
-| The import session will not start          | The archive was missing, unreadable, or not a valid package | Upload a valid Capell ZIP package and check the validation message          |
-| Images did not come across                 | The package did not contain usable media, or ingest rejected it | Check the rollback/result report and package media before trying again |
+| What you see                              | What it means                                                   | What to do                                                                |
+| ----------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Imported content is not what you expected | The page review or relation decisions were incorrect            | Fix the package or decisions, then create a new import session            |
+| Some items were skipped                   | The review or validation found a blocking issue                 | Review the session result, fix the package or decisions, and import again |
+| The import session will not start         | The archive was missing, unreadable, or not a valid package     | Upload a valid Capell ZIP package and check the validation message        |
+| Images did not come across                | The package did not contain usable media, or ingest rejected it | Check the rollback/result report and package media before trying again    |

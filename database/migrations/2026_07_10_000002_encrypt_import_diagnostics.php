@@ -32,6 +32,7 @@ return new class extends Migration
         'manual_instructions',
     ];
 
+    /** @contract-migration-approved Widens encrypted storage before rewriting existing values. */
     public function up(): void
     {
         Schema::table('import_sessions', function (Blueprint $table): void {
