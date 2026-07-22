@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Actions;
 
 use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
+use Illuminate\Support\Facades\Schema;
 use Lorisleiva\Actions\Concerns\AsFake;
 use Lorisleiva\Actions\Concerns\AsObject;
 use Spatie\Permission\Models\Permission;
@@ -49,6 +50,12 @@ class InstallMigrationAssistantPermissionsAction
 
     public function handle(string $guardName = 'web'): void
     {
+        $permissionTable = config('permission.table_names.permissions', 'permissions');
+
+        if (! is_string($permissionTable) || ! Schema::hasTable($permissionTable)) {
+            return;
+        }
+
         foreach (MigrationAssistantPermission::cases() as $permission) {
             Permission::query()->firstOrCreate([
                 'name' => $permission->value,

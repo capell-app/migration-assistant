@@ -11,9 +11,7 @@ use Capell\Core\Facades\CapellCore;
 use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Site;
-use Capell\Core\Support\Database\RuntimeSchemaState;
 use Capell\Core\Support\Packages\AbstractPackageServiceProvider;
-use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
 use Capell\MigrationAssistant\Console\Commands\ExecuteMigrationAssistantRollbackCommand;
 use Capell\MigrationAssistant\Console\Commands\ExportMigrationAssistantPackageCommand;
 use Capell\MigrationAssistant\Console\Commands\ImportMigrationAssistantPackageCommand;
@@ -50,7 +48,6 @@ use Capell\MigrationAssistant\Support\ImportSourceRegistry;
 use Capell\MigrationAssistant\Support\ImportTargetRegistry;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Schema;
 use Override;
 use Spatie\LaravelPackageTools\Package;
 
@@ -153,26 +150,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
             Gate::policy(ImportSession::class, ImportSessionPolicy::class);
         }
 
-        if ($this->canEnsurePermissions()) {
-            InstallMigrationAssistantPermissionsAction::run();
-        }
-
         $this->registerAdminPanelExtensions();
-    }
-
-    private function canEnsurePermissions(): bool
-    {
-        $table = config('permission.table_names.permissions', 'permissions');
-
-        if (! is_string($table)) {
-            return false;
-        }
-
-        if (class_exists(RuntimeSchemaState::class)) {
-            return resolve(RuntimeSchemaState::class)->hasTable($table);
-        }
-
-        return Schema::hasTable($table);
     }
 
     private function registerAdminPanelExtensions(): void
