@@ -39,10 +39,21 @@ it('registers default relation resolver groups', function (): void {
 it('does not install permissions during application boot', function (): void {
     $provider = file_get_contents(dirname(__DIR__, 2) . '/src/Providers/MigrationAssistantServiceProvider.php');
     $manifest = json_decode((string) file_get_contents(dirname(__DIR__, 2) . '/capell.json'), true);
+    $providers = is_array($manifest) ? $manifest['providers'] ?? null : null;
+
+    if (! is_array($providers)) {
+        throw new RuntimeException('Expected package manifest providers to be an array.');
+    }
+
+    $installProviders = $providers['install'] ?? [];
+
+    if (! is_array($installProviders)) {
+        throw new RuntimeException('Expected package install providers to be an array.');
+    }
 
     expect($provider)->not->toBeFalse()
         ->and($provider)->not->toContain('InstallMigrationAssistantPermissionsAction::run()')
-        ->and($manifest['providers']['install'] ?? [])->toBe([
+        ->and($installProviders)->toBe([
             'Capell\\MigrationAssistant\\Providers\\MigrationAssistantInstallServiceProvider',
         ]);
 });

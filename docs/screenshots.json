@@ -33,15 +33,18 @@
         },
         {
             "id": "recovery-page-imports",
-            "title": "Recovery page imports.",
+            "title": "Illustrative recovery page imports preview.",
             "package": "migration-assistant",
-            "surface": "admin",
-            "targetType": "admin-surface",
-            "target": "ImportPagesPage",
+            "surface": "frontend",
+            "targetType": "frontend-url",
+            "target": "/screenshot-fixtures/catalogue/migration-assistant/recovery-page-imports",
             "required": true,
-            "notes": "Show recovery-center page import validation, relation resolution, execution state, and rollback reporting.",
+            "notes": "Illustrative deterministic catalogue fixture, not a live package UI capture. Show recovery-center page import validation, relation resolution, execution state, and rollback reporting.",
             "useCase": "An operator imports pages through Recovery Center and reviews validation, relation resolution, execution, and rollback state.",
-            "screenshotPath": "packages/migration-assistant/docs/screenshots/recovery-page-imports.png"
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/recovery-page-imports.png",
+            "url": "/screenshot-fixtures/catalogue/migration-assistant/recovery-page-imports",
+            "colorSchemes": ["light", "dark"],
+            "fixtureKind": "illustrative-catalogue"
         },
         {
             "id": "relation-resolution-review",
