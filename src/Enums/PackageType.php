@@ -13,6 +13,6 @@ enum PackageType: string implements HasLabel
 
     public function getLabel(): string
     {
-        return __('capell-migration-assistant::imports.enums.package_type.' . $this->value);
+        return __('migration-assistant::imports.enums.package_type.' . $this->value);
     }
 }

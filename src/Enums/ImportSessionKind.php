@@ -13,6 +13,6 @@ enum ImportSessionKind: string implements HasLabel
 
     public function getLabel(): string
     {
-        return __('capell-migration-assistant::imports.enums.import_session_kind.' . $this->value);
+        return __('migration-assistant::imports.enums.import_session_kind.' . $this->value);
     }
 }

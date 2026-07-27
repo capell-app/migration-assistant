@@ -24,11 +24,11 @@ it('does not reserve session kinds for downstream source readers', function (): 
 });
 
 it('labels persisted migration assistant enum values for Filament surfaces', function (): void {
-    expect(ImportSessionKind::PageImport->getLabel())->toBe(__('capell-migration-assistant::imports.enums.import_session_kind.page-import'))
-        ->and(ImportSessionKind::SiteImport->getLabel())->toBe(__('capell-migration-assistant::imports.enums.import_session_kind.site-import'))
-        ->and(ImportSessionStatus::Draft->getLabel())->toBe(__('capell-migration-assistant::imports.enums.import_session_status.draft'))
-        ->and(ImportSessionStatus::Completed->getLabel())->toBe(__('capell-migration-assistant::imports.enums.import_session_status.completed'))
-        ->and(ImportSessionStatus::Abandoned->getLabel())->toBe(__('capell-migration-assistant::imports.enums.import_session_status.abandoned'))
-        ->and(PackageType::PageExport->getLabel())->toBe(__('capell-migration-assistant::imports.enums.package_type.page-export'))
-        ->and(PackageType::SiteExport->getLabel())->toBe(__('capell-migration-assistant::imports.enums.package_type.site-export'));
+    expect(ImportSessionKind::PageImport->getLabel())->toBe('Page import')
+        ->and(ImportSessionKind::SiteImport->getLabel())->toBe('Site import')
+        ->and(ImportSessionStatus::Draft->getLabel())->toBe('Draft')
+        ->and(ImportSessionStatus::Completed->getLabel())->toBe('Completed')
+        ->and(ImportSessionStatus::Abandoned->getLabel())->toBe('Abandoned')
+        ->and(PackageType::PageExport->getLabel())->toBe('Page export')
+        ->and(PackageType::SiteExport->getLabel())->toBe('Site export');
 });

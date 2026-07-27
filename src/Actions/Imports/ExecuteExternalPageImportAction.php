@@ -21,6 +21,7 @@ use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsFake;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -28,7 +29,7 @@ use RuntimeException;
 use Throwable;
 
 /**
- * @method static ExternalPageImportExecutionResult run(ExternalImportPreview $preview, ExternalPageImportTargetData|array<string, mixed> $defaultPageAttributes, ?string $sourceFilename = null, ?string $targetLabel = null, ?ImportSession $existingSession = null, bool $finalize = true)
+ * @method static ExternalPageImportExecutionResult run(ExternalImportPreview $preview, ExternalPageImportTargetData|array<string, mixed> $defaultPageAttributes, ?string $sourceFilename = null, ?string $targetLabel = null, ?ImportSession $existingSession = null, bool $finalize = true, ?Authenticatable $actor = null)
  */
 final class ExecuteExternalPageImportAction
 {
@@ -45,15 +46,17 @@ final class ExecuteExternalPageImportAction
         ?string $targetLabel = null,
         ?ImportSession $existingSession = null,
         bool $finalize = true,
+        ?Authenticatable $actor = null,
     ): ExternalPageImportExecutionResult {
         $authorizedTarget = AuthorizeExternalPageImportTargetAction::run(
             $this->targetData($defaultPageAttributes),
+            $actor,
         );
         $defaultPageAttributes = $authorizedTarget->pageAttributes();
 
         $this->assertPreviewCanExecute($preview, $defaultPageAttributes);
 
-        $session = $existingSession ?? $this->createSession($preview, $sourceFilename, $targetLabel);
+        $session = $existingSession ?? $this->createSession($preview, $sourceFilename, $targetLabel, $actor);
 
         try {
             $report = resolve(PageImportService::class)->import(
@@ -109,15 +112,19 @@ final class ExecuteExternalPageImportAction
         }
     }
 
-    private function createSession(ExternalImportPreview $preview, ?string $sourceFilename, ?string $targetLabel): ImportSession
-    {
+    private function createSession(
+        ExternalImportPreview $preview,
+        ?string $sourceFilename,
+        ?string $targetLabel,
+        ?Authenticatable $actor,
+    ): ImportSession {
         $target = resolve(PageImportTargetResolver::class)->create(
             $targetLabel ?? (string) __('migration-assistant::imports.external_default_target_label'),
         );
 
         return ImportSession::query()->create([
             'uuid' => (string) Str::uuid(),
-            'user_id' => auth()->id(),
+            'user_id' => $actor?->getAuthIdentifier() ?? auth()->id(),
             'target_type' => $target->type,
             'target_id' => is_int($target->id) ? $target->id : null,
             'target_label' => $target->label,

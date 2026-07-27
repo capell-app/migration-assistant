@@ -45,6 +45,6 @@ enum ImportSessionStatus: string implements HasLabel
 
     public function getLabel(): string
     {
-        return __('capell-migration-assistant::imports.enums.import_session_status.' . $this->value);
+        return __('migration-assistant::imports.enums.import_session_status.' . $this->value);
     }
 }

@@ -20,6 +20,7 @@ use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -92,6 +93,30 @@ it('rejects external previews without an authenticated actor before writing', fu
 
     ExecuteExternalPageImportAction::run($preview, migrationAssistantExternalTarget($site, $layout, $type));
 })->throws(AuthorizationException::class, 'authenticated actor');
+
+it('records the explicit actor when no ambient user is authenticated', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->page()->create();
+    $site = Site::factory()->create();
+    $actor = auth()->user();
+    throw_unless($actor instanceof Authenticatable, RuntimeException::class, 'Expected an authenticated actor.');
+    $preview = (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'csv',
+        columns: ['title'],
+        rows: [['title' => 'Explicit actor import']],
+        suggestedTarget: 'page',
+    ));
+
+    auth()->logout();
+
+    $result = ExecuteExternalPageImportAction::run(
+        $preview,
+        migrationAssistantExternalTarget($site, $layout, $type),
+        actor: $actor,
+    );
+
+    expect($result->session->user_id)->toBe($actor->getAuthIdentifier());
+});
 
 it('rejects external previews before writing when page references are missing', function (): void {
     $type = Blueprint::factory()->page()->create();
