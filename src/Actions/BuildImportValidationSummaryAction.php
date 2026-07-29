@@ -75,7 +75,7 @@ final readonly class BuildImportValidationSummaryAction
 
         foreach ($reviewRows as $row) {
             $decision = $pageDecisions[$row->uuid] ?? ['action' => $row->suggestedAction];
-            $action = is_string($decision['action'] ?? null)
+            $action = is_string($decision['action'])
                 ? $decision['action']
                 : $row->suggestedAction;
 
@@ -116,7 +116,7 @@ final readonly class BuildImportValidationSummaryAction
 
         foreach ($map->resolved as $ref => $resolution) {
             $decision = $relationDecisions[$ref] ?? ['action' => RelationResolveRow::ACTION_USE_EXISTING];
-            $action = is_string($decision['action'] ?? null)
+            $action = is_string($decision['action'])
                 ? $decision['action']
                 : RelationResolveRow::ACTION_USE_EXISTING;
 
@@ -160,7 +160,7 @@ final readonly class BuildImportValidationSummaryAction
 
         foreach ($map->unresolved as $ref) {
             $decision = $relationDecisions[$ref] ?? null;
-            $action = is_array($decision) && is_string($decision['action'] ?? null)
+            $action = is_array($decision) && is_string($decision['action'])
                 ? $decision['action']
                 : null;
 

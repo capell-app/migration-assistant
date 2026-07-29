@@ -73,7 +73,7 @@ final class StartPageImportAction
                 'target_url' => $target->url,
                 'kind' => $kind,
                 'status' => $resolutionMap->hasUnresolved() ? ImportSessionStatus::Mapped : ImportSessionStatus::Parsed,
-                'source_filename' => is_string($upload['filename'] ?? null) ? $upload['filename'] : null,
+                'source_filename' => is_string($upload['filename']) ? $upload['filename'] : null,
                 'source_package_path' => $archiveDiskPath,
                 'manifest' => $package->manifest,
                 'resolution_map' => $resolutionMap->toArray(),

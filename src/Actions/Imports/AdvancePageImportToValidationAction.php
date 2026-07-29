@@ -191,7 +191,7 @@ final class AdvancePageImportToValidationAction
                 continue;
             }
 
-            $action = is_string($decision['action'] ?? null) ? $decision['action'] : PageReviewRow::ACTION_CREATE;
+            $action = is_string($decision['action']) ? $decision['action'] : PageReviewRow::ACTION_CREATE;
             $entry = ['action' => $action];
 
             if (isset($decision['notes']) && is_string($decision['notes']) && $decision['notes'] !== '') {

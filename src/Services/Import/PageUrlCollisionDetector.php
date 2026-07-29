@@ -19,7 +19,7 @@ final class PageUrlCollisionDetector implements PageCollisionDetector
         foreach ($urls as $urlData) {
             $url = $urlData['url'];
             $siteId = $urlData['site_id'] ?? $resolvedSiteId;
-            $languageId = $urlData['language_id'] ?? null;
+            $languageId = $urlData['language_id'];
 
             $query = DB::table('page_urls')
                 ->where('url', $url)

@@ -67,7 +67,7 @@ it('shows rollback report data from the console', function (): void {
         'executed_at' => now(),
     ]);
 
-    CreateImportRollbackReportAction::run(
+    $rollbackReport = CreateImportRollbackReportAction::run(
         $session,
         new ImportExecutionReport(
             pagesCreated: 1,
@@ -76,6 +76,12 @@ it('shows rollback report data from the console', function (): void {
             errors: [],
         ),
     );
+    $rollbackReport->forceFill([
+        'created_models' => [
+            ['class' => Page::class, 'id' => $page->getKey()],
+            ['class' => Page::class],
+        ],
+    ])->saveQuietly();
 
     $exitCode = Artisan::call('migration-assistant:rollback-report', [
         'session' => migrationAssistantConsoleModelStringKey($session),

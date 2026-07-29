@@ -41,8 +41,12 @@ final readonly class KeyedMatchResolver implements MatchResolver
             $name = $descriptor[$this->nameColumn] ?? null;
             if (is_string($name) && $name !== '') {
                 $normalised = $this->normalise($name);
+                $modelClass = $this->modelClass;
+                $wrappedNameColumn = (new $modelClass)->getConnection()->getQueryGrammar()->wrap($this->nameColumn);
+                /** @var literal-string $normalisedNamePredicate */
+                $normalisedNamePredicate = sprintf('LOWER(TRIM(%s)) = ?', $wrappedNameColumn);
                 $model = $this->modelClass::query()
-                    ->whereRaw(sprintf('LOWER(TRIM(%s)) = ?', $this->nameColumn), [$normalised])
+                    ->whereRaw($normalisedNamePredicate, [$normalised])
                     ->first();
                 if ($model instanceof Model) {
                     return new MatchResolution(

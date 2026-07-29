@@ -325,7 +325,7 @@ class ImportPagesPage extends Page implements HasForms
     public function hasUpdateExistingRelationDecision(): bool
     {
         foreach ($this->relationDecisions as $decision) {
-            if (($decision['action'] ?? null) === 'update_existing') {
+            if ($decision['action'] === 'update_existing') {
                 return true;
             }
         }

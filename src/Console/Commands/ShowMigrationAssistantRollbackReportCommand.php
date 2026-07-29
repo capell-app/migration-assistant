@@ -85,8 +85,10 @@ final class ShowMigrationAssistantRollbackReportCommand extends Command
             'created_models' => array_values(array_filter(
                 $createdModels,
                 static fn (mixed $model): bool => is_array($model)
-                    && is_string($model['class'] ?? null)
-                    && (is_int($model['id'] ?? null) || is_string($model['id'] ?? null)),
+                    && array_key_exists('class', $model)
+                    && array_key_exists('id', $model)
+                    && is_string($model['class'])
+                    && (is_int($model['id']) || is_string($model['id'])),
             )),
             'summary' => is_array($report->summary) ? $report->summary : [],
             'manual_instructions' => $report->manual_instructions,
