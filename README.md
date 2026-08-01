@@ -33,20 +33,20 @@ Evidence: [`src/Support/ImportSourceRegistry.php`](src/Support/ImportSourceRegis
 
 Screenshot contract: `docs/screenshots.json`.
 
-![Recovery page imports](docs/screenshots/recovery-page-imports.png)
+![Illustrative recovery page imports preview](docs/screenshots/recovery-page-imports.png)
 
 ![Import session index or host admin surface](docs/screenshots/import-session-index-or-host-admin-surface.png)
 
-- Import session index or host admin surface (admin, optional).
-- Import validation summary (admin, optional).
-- Recovery page imports (admin, required).
-- Relation resolution review (admin, optional).
-- Rollback report view (admin, optional).
-- Package export intent screen (admin, optional).
+- Import session index or host admin surface (admin, supplementary evidence).
+- Import validation summary (admin, supplementary evidence).
+- Illustrative recovery page imports preview (frontend, required evidence).
+- Relation resolution review (admin, supplementary evidence).
+- Rollback report view (admin, supplementary evidence).
+- Package export intent screen (admin, supplementary evidence).
 
 ## Technical Shape
 
-- Service providers: `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`.
+- Service providers: `Capell\MigrationAssistant\Providers\MigrationAssistantInstallServiceProvider`, `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`.
 - Config files: `packages/migration-assistant/config/migration-assistant.php`.
 - Migrations: `packages/migration-assistant/database/migrations/2026_05_10_190859_01_create_import_sessions_table.php`, `packages/migration-assistant/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php`, `packages/migration-assistant/database/migrations/2026_06_04_000001_rename_import_rollback_reports_table.php`, `packages/migration-assistant/database/migrations/2026_07_10_000002_encrypt_import_diagnostics.php`, `packages/migration-assistant/database/migrations/2026_07_10_120000_harden_import_rollback_provenance.php`.
 - Models: `ImportRollbackAudit`, `ImportRollbackReport`, `ImportSession`.
@@ -59,7 +59,7 @@ Screenshot contract: `docs/screenshots.json`.
 - Data objects: `DependencyGraph`, `ExportOptions`, `ExternalImportPreview`, `ExternalImportReadResult`, `ExternalPageImportTargetData`, `ImportRecoveryStatusData`, `ImportValidationSummary`, `ExternalPageImportExecutionResult`, `PageImportDecisionData`, `PageImportStatusData`, `PageImportWizardStateData`, `PackageManifest`, `and 4 more`.
 - Jobs: `ExecuteImportPlanJob`.
 - Command signatures: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
-- Scheduled commands: `migration-assistant:reclaim-stale (everyTenMinutes)`.
+- Scheduled commands: `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`.
 - Console command classes: `ExecuteMigrationAssistantRollbackCommand`, `ExportMigrationAssistantPackageCommand`, `ImportMigrationAssistantPackageCommand`, `ReclaimStaleImportSessionsCommand`, `ShowMigrationAssistantRollbackReportCommand`, `ShowMigrationAssistantStatusCommand`.
 - Manifest contributions: `admin-page: Capell\MigrationAssistant\Manifest\ImportPagesPageContribution`, `admin-page: Capell\MigrationAssistant\Manifest\ImportSitesPageContribution`, `admin-resource: Capell\MigrationAssistant\Manifest\ImportSessionResourceContribution`, `configurator: Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribution`, `health-check: Capell\MigrationAssistant\Manifest\MigrationAssistantHealthContribution`, `model: Capell\MigrationAssistant\Manifest\MigrationAssistantModelsContribution`, `permission: Capell\MigrationAssistant\Manifest\MigrationAssistantPermissionsContribution`, `scheduled-job: Capell\MigrationAssistant\Manifest\MigrationAssistantRecoveryScheduleContribution`.
 - Health checks: `Capell\MigrationAssistant\Health\MigrationAssistantHealthCheck`.
@@ -83,7 +83,7 @@ Screenshot contract: `docs/screenshots.json`.
 - Database changes: package migrations are declared.
 - Config: `config/migration-assistant.php`.
 - Settings: no package settings declared.
-- Queues or schedules: scheduled commands `migration-assistant:reclaim-stale (everyTenMinutes)`; queue jobs `ExecuteImportPlanJob`.
+- Queues or schedules: scheduled commands `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`; queue jobs `ExecuteImportPlanJob`.
 - Cache tags: none declared.
 - Commands: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
 
@@ -92,7 +92,7 @@ Screenshot contract: `docs/screenshots.json`.
 - Keep required Capell packages on compatible v4 releases: `capell-app/admin`, `capell-app/core`.
 - Run migrations before opening package resources or public routes.
 - Review package configuration before production-like verification: `config/migration-assistant.php`.
-- Register the host scheduler so these declared commands run at their documented frequencies: `migration-assistant:reclaim-stale (everyTenMinutes)`.
+- Keep the host Laravel scheduler running so package-registered schedules can execute: `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`.
 
 ## Troubleshooting
 
@@ -106,7 +106,7 @@ Screenshot contract: `docs/screenshots.json`.
 
 1. Install the package: `composer require capell-app/migration-assistant`.
 2. Run the required setup: `php artisan migrate`.
-3. Open the Recovery page imports and confirm the admin workflow loads.
+3. Open `/screenshot-fixtures/catalogue/migration-assistant/recovery-page-imports` and confirm the public output renders without admin state.
 
 ## Next Steps
 
