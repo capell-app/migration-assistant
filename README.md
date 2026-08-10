@@ -15,7 +15,7 @@ Evidence: [`src/Filament/Resources/ImportSessions/ImportSessionResource.php`](sr
 Status details:
 
 - Status: Available
-- Tier: premium
+- Tier: free
 - Bundle: operations
 - Composer package: `capell-app/migration-assistant`
 - Namespace: `Capell\MigrationAssistant`

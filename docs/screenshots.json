@@ -11,7 +11,10 @@
             "package": "migration-assistant",
             "surface": "admin",
             "targetType": "admin-surface",
-            "target": null,
+            "target": "ImportSessionResource",
+            "scenario": "admin-index",
+            "url": "/migration-assistant/import-sessions",
+            "waitFor": "table",
             "required": false,
             "notes": "Optional Beta evidence target. The current file is shared by several unproven claims; replace it with an independently captured import-session surface before using it as release evidence.",
             "useCase": "An administrator reviews import sessions and their current migration state.",
@@ -84,6 +87,28 @@
             "useCase": "An operator prepares an export package and confirms included resources before download.",
             "screenshotPath": "packages/migration-assistant/docs/screenshots/package-export-intent-screen.png",
             "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/package-export-intent-screen-dark.png"
+        },
+        {
+            "id": "migration-assistant-admin-sidebar-menu-open",
+            "title": "Import session index or host admin surface with admin sidebar menu open.",
+            "package": "migration-assistant",
+            "surface": "admin",
+            "targetType": "admin-surface",
+            "target": "ImportSessionResource",
+            "scenario": "admin-index",
+            "url": "/migration-assistant/import-sessions",
+            "waitFor": "table",
+            "required": false,
+            "notes": "Optional Beta evidence target. The current file is shared by several unproven claims; replace it with an independently captured import-session surface before using it as release evidence. Capture this same admin surface with the fully collapsible sidebar opened.",
+            "useCase": "An administrator reviews import sessions and their current migration state.",
+            "screenshotPath": "packages/migration-assistant/docs/screenshots/migration-assistant-admin-sidebar-menu-open.png",
+            "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/migration-assistant-admin-sidebar-menu-open-dark.png",
+            "interactions": [
+                {
+                    "type": "click",
+                    "selector": ".fi-topbar-open-collapse-sidebar-btn"
+                }
+            ]
         }
     ]
 }
