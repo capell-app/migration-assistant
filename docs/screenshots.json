@@ -3,6 +3,8 @@
     "composerName": "capell-app/migration-assistant",
     "generatedFor": "deployment-screenshot-runner",
     "requiresInstalledPackage": true,
+    "auditStatus": "authentic-installed-app-captured",
+    "auditReason": "Required Marketplace evidence is captured from the real installed Migration Assistant Filament resource after runner-owned deterministic setup.",
     "outputDirectory": "packages/migration-assistant/docs/screenshots",
     "entries": [
         {
@@ -15,8 +17,10 @@
             "scenario": "admin-index",
             "url": "/migration-assistant/import-sessions",
             "waitFor": "table",
-            "required": false,
-            "notes": "Optional Beta evidence target. The current file is shared by several unproven claims; replace it with an independently captured import-session surface before using it as release evidence.",
+            "user": "admin",
+            "required": true,
+            "evidenceKind": "installed-app-filament-capture",
+            "notes": "Captured from the real installed ImportSessionResource after runner-owned setup creates deterministic encrypted import states.",
             "useCase": "An administrator reviews import sessions and their current migration state.",
             "screenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface.png",
             "darkScreenshotPath": "packages/migration-assistant/docs/screenshots/import-session-index-or-host-admin-surface-dark.png"

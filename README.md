@@ -33,16 +33,17 @@ Evidence: [`src/Support/ImportSourceRegistry.php`](src/Support/ImportSourceRegis
 
 Screenshot contract: `docs/screenshots.json`.
 
-![Illustrative recovery page imports preview](docs/screenshots/recovery-page-imports.png)
-
 ![Import session index or host admin surface](docs/screenshots/import-session-index-or-host-admin-surface.png)
 
-- Import session index or host admin surface (admin, supplementary evidence).
+![Illustrative recovery page imports preview](docs/screenshots/recovery-page-imports.png)
+
+- Import session index or host admin surface (admin, required authentic evidence).
 - Import validation summary (admin, supplementary evidence).
 - Illustrative recovery page imports preview (frontend, required evidence).
 - Relation resolution review (admin, supplementary evidence).
 - Rollback report view (admin, supplementary evidence).
 - Package export intent screen (admin, supplementary evidence).
+- Import session index or host admin surface with admin sidebar menu open (admin, supplementary evidence).
 
 ## Technical Shape
 
@@ -106,7 +107,7 @@ Screenshot contract: `docs/screenshots.json`.
 
 1. Install the package: `composer require capell-app/migration-assistant`.
 2. Run the required setup: `php artisan migrate`.
-3. Open `/screenshot-fixtures/catalogue/migration-assistant/recovery-page-imports` and confirm the public output renders without admin state.
+3. Open the package admin surface at `/migration-assistant/import-sessions` and confirm Migration Assistant is available.
 
 ## Next Steps
 

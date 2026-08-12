@@ -250,6 +250,11 @@
                 "path": "docs/assets/marketplace/extension-card.jpg",
                 "alt": "Migration Assistant extension preview image",
                 "caption": "Migration Assistant extension preview"
+            },
+            {
+                "path": "docs/screenshots/import-session-index-or-host-admin-surface.png",
+                "alt": "Migration Assistant import sessions index",
+                "caption": "Review mapped, validated, and completed migration sessions in the installed admin resource"
             }
         ],
         "categories": ["admin", "console", "operations"]
