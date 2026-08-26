@@ -63,6 +63,7 @@ final class ExecuteExternalPageImportAction
                 $this->packageFromPreview($preview, $defaultPageAttributes),
                 new ResolutionMap(resolved: [], unresolved: []),
                 is_numeric($session->getRawOriginal('target_id')) ? (int) $session->getRawOriginal('target_id') : null,
+                $authorizedTarget->siteId,
             );
 
             if (! $finalize) {

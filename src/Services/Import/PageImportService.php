@@ -35,6 +35,7 @@ final readonly class PageImportService
         PackageReadResult $package,
         ResolutionMap $resolutionMap,
         ?int $targetContextId = null,
+        ?int $authorizedSiteId = null,
     ): ImportExecutionReport {
         $created = [];
         $skipped = 0;
@@ -46,6 +47,7 @@ final readonly class PageImportService
         return $this->contextResolver->wrap(function () use (
             $package,
             $resolutionMap,
+            $authorizedSiteId,
             &$created,
             &$skipped,
             &$errors,
@@ -56,6 +58,7 @@ final readonly class PageImportService
             DB::transaction(function () use (
                 $package,
                 $resolutionMap,
+                $authorizedSiteId,
                 &$created,
                 &$skipped,
                 &$errors,
@@ -77,7 +80,7 @@ final readonly class PageImportService
                         $descriptor = $this->decode($contents);
                         $descriptorsByPath[$entryPath] = $descriptor;
 
-                        $pageId = $this->writePage($descriptor, $resolutionMap);
+                        $pageId = $this->writePage($descriptor, $resolutionMap, $authorizedSiteId);
                         if ($pageId === null) {
                             $skipped++;
 
@@ -148,15 +151,40 @@ final readonly class PageImportService
     /**
      * @param  array<string, mixed>  $descriptor
      */
-    private function writePage(array $descriptor, ResolutionMap $map): int|string|null
+    private function writePage(array $descriptor, ResolutionMap $map, ?int $authorizedSiteId = null): int|string|null
     {
         $attributes = is_array($descriptor['attributes'] ?? null) ? $descriptor['attributes'] : [];
         $shared = is_array($descriptor['shared_relations'] ?? null) ? $descriptor['shared_relations'] : [];
 
+        // The target site is a security boundary, not an ordinary shared
+        // relation: it must ALWAYS come from the archive's `site` ref once
+        // resolved through the (human-reviewed, permission-checked)
+        // ResolutionMap, never from a raw `attributes['site_id']` value in
+        // the untrusted payload. A legitimately exported package always
+        // carries this ref (see DependencyGraphBuilder::collectSites()); an
+        // archive that omits it, or whose ref never resolved, is either
+        // malformed or was crafted to smuggle an arbitrary site_id straight
+        // through the whitelist below. Either way the page is refused
+        // outright rather than silently written to whatever site_id the
+        // payload happens to carry.
+        //
+        // $authorizedSiteId is a separate, narrow exception: it is never
+        // read from the descriptor/payload, only supplied by a caller that
+        // has independently authorized a single target site before calling
+        // import() at all (see ExecuteExternalPageImportAction, which
+        // resolves it via AuthorizeExternalPageImportTargetAction). Archive
+        // imports never pass it, so the untrusted-payload refusal above is
+        // unchanged for that path.
+        $siteRef = $shared['site']['ref'] ?? null;
+        $siteId = is_string($siteRef) ? $map->localIdFor($siteRef) : null;
+        $siteId ??= $authorizedSiteId;
+        if ($siteId === null) {
+            return null;
+        }
+
         $rewrites = [
             'layout' => 'layout_id',
             'type' => 'blueprint_id',
-            'site' => 'site_id',
         ];
 
         foreach ($rewrites as $relationKey => $column) {
@@ -198,6 +226,11 @@ final readonly class PageImportService
         // to a non-elevated default rather than letting the payload control it.
         $attributes['admin'] = null;
 
+        // site_id is deliberately not part of importablePageAttributes(): it is
+        // always the resolved, authorised value computed above, never a value
+        // read out of the untrusted payload.
+        $attributes['site_id'] = $siteId;
+
         $page = new Page;
         $page->forceFill($attributes);
         $page->save();
@@ -213,13 +246,17 @@ final readonly class PageImportService
         // `admin` is deliberately excluded: it carries admin-panel/privilege
         // metadata and must be set server-side (see writePage), never honoured
         // from the untrusted import payload.
+        //
+        // `site_id` is deliberately excluded too: it is a security boundary,
+        // not an ordinary attribute, and is always set server-side in
+        // writePage() from the resolved `site` shared-relation ref — never
+        // taken directly from the untrusted payload.
         return [
             'layout_id',
             'meta',
             'name',
             'order',
             'parent_id',
-            'site_id',
             'blueprint_id',
             'visible_from',
             'visible_until',

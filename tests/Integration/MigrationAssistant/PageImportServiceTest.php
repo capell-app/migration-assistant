@@ -321,6 +321,110 @@ it('stamps imported pages and page urls with the authenticated importer', functi
         ->and((int) $pageUrl->getAttribute('updated_by'))->toBe((int) $user->getKey());
 });
 
+it('never writes a raw payload site_id when the site ref is missing', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->create();
+    $authorisedSite = Site::factory()->create();
+    $victimSite = Site::factory()->create();
+
+    // Crafted/malformed archive: the `site` shared-relation ref is omitted
+    // entirely, but the untrusted attributes still carry a site_id for a
+    // site the import was never authorised against.
+    $descriptor = json_decode(makePageDescriptor($layout, $type, $authorisedSite, overrides: [
+        'site_id' => $victimSite->getKey(),
+    ]), true, 512, JSON_THROW_ON_ERROR);
+    unset($descriptor['shared_relations']['site']);
+
+    $package = new PackageReadResult(
+        archivePath: '',
+        manifest: [],
+        integrity: [],
+        payload: ['pages/spoofed-site.json' => json_encode($descriptor, JSON_THROW_ON_ERROR)],
+    );
+
+    $map = new ResolutionMap(
+        resolved: [
+            'layout:' . $layout->getKey() => new MatchResolution(localId: (int) $layout->getKey(), strategy: 'key'),
+            'type:' . $type->getKey() => new MatchResolution(localId: (int) $type->getKey(), strategy: 'key'),
+        ],
+        unresolved: [],
+    );
+
+    $report = (new PageImportService)->import($package, $map);
+
+    expect($report->pagesCreated)->toBe(0)
+        ->and($report->pagesSkipped)->toBe(1);
+
+    expect(Page::query()->withoutGlobalScopes()->where('site_id', $victimSite->getKey())->exists())->toBeFalse();
+});
+
+it('never writes a raw payload site_id when the site ref does not resolve', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->create();
+    $authorisedSite = Site::factory()->create();
+    $victimSite = Site::factory()->create();
+
+    // Crafted/malformed archive: the `site` ref is present but points at a
+    // ref the ResolutionMap never resolved (e.g. an unknown/forged ref),
+    // while attributes.site_id still carries an unauthorised site.
+    $descriptor = json_decode(makePageDescriptor($layout, $type, $authorisedSite, overrides: [
+        'site_id' => $victimSite->getKey(),
+    ]), true, 512, JSON_THROW_ON_ERROR);
+    $descriptor['shared_relations']['site']['ref'] = 'site:does-not-exist';
+
+    $package = new PackageReadResult(
+        archivePath: '',
+        manifest: [],
+        integrity: [],
+        payload: ['pages/unresolved-site.json' => json_encode($descriptor, JSON_THROW_ON_ERROR)],
+    );
+
+    $map = new ResolutionMap(
+        resolved: [
+            'layout:' . $layout->getKey() => new MatchResolution(localId: (int) $layout->getKey(), strategy: 'key'),
+            'type:' . $type->getKey() => new MatchResolution(localId: (int) $type->getKey(), strategy: 'key'),
+        ],
+        unresolved: ['site:does-not-exist'],
+    );
+
+    $report = (new PageImportService)->import($package, $map);
+
+    expect($report->pagesCreated)->toBe(0)
+        ->and($report->pagesSkipped)->toBe(1);
+
+    expect(Page::query()->withoutGlobalScopes()->where('site_id', $victimSite->getKey())->exists())->toBeFalse();
+});
+
+it('writes the resolved site_id from the ref even when it differs from the raw payload attribute', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->create();
+    $authorisedSite = Site::factory()->create();
+    $victimSite = Site::factory()->create();
+
+    // The ref is present and resolves correctly to the authorised site, but
+    // the raw (attacker-controlled) attributes.site_id disagrees. The
+    // resolved ref must win, never the raw attribute.
+    $descriptor = json_decode(makePageDescriptor($layout, $type, $authorisedSite, overrides: [
+        'site_id' => $victimSite->getKey(),
+    ]), true, 512, JSON_THROW_ON_ERROR);
+
+    $package = new PackageReadResult(
+        archivePath: '',
+        manifest: [],
+        integrity: [],
+        payload: ['pages/mismatched-site.json' => json_encode($descriptor, JSON_THROW_ON_ERROR)],
+    );
+
+    $report = (new PageImportService)->import($package, fullyResolvedMap($layout, $type, $authorisedSite));
+
+    expect($report->pagesCreated)->toBe(1);
+
+    $page = Page::query()->withoutGlobalScopes()->whereKey($report->createdPageIds[0])->firstOrFail();
+
+    expect((int) $page->getAttribute('site_id'))->toBe((int) $authorisedSite->getKey())
+        ->and((int) $page->getAttribute('site_id'))->not->toBe((int) $victimSite->getKey());
+});
+
 it('does not import internal page state from package attributes', function (): void {
     $layout = Layout::factory()->create();
     $type = Blueprint::factory()->create();
