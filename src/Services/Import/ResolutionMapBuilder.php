@@ -20,6 +20,8 @@ use RuntimeException;
  */
 final readonly class ResolutionMapBuilder
 {
+    private const string SITES_GROUP = 'sites';
+
     private RelationMatchResolverRegistry $registry;
 
     /**
@@ -37,6 +39,8 @@ final readonly class ResolutionMapBuilder
      */
     public function build(array $payload): ResolutionMap
     {
+        $siteIds = $this->resolveSiteIds($payload);
+
         $resolved = [];
         $unresolved = [];
 
@@ -64,7 +68,7 @@ final readonly class ResolutionMapBuilder
                 continue;
             }
 
-            $resolution = $this->registry->resolve($folder, $descriptor);
+            $resolution = $this->registry->resolve($folder, $descriptor, $siteIds);
             if (! $resolution instanceof MatchResolution) {
                 $unresolved[] = $ref;
 
@@ -75,6 +79,43 @@ final readonly class ResolutionMapBuilder
         }
 
         return new ResolutionMap(resolved: $resolved, unresolved: $unresolved);
+    }
+
+    /**
+     * Resolve the archive's own `sites` shared relations before anything
+     * else, so that other groups (e.g. layouts) can restrict their matches
+     * to the sites legitimately in play for this import. Without this, a
+     * site-scoped resolver has no way to distinguish "this import targets
+     * site A" from "no site context available" and either has to trust an
+     * unauthenticated site claim from elsewhere in the payload or match
+     * across every tenant.
+     *
+     * @param  array<string, string>  $payload
+     * @return list<int>
+     */
+    private function resolveSiteIds(array $payload): array
+    {
+        if (! $this->registry->hasGroup(self::SITES_GROUP)) {
+            return [];
+        }
+
+        $prefix = 'relations/' . self::SITES_GROUP . '/';
+        $siteIds = [];
+
+        foreach ($payload as $entryPath => $contents) {
+            if (! str_starts_with($entryPath, $prefix)) {
+                continue;
+            }
+
+            $descriptor = $this->decode($contents, $entryPath);
+            $resolution = $this->registry->resolve(self::SITES_GROUP, $descriptor);
+
+            if ($resolution instanceof MatchResolution && is_int($resolution->localId)) {
+                $siteIds[] = $resolution->localId;
+            }
+        }
+
+        return array_values(array_unique($siteIds));
     }
 
     /**

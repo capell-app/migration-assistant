@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Services\Import\Resolvers;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -41,13 +42,20 @@ final readonly class FingerprintMatchResolver implements MatchResolver
     /**
      * @param  class-string<TModel>  $modelClass
      * @param  list<string>  $schemaColumns  attribute names that together form the canonical schema
+     * @param  bool  $scopeToSite  restrict candidates to $siteIds plus records with a null
+     *                             site_id. Only enable for models with a nullable site_id
+     *                             column (e.g. Layout) — never for models without one.
      */
     public function __construct(
         private string $modelClass,
         private array $schemaColumns = ['admin', 'meta'],
+        private bool $scopeToSite = false,
     ) {}
 
-    public function resolve(array $descriptor): ?MatchResolution
+    /**
+     * @param  list<int>  $siteIds
+     */
+    public function resolve(array $descriptor, array $siteIds = []): ?MatchResolution
     {
         $attributes = $descriptor['attributes'] ?? null;
         if (! is_array($attributes)) {
@@ -62,11 +70,22 @@ final readonly class FingerprintMatchResolver implements MatchResolver
         $model = new $this->modelClass;
         $keyName = $model->getKeyName();
 
-        /** @var iterable<Model> $candidates */
-        $candidates = $this->modelClass::query()
+        $query = $this->modelClass::query()
             ->select(array_values(array_unique([$keyName, ...$this->schemaColumns])))
-            ->orderBy($keyName)
-            ->cursor();
+            ->orderBy($keyName);
+
+        if ($this->scopeToSite) {
+            $query->where(function (Builder $query) use ($siteIds): void {
+                $query->whereNull('site_id');
+
+                if ($siteIds !== []) {
+                    $query->orWhereIn('site_id', $siteIds);
+                }
+            });
+        }
+
+        /** @var iterable<Model> $candidates */
+        $candidates = $query->cursor();
 
         foreach ($candidates as $candidate) {
             $localAttributes = $candidate->attributesToArray();

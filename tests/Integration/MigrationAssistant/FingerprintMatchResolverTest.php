@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Capell\Core\Models\Layout;
+use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Services\Import\Resolvers\FingerprintMatchResolver;
 use Illuminate\Support\Facades\DB;
 
@@ -103,4 +104,90 @@ it('streams only the fingerprint columns when scanning local candidates', functi
 
     expect($candidateQuery)->not->toBeNull()
         ->and(strtolower((string) $candidateQuery))->not->toContain('select *');
+});
+
+it('matches a global layout by fingerprint even when scoped to specific sites', function (): void {
+    $layout = Layout::factory()->create([
+        'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+        'meta' => ['cache_time' => 'hour'],
+    ]);
+
+    $resolver = new FingerprintMatchResolver(Layout::class, scopeToSite: true);
+
+    $descriptor = [
+        'ref' => 'layout:999',
+        'attributes' => [
+            'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+            'meta' => ['cache_time' => 'hour'],
+        ],
+    ];
+
+    expect($resolver->resolve($descriptor, [9999999])?->localId)->toBe($layout->getKey());
+});
+
+it('does not match a private layout belonging to a different site when scoped to site', function (): void {
+    $authorisedSite = Site::factory()->create();
+    $victimSite = Site::factory()->create();
+
+    Layout::factory()->create([
+        'site_id' => $victimSite->getKey(),
+        'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+        'meta' => ['cache_time' => 'hour'],
+    ]);
+
+    $resolver = new FingerprintMatchResolver(Layout::class, scopeToSite: true);
+
+    $descriptor = [
+        'ref' => 'layout:999',
+        'attributes' => [
+            'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+            'meta' => ['cache_time' => 'hour'],
+        ],
+    ];
+
+    expect($resolver->resolve($descriptor, [$authorisedSite->getKey()]))->toBeNull();
+});
+
+it('matches a private layout belonging to an authorised site when scoped to site', function (): void {
+    $authorisedSite = Site::factory()->create();
+
+    $layout = Layout::factory()->create([
+        'site_id' => $authorisedSite->getKey(),
+        'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+        'meta' => ['cache_time' => 'hour'],
+    ]);
+
+    $resolver = new FingerprintMatchResolver(Layout::class, scopeToSite: true);
+
+    $descriptor = [
+        'ref' => 'layout:999',
+        'attributes' => [
+            'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+            'meta' => ['cache_time' => 'hour'],
+        ],
+    ];
+
+    expect($resolver->resolve($descriptor, [$authorisedSite->getKey()])?->localId)->toBe($layout->getKey());
+});
+
+it('remains fully unscoped by default, matching a private layout with no site context', function (): void {
+    $victimSite = Site::factory()->create();
+
+    $layout = Layout::factory()->create([
+        'site_id' => $victimSite->getKey(),
+        'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+        'meta' => ['cache_time' => 'hour'],
+    ]);
+
+    $resolver = new FingerprintMatchResolver(Layout::class);
+
+    $descriptor = [
+        'ref' => 'layout:999',
+        'attributes' => [
+            'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+            'meta' => ['cache_time' => 'hour'],
+        ],
+    ];
+
+    expect($resolver->resolve($descriptor)?->localId)->toBe($layout->getKey());
 });

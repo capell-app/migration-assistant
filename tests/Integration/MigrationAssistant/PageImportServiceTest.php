@@ -333,6 +333,11 @@ it('never writes a raw payload site_id when the site ref is missing', function (
     $descriptor = json_decode(makePageDescriptor($layout, $type, $authorisedSite, overrides: [
         'site_id' => $victimSite->getKey(),
     ]), true, 512, JSON_THROW_ON_ERROR);
+
+    if (! is_array($descriptor) || ! is_array($descriptor['shared_relations'] ?? null)) {
+        throw new LogicException('Expected page descriptor shared relations.');
+    }
+
     unset($descriptor['shared_relations']['site']);
 
     $package = new PackageReadResult(
@@ -370,6 +375,11 @@ it('never writes a raw payload site_id when the site ref does not resolve', func
     $descriptor = json_decode(makePageDescriptor($layout, $type, $authorisedSite, overrides: [
         'site_id' => $victimSite->getKey(),
     ]), true, 512, JSON_THROW_ON_ERROR);
+
+    if (! is_array($descriptor) || ! is_array($descriptor['shared_relations'] ?? null) || ! is_array($descriptor['shared_relations']['site'] ?? null)) {
+        throw new LogicException('Expected page descriptor site relation.');
+    }
+
     $descriptor['shared_relations']['site']['ref'] = 'site:does-not-exist';
 
     $package = new PackageReadResult(
@@ -454,8 +464,15 @@ it('does not import internal page state from package attributes', function (): v
 
     $page = Page::query()->withoutGlobalScopes()->whereKey($report->createdPageIds[0])->firstOrFail();
 
-    expect((int) $page->getAttribute('_lft'))->not->toBe(777)
-        ->and((int) $page->getAttribute('_rgt'))->not->toBe(888)
+    $left = $page->getAttribute('_lft');
+    $right = $page->getAttribute('_rgt');
+
+    if (! is_numeric($left) || ! is_numeric($right)) {
+        throw new LogicException('Expected imported nested-set bounds to be numeric.');
+    }
+
+    expect((int) $left)->not->toBe(777)
+        ->and((int) $right)->not->toBe(888)
         ->and($page->getAttribute('created_by'))->not->toBe(999)
         ->and($page->getAttribute('updated_by'))->not->toBe(999)
         ->and($page->getAttribute('deleted_by'))->not->toBe(999);

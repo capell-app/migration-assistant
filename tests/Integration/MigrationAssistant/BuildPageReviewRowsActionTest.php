@@ -93,7 +93,7 @@ it('flags URL collisions against live pages and suggests update', function (): v
         'site_id' => $site->getKey(),
         'language_id' => 1,
         'url' => '/already-live',
-        'status' => 'published',
+        'status' => true,
         'pageable_type' => 'page',
         'pageable_id' => 9999,
         'type' => 'alias',

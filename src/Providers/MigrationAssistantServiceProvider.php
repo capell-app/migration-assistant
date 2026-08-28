@@ -126,8 +126,8 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
             RelationMatchResolverRegistry::class,
             static function (): RelationMatchResolverRegistry {
                 $registry = new RelationMatchResolverRegistry;
-                $registry->register('layouts', new KeyedMatchResolver(Layout::class));
-                $registry->register('layouts', new FingerprintMatchResolver(Layout::class));
+                $registry->register('layouts', new KeyedMatchResolver(Layout::class, scopeToSite: true));
+                $registry->register('layouts', new FingerprintMatchResolver(Layout::class, scopeToSite: true));
                 $registry->register('blueprints', new KeyedMatchResolver(Blueprint::class));
                 $registry->register('blueprints', new FingerprintMatchResolver(Blueprint::class));
                 $registry->register('sites', new KeyedMatchResolver(Site::class, keyColumn: 'slug'));

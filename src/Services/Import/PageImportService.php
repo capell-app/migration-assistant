@@ -175,7 +175,10 @@ final readonly class PageImportService
         // resolves it via AuthorizeExternalPageImportTargetAction). Archive
         // imports never pass it, so the untrusted-payload refusal above is
         // unchanged for that path.
-        $siteRef = $shared['site']['ref'] ?? null;
+        $siteRelation = $shared['site'] ?? null;
+        $siteRef = is_array($siteRelation) && is_string($siteRelation['ref'] ?? null)
+            ? $siteRelation['ref']
+            : null;
         $siteId = is_string($siteRef) ? $map->localIdFor($siteRef) : null;
         $siteId ??= $authorizedSiteId;
         if ($siteId === null) {
@@ -342,6 +345,10 @@ final readonly class PageImportService
         $count = 0;
 
         foreach ($bindings as $binding) {
+            if (! is_array($binding)) {
+                continue;
+            }
+
             $ref = $binding['ref'] ?? null;
             if (! is_string($ref)) {
                 continue;
