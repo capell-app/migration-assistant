@@ -39,7 +39,7 @@ final readonly class ResolutionMapBuilder
      */
     public function build(array $payload): ResolutionMap
     {
-        $siteIds = $this->resolveSiteIds($payload);
+        $siteIdsBySourceId = $this->resolveSiteIdMap($payload);
 
         $resolved = [];
         $unresolved = [];
@@ -68,7 +68,8 @@ final readonly class ResolutionMapBuilder
                 continue;
             }
 
-            $resolution = $this->registry->resolve($folder, $descriptor, $siteIds);
+            $siteId = $this->targetSiteId($descriptor, $siteIdsBySourceId);
+            $resolution = $this->registry->resolve($folder, $descriptor, $siteId);
             if (! $resolution instanceof MatchResolution) {
                 $unresolved[] = $ref;
 
@@ -84,23 +85,21 @@ final readonly class ResolutionMapBuilder
     /**
      * Resolve the archive's own `sites` shared relations before anything
      * else, so that other groups (e.g. layouts) can restrict their matches
-     * to the sites legitimately in play for this import. Without this, a
-     * site-scoped resolver has no way to distinguish "this import targets
-     * site A" from "no site context available" and either has to trust an
-     * unauthenticated site claim from elsewhere in the payload or match
-     * across every tenant.
+     * to the site legitimately owning each relation. Without this, a
+     * site-scoped resolver would receive every site in a multi-site import
+     * and could bind one site's relation to another site's matching shape.
      *
      * @param  array<string, string>  $payload
-     * @return list<int>
+     * @return array<int, int> source site ID => local site ID
      */
-    private function resolveSiteIds(array $payload): array
+    private function resolveSiteIdMap(array $payload): array
     {
         if (! $this->registry->hasGroup(self::SITES_GROUP)) {
             return [];
         }
 
         $prefix = 'relations/' . self::SITES_GROUP . '/';
-        $siteIds = [];
+        $siteIdsBySourceId = [];
 
         foreach ($payload as $entryPath => $contents) {
             if (! str_starts_with($entryPath, $prefix)) {
@@ -110,12 +109,38 @@ final readonly class ResolutionMapBuilder
             $descriptor = $this->decode($contents, $entryPath);
             $resolution = $this->registry->resolve(self::SITES_GROUP, $descriptor);
 
-            if ($resolution instanceof MatchResolution && is_int($resolution->localId)) {
-                $siteIds[] = $resolution->localId;
+            $sourceSiteId = $this->integerAttribute($descriptor['id'] ?? null);
+            if ($sourceSiteId !== null && $resolution instanceof MatchResolution && is_int($resolution->localId)) {
+                $siteIdsBySourceId[$sourceSiteId] = $resolution->localId;
             }
         }
 
-        return array_values(array_unique($siteIds));
+        return $siteIdsBySourceId;
+    }
+
+    /**
+     * @param  array<string, mixed>  $descriptor
+     * @param  array<int, int>  $siteIdsBySourceId
+     */
+    private function targetSiteId(array $descriptor, array $siteIdsBySourceId): ?int
+    {
+        $attributes = $descriptor['attributes'] ?? null;
+        if (! is_array($attributes)) {
+            return null;
+        }
+
+        $sourceSiteId = $this->integerAttribute($attributes['site_id'] ?? null);
+
+        return $sourceSiteId === null ? null : ($siteIdsBySourceId[$sourceSiteId] ?? null);
+    }
+
+    private function integerAttribute(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        return is_string($value) && ctype_digit($value) ? (int) $value : null;
     }
 
     /**

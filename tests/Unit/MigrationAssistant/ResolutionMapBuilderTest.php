@@ -12,7 +12,7 @@ function makeResolver(?MatchResolution $resolution): MatchResolver
     {
         public function __construct(private ?MatchResolution $resolution) {}
 
-        public function resolve(array $descriptor, array $siteIds = []): ?MatchResolution
+        public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
         {
             return $this->resolution;
         }
@@ -21,7 +21,7 @@ function makeResolver(?MatchResolution $resolution): MatchResolver
 
 final class ResolutionMapBuilderSiteIdCapture
 {
-    /** @var list<list<int>> */
+    /** @var list<int|null> */
     public array $calls = [];
 }
 
@@ -36,11 +36,10 @@ function makeSiteIdCapturingResolver(?MatchResolution $resolution, ResolutionMap
 
         /**
          * @param  array<string, mixed>  $descriptor
-         * @param  list<int>  $siteIds
          */
-        public function resolve(array $descriptor, array $siteIds = []): ?MatchResolution
+        public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
         {
-            $this->capture->calls[] = $siteIds;
+            $this->capture->calls[] = $siteId;
 
             return $this->resolution;
         }
@@ -51,7 +50,7 @@ function makeSiteEchoResolver(): MatchResolver
 {
     return new class implements MatchResolver
     {
-        public function resolve(array $descriptor, array $siteIds = []): MatchResolution
+        public function resolve(array $descriptor, ?int $siteId = null): MatchResolution
         {
             $ref = is_string($descriptor['ref'] ?? null) ? $descriptor['ref'] : '';
             $id = (int) str_replace('site:', '', $ref);
@@ -127,15 +126,15 @@ it('resolves the sites group first and threads matched site ids into every other
     ]);
 
     $map = $builder->build([
-        'relations/sites/a.json' => migrationAssistantResolutionPayload(['type' => 'site', 'ref' => 'site:1']),
-        'relations/layouts/b.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:1']),
+        'relations/sites/a.json' => migrationAssistantResolutionPayload(['type' => 'site', 'ref' => 'site:1', 'id' => 1]),
+        'relations/layouts/b.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:1', 'attributes' => ['site_id' => 1]]),
     ]);
 
     expect($map->localIdFor('layout:1'))->toBe(42)
-        ->and($capture->calls)->toBe([[7]]);
+        ->and($capture->calls)->toBe([7]);
 });
 
-it('threads an empty site id list when no sites resolve', function (): void {
+it('threads no target site id when no sites resolve', function (): void {
     $capture = new ResolutionMapBuilderSiteIdCapture;
 
     $builder = new ResolutionMapBuilder([
@@ -144,15 +143,15 @@ it('threads an empty site id list when no sites resolve', function (): void {
     ]);
 
     $map = $builder->build([
-        'relations/sites/a.json' => migrationAssistantResolutionPayload(['type' => 'site', 'ref' => 'site:1']),
-        'relations/layouts/b.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:1']),
+        'relations/sites/a.json' => migrationAssistantResolutionPayload(['type' => 'site', 'ref' => 'site:1', 'id' => 1]),
+        'relations/layouts/b.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:1', 'attributes' => ['site_id' => 1]]),
     ]);
 
     expect($map->localIdFor('layout:1'))->toBe(42)
-        ->and($capture->calls)->toBe([[]]);
+        ->and($capture->calls)->toBe([null]);
 });
 
-it('collects every resolved site id, de-duplicated, regardless of payload order', function (): void {
+it('threads each relation its own resolved site id regardless of payload order', function (): void {
     $capture = new ResolutionMapBuilderSiteIdCapture;
 
     $builder = new ResolutionMapBuilder([
@@ -161,11 +160,11 @@ it('collects every resolved site id, de-duplicated, regardless of payload order'
     ]);
 
     $builder->build([
-        'relations/layouts/c.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:1']),
-        'relations/sites/a.json' => migrationAssistantResolutionPayload(['type' => 'site', 'ref' => 'site:5']),
-        'relations/sites/b.json' => migrationAssistantResolutionPayload(['type' => 'site', 'ref' => 'site:9']),
+        'relations/layouts/c.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:1', 'attributes' => ['site_id' => 5]]),
+        'relations/layouts/d.json' => migrationAssistantResolutionPayload(['type' => 'layout', 'ref' => 'layout:2', 'attributes' => ['site_id' => 9]]),
+        'relations/sites/a.json' => migrationAssistantResolutionPayload(['type' => 'site', 'ref' => 'site:5', 'id' => 5]),
+        'relations/sites/b.json' => migrationAssistantResolutionPayload(['type' => 'site', 'ref' => 'site:9', 'id' => 9]),
     ]);
 
-    expect($capture->calls)->toHaveCount(1)
-        ->and($capture->calls[0])->toEqualCanonicalizing([5, 9]);
+    expect($capture->calls)->toEqual([5, 9]);
 });

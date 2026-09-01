@@ -16,11 +16,10 @@ interface MatchResolver
 {
     /**
      * @param  array<string, mixed>  $descriptor  decoded relations/<folder>/<key>.json
-     * @param  list<int>  $siteIds  local site IDs legitimately in play for this import (the
-     *                              import's own resolved `sites` shared relations); empty when
-     *                              none resolved yet or the group isn't site-scoped. A resolver
-     *                              that matches a tenant-scoped model should use this to exclude
-     *                              records belonging to a site outside this set.
+     * @param  int|null  $siteId  local target site ID for this relation, resolved from the
+     *                            relation's source site; null when no site context is available.
+     *                            A resolver that matches a tenant-scoped model should use this to
+     *                            exclude records belonging to another site.
      */
-    public function resolve(array $descriptor, array $siteIds = []): ?MatchResolution;
+    public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution;
 }

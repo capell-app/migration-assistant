@@ -21,7 +21,7 @@ final readonly class KeyedMatchResolver implements MatchResolver
 {
     /**
      * @param  class-string<TModel>  $modelClass
-     * @param  bool  $scopeToSite  restrict matches to $siteIds plus records with a null
+     * @param  bool  $scopeToSite  restrict matches to $siteId plus records with a null
      *                             site_id. Only enable for models with a nullable site_id
      *                             column (e.g. Layout) — never for models without one.
      */
@@ -32,14 +32,11 @@ final readonly class KeyedMatchResolver implements MatchResolver
         private bool $scopeToSite = false,
     ) {}
 
-    /**
-     * @param  list<int>  $siteIds
-     */
-    public function resolve(array $descriptor, array $siteIds = []): ?MatchResolution
+    public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
     {
         $key = $descriptor[$this->keyColumn] ?? null;
         if (is_string($key) && $key !== '') {
-            $model = $this->scopedQuery($siteIds)->where($this->keyColumn, $key)->first();
+            $model = $this->scopedQuery($siteId)->where($this->keyColumn, $key)->first();
             if ($model instanceof Model) {
                 return new MatchResolution(localId: $model->getKey(), strategy: $this->keyColumn);
             }
@@ -53,7 +50,7 @@ final readonly class KeyedMatchResolver implements MatchResolver
                 $wrappedNameColumn = (new $modelClass)->getConnection()->getQueryGrammar()->wrap($this->nameColumn);
                 /** @var literal-string $normalisedNamePredicate */
                 $normalisedNamePredicate = sprintf('LOWER(TRIM(%s)) = ?', $wrappedNameColumn);
-                $model = $this->scopedQuery($siteIds)
+                $model = $this->scopedQuery($siteId)
                     ->whereRaw($normalisedNamePredicate, [$normalised])
                     ->first();
                 if ($model instanceof Model) {
@@ -70,10 +67,9 @@ final readonly class KeyedMatchResolver implements MatchResolver
     }
 
     /**
-     * @param  list<int>  $siteIds
      * @return Builder<Model>
      */
-    private function scopedQuery(array $siteIds): Builder
+    private function scopedQuery(?int $siteId): Builder
     {
         $query = $this->modelClass::query();
 
@@ -81,11 +77,11 @@ final readonly class KeyedMatchResolver implements MatchResolver
             return $query;
         }
 
-        return $query->where(function (Builder $query) use ($siteIds): void {
+        return $query->where(function (Builder $query) use ($siteId): void {
             $query->whereNull('site_id');
 
-            if ($siteIds !== []) {
-                $query->orWhereIn('site_id', $siteIds);
+            if ($siteId !== null) {
+                $query->orWhere('site_id', $siteId);
             }
         });
     }

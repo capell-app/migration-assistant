@@ -122,7 +122,7 @@ it('matches a global layout by fingerprint even when scoped to specific sites', 
         ],
     ];
 
-    expect($resolver->resolve($descriptor, [9999999])?->localId)->toBe($layout->getKey());
+    expect($resolver->resolve($descriptor, 9999999)?->localId)->toBe($layout->getKey());
 });
 
 it('does not match a private layout belonging to a different site when scoped to site', function (): void {
@@ -145,7 +145,7 @@ it('does not match a private layout belonging to a different site when scoped to
         ],
     ];
 
-    expect($resolver->resolve($descriptor, [$authorisedSite->getKey()]))->toBeNull();
+    expect($resolver->resolve($descriptor, $authorisedSite->getKey()))->toBeNull();
 });
 
 it('matches a private layout belonging to an authorised site when scoped to site', function (): void {
@@ -167,7 +167,42 @@ it('matches a private layout belonging to an authorised site when scoped to site
         ],
     ];
 
-    expect($resolver->resolve($descriptor, [$authorisedSite->getKey()])?->localId)->toBe($layout->getKey());
+    expect($resolver->resolve($descriptor, $authorisedSite->getKey())?->localId)->toBe($layout->getKey());
+});
+
+it('only matches a private layout within the target site when resolving a fingerprint', function (): void {
+    $targetSite = Site::factory()->create();
+    $otherSite = Site::factory()->create();
+    $schema = [
+        'admin' => ['fields' => [['name' => 'title', 'type' => 'text']]],
+        'meta' => ['cache_time' => 'hour'],
+    ];
+
+    $foreignLayout = Layout::factory()->create([
+        'site_id' => $otherSite->getKey(),
+        ...$schema,
+    ]);
+
+    $resolver = new FingerprintMatchResolver(Layout::class, scopeToSite: true);
+
+    $descriptor = [
+        'ref' => 'layout:999',
+        'attributes' => [
+            'site_id' => $targetSite->getKey(),
+            ...$schema,
+        ],
+    ];
+
+    expect($resolver->resolve($descriptor, $targetSite->getKey()))->toBeNull();
+
+    $targetLayout = Layout::factory()->create([
+        'site_id' => $targetSite->getKey(),
+        ...$schema,
+    ]);
+
+    expect($resolver->resolve($descriptor, $targetSite->getKey())?->localId)
+        ->toBe($targetLayout->getKey())
+        ->not->toBe($foreignLayout->getKey());
 });
 
 it('remains fully unscoped by default, matching a private layout with no site context', function (): void {

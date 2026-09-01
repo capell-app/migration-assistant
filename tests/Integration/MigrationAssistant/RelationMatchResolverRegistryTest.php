@@ -12,7 +12,7 @@ function stubResolverForRegistryTest(?MatchResolution $result): MatchResolver
     {
         public function __construct(private ?MatchResolution $result) {}
 
-        public function resolve(array $descriptor, array $siteIds = []): ?MatchResolution
+        public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
         {
             return $this->result;
         }

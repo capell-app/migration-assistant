@@ -42,7 +42,7 @@ final readonly class FingerprintMatchResolver implements MatchResolver
     /**
      * @param  class-string<TModel>  $modelClass
      * @param  list<string>  $schemaColumns  attribute names that together form the canonical schema
-     * @param  bool  $scopeToSite  restrict candidates to $siteIds plus records with a null
+     * @param  bool  $scopeToSite  restrict candidates to $siteId plus records with a null
      *                             site_id. Only enable for models with a nullable site_id
      *                             column (e.g. Layout) — never for models without one.
      */
@@ -52,10 +52,7 @@ final readonly class FingerprintMatchResolver implements MatchResolver
         private bool $scopeToSite = false,
     ) {}
 
-    /**
-     * @param  list<int>  $siteIds
-     */
-    public function resolve(array $descriptor, array $siteIds = []): ?MatchResolution
+    public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
     {
         $attributes = $descriptor['attributes'] ?? null;
         if (! is_array($attributes)) {
@@ -75,11 +72,11 @@ final readonly class FingerprintMatchResolver implements MatchResolver
             ->orderBy($keyName);
 
         if ($this->scopeToSite) {
-            $query->where(function (Builder $query) use ($siteIds): void {
+            $query->where(function (Builder $query) use ($siteId): void {
                 $query->whereNull('site_id');
 
-                if ($siteIds !== []) {
-                    $query->orWhereIn('site_id', $siteIds);
+                if ($siteId !== null) {
+                    $query->orWhere('site_id', $siteId);
                 }
             });
         }
@@ -112,14 +109,7 @@ final readonly class FingerprintMatchResolver implements MatchResolver
             $structure[$column] = $this->normaliseValue($attributes[$column] ?? null);
         }
 
-        $hasContent = false;
-        foreach ($structure as $value) {
-            if (! in_array($value, [null, [], ''], true)) {
-                $hasContent = true;
-
-                break;
-            }
-        }
+        $hasContent = array_any($structure, fn ($value): bool => ! in_array($value, [null, [], ''], true));
 
         if (! $hasContent) {
             return null;

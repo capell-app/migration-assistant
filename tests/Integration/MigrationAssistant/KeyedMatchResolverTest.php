@@ -11,7 +11,7 @@ it('matches a global layout by key even when scoped to specific sites', function
 
     $resolver = new KeyedMatchResolver(Layout::class, scopeToSite: true);
 
-    expect($resolver->resolve(['key' => 'shared-layout'], [9999999])?->localId)->toBe($layout->getKey());
+    expect($resolver->resolve(['key' => 'shared-layout'], 9999999)?->localId)->toBe($layout->getKey());
 });
 
 it('does not match a private layout belonging to a different site when scoped to site', function (): void {
@@ -22,7 +22,7 @@ it('does not match a private layout belonging to a different site when scoped to
 
     $resolver = new KeyedMatchResolver(Layout::class, scopeToSite: true);
 
-    expect($resolver->resolve(['key' => 'victim-layout'], [$authorisedSite->getKey()]))->toBeNull();
+    expect($resolver->resolve(['key' => 'victim-layout'], $authorisedSite->getKey()))->toBeNull();
 });
 
 it('matches a private layout belonging to an authorised site when scoped to site', function (): void {
@@ -32,7 +32,7 @@ it('matches a private layout belonging to an authorised site when scoped to site
 
     $resolver = new KeyedMatchResolver(Layout::class, scopeToSite: true);
 
-    expect($resolver->resolve(['key' => 'own-layout'], [$authorisedSite->getKey()])?->localId)->toBe($layout->getKey());
+    expect($resolver->resolve(['key' => 'own-layout'], $authorisedSite->getKey())?->localId)->toBe($layout->getKey());
 });
 
 it('does not fall back to a different site layout by normalised name when scoped to site', function (): void {
@@ -43,7 +43,7 @@ it('does not fall back to a different site layout by normalised name when scoped
 
     $resolver = new KeyedMatchResolver(Layout::class, scopeToSite: true);
 
-    expect($resolver->resolve(['name' => 'legacy layout'], [$authorisedSite->getKey()]))->toBeNull();
+    expect($resolver->resolve(['name' => 'legacy layout'], $authorisedSite->getKey()))->toBeNull();
 });
 
 it('remains fully unscoped by default, matching a private layout with no site context', function (): void {

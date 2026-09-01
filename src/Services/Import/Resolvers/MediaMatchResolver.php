@@ -14,7 +14,7 @@ use Capell\Core\Models\Media;
  */
 final class MediaMatchResolver implements MatchResolver
 {
-    public function resolve(array $descriptor, array $siteIds = []): ?MatchResolution
+    public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
     {
         $checksum = $descriptor['checksum'] ?? null;
         if (is_string($checksum) && $checksum !== '') {

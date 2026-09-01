@@ -102,14 +102,14 @@ final class RelationMatchResolverRegistry
      * any lower-confidence alternatives the chain found).
      *
      * @param  array<string, mixed>  $descriptor
-     * @param  list<int>  $siteIds  local site IDs legitimately in play for this import;
-     *                              see MatchResolver::resolve().
+     * @param  int|null  $siteId  local target site ID for this relation; see
+     *                            MatchResolver::resolve().
      */
-    public function resolve(string $group, array $descriptor, array $siteIds = []): ?MatchResolution
+    public function resolve(string $group, array $descriptor, ?int $siteId = null): ?MatchResolution
     {
         $matches = [];
         foreach ($this->forGroup($group) as $resolver) {
-            $match = $resolver->resolve($descriptor, $siteIds);
+            $match = $resolver->resolve($descriptor, $siteId);
             if ($match !== null) {
                 $matches[] = $match;
             }
