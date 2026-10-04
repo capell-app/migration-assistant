@@ -10,8 +10,6 @@ Migration Assistant adds staged import sessions for mapping, validating, executi
 
 Admins can upload or select source data, map it to Capell records, validate the plan, run the import, and inspect row-level results.
 
-Evidence: [`src/Filament/Resources/ImportSessions/ImportSessionResource.php`](src/Filament/Resources/ImportSessions/ImportSessionResource.php), [`src/Actions/BuildImportValidationSummaryAction.php`](src/Actions/BuildImportValidationSummaryAction.php), [`src/Jobs/ExecuteImportPlanJob.php`](src/Jobs/ExecuteImportPlanJob.php), [`src/Actions/ExecuteImportRollbackAction.php`](src/Actions/ExecuteImportRollbackAction.php), [`src/Filament/Pages/ImportPagesPage.php`](src/Filament/Pages/ImportPagesPage.php), [`src/Filament/Pages/ImportSitesPage.php`](src/Filament/Pages/ImportSitesPage.php), [`tests/Admin/Feature/Filament/Pages/ImportPagesPageValidateTest.php`](tests/Admin/Feature/Filament/Pages/ImportPagesPageValidateTest.php), [`tests/Admin/Feature/Filament/Pages/ImportPagesPageExecuteTest.php`](tests/Admin/Feature/Filament/Pages/ImportPagesPageExecuteTest.php).
-
 Status details:
 
 - Status: Available
@@ -27,29 +25,22 @@ Status details:
 
 **For teams:** Teams can review migration problems before content is written and keep a recovery path when an import needs to be undone.
 
-Evidence: [`src/Support/ImportSourceRegistry.php`](src/Support/ImportSourceRegistry.php), [`src/Support/ImportTargetRegistry.php`](src/Support/ImportTargetRegistry.php), [`src/Support/ImportSessionExecutorRegistry.php`](src/Support/ImportSessionExecutorRegistry.php), [`tests/Integration/MigrationAssistant/ExecuteImportRollbackActionTest.php`](tests/Integration/MigrationAssistant/ExecuteImportRollbackActionTest.php), [`docs/overview.admin.md`](docs/overview.admin.md), [`src/Actions/BuildImportRecoveryStatusAction.php`](src/Actions/BuildImportRecoveryStatusAction.php), [`src/Actions/CreateImportRollbackReportAction.php`](src/Actions/CreateImportRollbackReportAction.php).
-
 ## Screens And Workflow
 
 Screenshot contract: `docs/screenshots.json`.
 
 ![Import session index or host admin surface](docs/screenshots/import-session-index-or-host-admin-surface.png)
 
-![Illustrative recovery page imports preview](docs/screenshots/recovery-page-imports.png)
+![Completed page import and recovery report](docs/screenshots/recovery-page-imports.png)
 
 - Import session index or host admin surface (admin, required authentic evidence).
 - Import validation summary (admin, supplementary evidence).
-- Illustrative recovery page imports preview (frontend, required evidence).
+- Completed page import and recovery report (admin, required evidence).
 - Relation resolution review (admin, supplementary evidence).
 - Rollback report view (admin, supplementary evidence).
-- Package export intent screen (admin, supplementary evidence).
 - Import session index or host admin surface with admin sidebar menu open (admin, supplementary evidence).
 
 ## Technical Shape
-
-### Imported media security
-
-The importer derives stored extensions from sniffed MIME types and checks container framing and storage destinations. Payload bytes remain opaque; safe storage and static serving form the security boundary. See [the media threat model](docs/media-security.md) for the checks and server configuration requirements.
 
 ### Service providers
 
@@ -134,10 +125,12 @@ The importer derives stored extensions from sniffed MIME types and checks contai
 - `StartPageImportAction`
 - `StartSiteImportAction`
 - `InstallMigrationAssistantPermissionsAction`
+- `PrepareMigrationScreenshotDetailAction`
 - `ReauthorizeImportSessionActorAction`
 - `ReauthorizeImportSessionExecutionAction`
 - `ReclaimStaleImportSessionsAction`
 - `RetryImportSessionAction`
+- `StoreImportedMediaAction`
 
 ### Data objects
 
@@ -188,7 +181,7 @@ The importer derives stored extensions from sniffed MIME types and checks contai
 - `admin-page: Capell\MigrationAssistant\Manifest\ImportPagesPageContribution`
 - `admin-page: Capell\MigrationAssistant\Manifest\ImportSitesPageContribution`
 - `admin-resource: Capell\MigrationAssistant\Manifest\ImportSessionResourceContribution`
-- `configurator: Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribution`
+- `console-command: Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribution`
 - `health-check: Capell\MigrationAssistant\Manifest\MigrationAssistantHealthContribution`
 - `model: Capell\MigrationAssistant\Manifest\MigrationAssistantModelsContribution`
 - `permission: Capell\MigrationAssistant\Manifest\MigrationAssistantPermissionsContribution`
@@ -216,7 +209,7 @@ The importer derives stored extensions from sniffed MIME types and checks contai
 
 - Required packages: `capell-app/admin`, `capell-app/core`.
 - Admin navigation: declares `admin-page: ImportPagesPageContribution`, `admin-page: ImportSitesPageContribution`, `admin-resource: ImportSessionResourceContribution`; each Filament page or resource controls its own navigation visibility.
-- Admin/editor extensions: `configurator: MigrationAssistantConsoleCommandsContribution`.
+- Admin/editor extensions: none declared.
 - Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`, `import-session.rollback`; Shield-generated page permissions for `Capell\MigrationAssistant\Filament\Pages\ImportPagesPage` (names and grants depend on host Shield configuration); access also governed by package policies: `ImportSessionPolicy`.
 - Public routes: none declared.
 - Database changes: package migrations are declared.
@@ -244,7 +237,7 @@ The importer derives stored extensions from sniffed MIME types and checks contai
 ## Quick Start
 
 1. Install the package: `composer require capell-app/migration-assistant`.
-2. Open the package admin surface at `/migration-assistant/import-sessions` and confirm Migration Assistant is available.
+2. Open the package admin surface at `/admin/migration-assistant/import-sessions` and confirm Migration Assistant is available.
 
 ## Next Steps
 
@@ -260,6 +253,5 @@ The importer derives stored extensions from sniffed MIME types and checks contai
 - [Capell documentation design system](../../docs/DESIGN_SYSTEM.md)
 - [Capell and package ERD notes](../../docs/erd/capell-and-package-erds.md)
 - Related packages: [Media Library](../media-library/README.md), [Seo Suite](../seo-suite/README.md), [Site Discovery](../site-discovery/README.md), [Url Manager](../url-manager/README.md), [Wordpress Importer](../wordpress-importer/README.md).
-- Focused tests: `vendor/bin/pest packages/migration-assistant/tests --configuration=phpunit.xml`.
 
 <!-- prettier-ignore-end -->
