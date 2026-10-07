@@ -18,4 +18,4 @@ Export, import, dependency graph, and validation workflows.
 - Validate imports before writes; prefer previewable rollback report steps.
 - Keep package readers/writers isolated from Filament pages.
 - Preserve relation resolution and dependency ordering.
-- Run `vendor/bin/pest packages/migration-assistant/tests`.
+- Verify customisations in the consuming application's test suite.

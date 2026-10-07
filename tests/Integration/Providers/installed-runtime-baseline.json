@@ -1,0 +1,140 @@
+{
+    "version": 3,
+    "package": "migration-assistant",
+    "scenarios": {
+        "default": {
+            "source": {
+                "ref": "origin/main",
+                "commit": "646068b2d21e233ea517c342d62bc0eca1762192",
+                "providers": {
+                    "Providers/MigrationAssistantInstallServiceProvider.php": "efd0cdac7d81ba4c11b24d09af6847376f6ac3dab679051a0c7ac5737db79f9a",
+                    "Providers/MigrationAssistantServiceProvider.php": "d502232230de3f9f261caefbe5deb76a1a2dc8033484291d0cb2c2f728862ae0"
+                }
+            },
+            "disabledContributions": [
+                "Capell\\MigrationAssistant\\Filament\\Pages\\ImportPagesPage",
+                "Capell\\MigrationAssistant\\Filament\\Pages\\ImportSitesPage",
+                "Capell\\MigrationAssistant\\Filament\\Resources\\ImportSessions\\ImportSessionResource",
+                "migration-assistant:reclaim-stale",
+                "page.export",
+                "page.import",
+                "page.import.update-shared-relations",
+                "page.import.publish-live",
+                "import-session.view",
+                "import-session.cancel",
+                "import-session.retry",
+                "import-session.rollback"
+            ],
+            "surfaces": {
+                "routes": [],
+                "livewire": [],
+                "filament": [],
+                "listeners": [
+                    "Capell\\MigrationAssistant\\Events\\ImportCompleted|Capell\\MigrationAssistant\\Listeners\\SendImportSessionNotifications",
+                    "Capell\\MigrationAssistant\\Events\\ImportFailed|Capell\\MigrationAssistant\\Listeners\\SendImportSessionNotifications",
+                    "eloquent.creating: Capell\\MigrationAssistant\\Models\\ImportSession|Capell\\MigrationAssistant\\Models\\ImportSession(Illuminate\\Database\\Eloquent\\Model&Capell\\Core\\Models\\Contracts\\Userstampable $model):void",
+                    "eloquent.updating: Capell\\MigrationAssistant\\Models\\ImportRollbackReport|static Capell\\MigrationAssistant\\Models\\ImportRollbackReport(self $report):void",
+                    "eloquent.updating: Capell\\MigrationAssistant\\Models\\ImportSession|Capell\\MigrationAssistant\\Models\\ImportSession(Illuminate\\Database\\Eloquent\\Model&Capell\\Core\\Models\\Contracts\\Userstampable $model):void"
+                ],
+                "gates": [],
+                "policies": [
+                    "Capell\\MigrationAssistant\\Models\\ImportSession=Capell\\MigrationAssistant\\Policies\\ImportSessionPolicy"
+                ],
+                "commands": [
+                    "migration-assistant:export",
+                    "migration-assistant:import",
+                    "migration-assistant:reclaim-stale",
+                    "migration-assistant:rollback-execute",
+                    "migration-assistant:rollback-report",
+                    "migration-assistant:status"
+                ],
+                "view-namespaces": ["migration-assistant"],
+                "config-keys": [
+                    "migration-assistant",
+                    "migration-assistant.disk",
+                    "migration-assistant.limits",
+                    "migration-assistant.limits.max_media_bytes",
+                    "migration-assistant.limits.max_metadata_json_bytes",
+                    "migration-assistant.limits.max_package_uncompressed_bytes",
+                    "migration-assistant.limits.max_payload_json_bytes",
+                    "migration-assistant.notifications",
+                    "migration-assistant.notifications.channels",
+                    "migration-assistant.notifications.channels.0",
+                    "migration-assistant.notifications.channels.1",
+                    "migration-assistant.notifications.enabled",
+                    "migration-assistant.notifications.recipients",
+                    "migration-assistant.notifications.recipients.completed",
+                    "migration-assistant.notifications.recipients.failed",
+                    "migration-assistant.paths",
+                    "migration-assistant.paths.exports",
+                    "migration-assistant.paths.imports",
+                    "migration-assistant.paths.working",
+                    "migration-assistant.queue",
+                    "migration-assistant.queue.connection",
+                    "migration-assistant.queue.name",
+                    "migration-assistant.recovery",
+                    "migration-assistant.recovery.batch_limit",
+                    "migration-assistant.recovery.stale_after_minutes"
+                ],
+                "migrations": [
+                    "2026_05_10_190859_01_create_import_sessions_table",
+                    "2026_05_10_190859_02_create_import_rollback_reports_table",
+                    "2026_06_04_000001_rename_import_rollback_reports_table",
+                    "2026_07_10_000002_encrypt_import_diagnostics",
+                    "2026_07_10_120000_harden_import_rollback_provenance"
+                ]
+            },
+            "uninstalledSurfaces": {
+                "routes": [],
+                "livewire": [],
+                "filament": [],
+                "listeners": [],
+                "gates": [],
+                "policies": [],
+                "commands": [
+                    "migration-assistant:export",
+                    "migration-assistant:import",
+                    "migration-assistant:reclaim-stale",
+                    "migration-assistant:rollback-execute",
+                    "migration-assistant:rollback-report",
+                    "migration-assistant:status"
+                ],
+                "view-namespaces": ["migration-assistant"],
+                "config-keys": [
+                    "migration-assistant",
+                    "migration-assistant.disk",
+                    "migration-assistant.limits",
+                    "migration-assistant.limits.max_media_bytes",
+                    "migration-assistant.limits.max_metadata_json_bytes",
+                    "migration-assistant.limits.max_package_uncompressed_bytes",
+                    "migration-assistant.limits.max_payload_json_bytes",
+                    "migration-assistant.notifications",
+                    "migration-assistant.notifications.channels",
+                    "migration-assistant.notifications.channels.0",
+                    "migration-assistant.notifications.channels.1",
+                    "migration-assistant.notifications.enabled",
+                    "migration-assistant.notifications.recipients",
+                    "migration-assistant.notifications.recipients.completed",
+                    "migration-assistant.notifications.recipients.failed",
+                    "migration-assistant.paths",
+                    "migration-assistant.paths.exports",
+                    "migration-assistant.paths.imports",
+                    "migration-assistant.paths.working",
+                    "migration-assistant.queue",
+                    "migration-assistant.queue.connection",
+                    "migration-assistant.queue.name",
+                    "migration-assistant.recovery",
+                    "migration-assistant.recovery.batch_limit",
+                    "migration-assistant.recovery.stale_after_minutes"
+                ],
+                "migrations": [
+                    "2026_05_10_190859_01_create_import_sessions_table",
+                    "2026_05_10_190859_02_create_import_rollback_reports_table",
+                    "2026_06_04_000001_rename_import_rollback_reports_table",
+                    "2026_07_10_000002_encrypt_import_diagnostics",
+                    "2026_07_10_120000_harden_import_rollback_provenance"
+                ]
+            }
+        }
+    }
+}

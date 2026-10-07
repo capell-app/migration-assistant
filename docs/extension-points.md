@@ -92,9 +92,3 @@ Use package-specific group names unless the resolver intentionally contributes t
 | `migration-assistant.connection` | Queue/database connection setting where configured.    |
 
 The package also has model, table, and path config used by import internals. Document those only when a host app needs to change them.
-
-## Verification
-
-```bash
-vendor/bin/pest packages/migration-assistant/tests --configuration=phpunit.xml
-```

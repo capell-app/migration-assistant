@@ -7,7 +7,6 @@ namespace Capell\MigrationAssistant\Providers;
 use Capell\Admin\Contracts\Backup\PageExporter;
 use Capell\Admin\Data\AdminSurfaceContributionData;
 use Capell\Admin\Support\CapellAdminManager;
-use Capell\Core\Facades\CapellCore;
 use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Site;
@@ -57,6 +56,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
 
     public static string $packageName = 'capell-app/migration-assistant';
 
+    #[Override]
     public function configurePackage(Package $package): void
     {
         $package
@@ -81,27 +81,16 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
             ]);
     }
 
-    public function packageRegistered(): void
-    {
-        $this->registerAdminPanelExtensions();
-
-        $this->app->booted(function (): void {
-            if (! $this->isPackageInstalled()) {
-                return;
-            }
-
-            $this->registerInstalledPackage();
-        });
-    }
-
     #[Override]
-    protected function isPackageInstalled(): bool
+    protected function bootInstalledRuntime(): void
     {
-        return CapellCore::isPackageInstalled(self::$packageName);
+        $this->registerInstalledPackage();
     }
 
     private function registerInstalledPackage(): void
     {
+        $this->registerAdminPanelExtensions();
+
         $this->surface()->models([
             ImportRollbackReport::class,
             ImportRollbackAudit::class,
@@ -151,34 +140,28 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
             Gate::policy(ImportSession::class, ImportSessionPolicy::class);
         }
 
-        $this->registerAdminPanelExtensions();
     }
 
     private function registerAdminPanelExtensions(): void
     {
-        if (class_exists(CapellAdminManager::class) && class_exists(ImportSessionResource::class)) {
-            $registerImportSessionResource = static function (CapellAdminManager $capellAdminManager): void {
-                $package = CapellCore::getPackage(self::$packageName);
-
-                if (
-                    $package->installed !== true
-                    && (! app()->bound('cache') || ! CapellCore::isPackageInstalled(self::$packageName))
-                ) {
-                    return;
-                }
-
-                $capellAdminManager->contributeToAdminSurface(
-                    AdminSurfaceContributionData::resource(ImportSessionResource::class, group: 'ImportSession'),
-                );
-                $capellAdminManager->contributeToAdminSurface(AdminSurfaceContributionData::page(ImportPagesPage::class));
-                $capellAdminManager->contributeToAdminSurface(AdminSurfaceContributionData::page(ImportSitesPage::class));
-            };
-
-            $this->app->afterResolving(CapellAdminManager::class, $registerImportSessionResource);
-
-            $this->app->booted(function () use ($registerImportSessionResource): void {
-                $registerImportSessionResource($this->app->make(CapellAdminManager::class));
-            });
+        if (! class_exists(CapellAdminManager::class) || ! class_exists(ImportSessionResource::class)) {
+            return;
         }
+
+        $registerImportSessionResource = static function (CapellAdminManager $capellAdminManager): void {
+            $capellAdminManager->contributeToAdminSurface(
+                AdminSurfaceContributionData::resource(ImportSessionResource::class, group: 'ImportSession'),
+            );
+            $capellAdminManager->contributeToAdminSurface(AdminSurfaceContributionData::page(ImportPagesPage::class));
+            $capellAdminManager->contributeToAdminSurface(AdminSurfaceContributionData::page(ImportSitesPage::class));
+        };
+
+        if ($this->app->bound(CapellAdminManager::class)) {
+            $registerImportSessionResource($this->app->make(CapellAdminManager::class));
+
+            return;
+        }
+
+        $this->app->afterResolving(CapellAdminManager::class, $registerImportSessionResource);
     }
 }
