@@ -70,8 +70,6 @@ This guide is for editors running a content import and owners planning a migrati
 2. Confirm which resources are included before you download.
 3. Download the package so you can move that content to another site.
 
-![An operator prepares an export package and confirms included resources before download.](screenshots/package-export-intent-screen.png)
-
 ## Rolling out Migration Assistant (for owners)
 
 ### Turn on first
