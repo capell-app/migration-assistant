@@ -107,6 +107,8 @@ it('does not delete a signed target that has moved to another site', function ()
 });
 
 it('treats unchanged equal timestamps as rollback-safe and rejects edited targets', function (): void {
+    $this->freezeTime();
+
     $actor = migrationAssistantRollbackActor();
     $safePage = Page::factory()->create();
     $safePage->forceFill(['updated_at' => $safePage->created_at])->saveQuietly();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Capell\MigrationAssistant\Services\Import\ResolutionMapBuilder;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolver;
+use Capell\MigrationAssistant\Tests\Support\ResolutionMapSiteIdCapture;
 
 function makeResolver(?MatchResolution $resolution): MatchResolver
 {
@@ -20,19 +21,18 @@ function makeResolver(?MatchResolution $resolution): MatchResolver
     };
 }
 
-final class ResolutionMapBuilderSiteIdCapture
+function resolutionMapBuilderSiteIdCapture(): ResolutionMapSiteIdCapture
 {
-    /** @var list<int|null> */
-    public array $calls = [];
+    return new ResolutionMapSiteIdCapture;
 }
 
-function makeSiteIdCapturingResolver(?MatchResolution $resolution, ResolutionMapBuilderSiteIdCapture $capture): MatchResolver
+function makeSiteIdCapturingResolver(?MatchResolution $resolution, ResolutionMapSiteIdCapture $capture): MatchResolver
 {
     return new class($resolution, $capture) implements MatchResolver
     {
         public function __construct(
             private ?MatchResolution $resolution,
-            private ResolutionMapBuilderSiteIdCapture $capture,
+            private ResolutionMapSiteIdCapture $capture,
         ) {}
 
         /**
@@ -121,7 +121,7 @@ it('skips non-relation entries', function (): void {
 });
 
 it('resolves the sites group first and threads matched site ids into every other group', function (): void {
-    $capture = new ResolutionMapBuilderSiteIdCapture;
+    $capture = resolutionMapBuilderSiteIdCapture();
 
     $builder = new ResolutionMapBuilder([
         'sites' => makeResolver(new MatchResolution(localId: 7, strategy: 'slug')),
@@ -138,7 +138,7 @@ it('resolves the sites group first and threads matched site ids into every other
 });
 
 it('threads no target site id when no sites resolve', function (): void {
-    $capture = new ResolutionMapBuilderSiteIdCapture;
+    $capture = resolutionMapBuilderSiteIdCapture();
 
     $builder = new ResolutionMapBuilder([
         'sites' => makeResolver(null),
@@ -155,7 +155,7 @@ it('threads no target site id when no sites resolve', function (): void {
 });
 
 it('threads each relation its own resolved site id regardless of payload order', function (): void {
-    $capture = new ResolutionMapBuilderSiteIdCapture;
+    $capture = resolutionMapBuilderSiteIdCapture();
 
     $builder = new ResolutionMapBuilder([
         'sites' => makeSiteEchoResolver(),
@@ -173,7 +173,7 @@ it('threads each relation its own resolved site id regardless of payload order',
 });
 
 it('derives each media preview site from its importing page regardless of payload order', function (): void {
-    $capture = new ResolutionMapBuilderSiteIdCapture;
+    $capture = resolutionMapBuilderSiteIdCapture();
     $builder = new ResolutionMapBuilder([
         'sites' => makeSiteEchoResolver(),
         'media' => makeSiteIdCapturingResolver(null, $capture),
@@ -190,7 +190,7 @@ it('derives each media preview site from its importing page regardless of payloa
 });
 
 it('does not select a media site from an ambiguous or unowned descriptor', function (): void {
-    $capture = new ResolutionMapBuilderSiteIdCapture;
+    $capture = resolutionMapBuilderSiteIdCapture();
     $builder = new ResolutionMapBuilder([
         'sites' => makeSiteEchoResolver(),
         'media' => makeSiteIdCapturingResolver(null, $capture),

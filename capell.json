@@ -6,7 +6,7 @@
     "kind": "package",
     "capellApiVersion": "^1.0",
     "version": "1.0.0",
-    "description": "Migration Assistant is Capell's content-migration engine: upload a content package or flat file (CSV/XML), review and resolve incoming relations, run a dry-run validation, then execute on a queue with live progress. Every run produces a rollback report capturing exactly which records were created, so nothing is a one-way door. It is also the foundation other importers build on — the WordPress Importer plugs straight in — making it the first thing you install when bringing existing pages into Capell. Media is deduplicated by checksum and large payloads are size-guarded, so imports stay safe and idempotent.",
+    "description": "Migration Assistant is Capell's content-migration engine: upload a content package or flat file (CSV/XML), review and resolve incoming relations, run a dry-run validation, then execute on a queue with live progress. Every run produces a rollback report capturing exactly which records were created, so nothing is a one-way door. It is also the foundation other importers build on (the WordPress Importer plugs straight in), making it the first thing you install when bringing existing pages into Capell. Media is deduplicated by checksum and large payloads are size-guarded, so imports stay safe and idempotent.",
     "product": {
         "group": "Capell Operations",
         "tier": "free",
@@ -33,7 +33,9 @@
         "runtime": [
             "Capell\\MigrationAssistant\\Providers\\MigrationAssistantServiceProvider"
         ],
-        "admin": [],
+        "admin": [
+            "Capell\\MigrationAssistant\\Providers\\AdminServiceProvider"
+        ],
         "frontend": []
     },
     "contributes": [
@@ -244,7 +246,7 @@
         "privateDocsRequested": true
     },
     "marketplace": {
-        "summary": "Safely move pages and media into Capell — preview every change, validate before you write, and keep a rollback report for every import.",
+        "summary": "Safely move pages and media into Capell: preview every change, validate before you write, and keep a rollback report for every import.",
         "screenshots": [
             {
                 "path": "docs/assets/marketplace/extension-card.jpg",

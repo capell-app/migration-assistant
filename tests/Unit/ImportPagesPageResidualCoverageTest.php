@@ -2,10 +2,15 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Models\Layout;
 use Capell\MigrationAssistant\Actions\BuildImportValidationSummaryAction;
+use Capell\MigrationAssistant\Actions\BuildPageReviewRowsAction;
 use Capell\MigrationAssistant\Actions\Imports\AdvancePageImportToValidationAction;
+use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
 use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
+use Capell\MigrationAssistant\Actions\Imports\RefreshPageImportStatusAction;
 use Capell\MigrationAssistant\Actions\Imports\StartPageImportAction;
+use Capell\MigrationAssistant\Contracts\PageCollisionDetector;
 use Capell\MigrationAssistant\Data\Imports\PageImportDecisionData;
 use Capell\MigrationAssistant\Data\Imports\PageImportStatusData;
 use Capell\MigrationAssistant\Data\Imports\PageImportWizardStateData;
@@ -13,14 +18,17 @@ use Capell\MigrationAssistant\Data\PageReviewRow;
 use Capell\MigrationAssistant\Data\RelationResolveRow;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
+use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
-
-function migrationAssistantReflectionMethod(string $className, string $methodName): ReflectionMethod
-{
-    return new ReflectionMethod($className, $methodName);
-}
+use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolver;
+use Capell\MigrationAssistant\Services\Import\Resolvers\RelationMatchResolverRegistry;
+use Capell\MigrationAssistant\Support\ChecksumGenerator;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 it('keeps import pages page local wizard state transitions deterministic', function (): void {
     $page = new ImportPagesPage;
@@ -70,8 +78,8 @@ it('keeps import pages page local wizard state transitions deterministic', funct
 it('applies import wizard and status DTOs to the page state', function (): void {
     $page = new ImportPagesPage;
 
-    $applyWizardState = new ReflectionMethod(ImportPagesPage::class, 'applyWizardState');
-    $applyWizardState->invoke($page, new PageImportWizardStateData(
+    $page->sessionId = 123;
+    fakeResidualImportAction(new AdvancePageImportToValidationAction, new PageImportWizardStateData(
         step: ImportPagesPage::STEP_VALIDATE,
         sessionId: 123,
         reviewRows: [['uuid' => 'page-home']],
@@ -81,6 +89,8 @@ it('applies import wizard and status DTOs to the page state', function (): void 
         validationSummary: ['blocking_errors' => []],
         confirmationExpected: 'Imported Workspace',
     ));
+
+    $page->advanceToValidate();
 
     expect($page->step)->toBe(ImportPagesPage::STEP_VALIDATE)
         ->and($page->sessionId)->toBe(123)
@@ -92,15 +102,16 @@ it('applies import wizard and status DTOs to the page state', function (): void 
         ->and($page->confirmationExpected)->toBe('Imported Workspace')
         ->and($page->confirmation)->toBe('');
 
-    $applyStatus = new ReflectionMethod(ImportPagesPage::class, 'applyStatus');
-    $applyStatus->invoke($page, new PageImportStatusData(
+    fakeResidualImportAction(new RefreshPageImportStatusAction, new PageImportStatusData(
         step: ImportPagesPage::STEP_COMPLETED,
         sessionStatus: ImportSessionStatus::Completed->value,
         resultSummary: ['pages_created' => 2],
-        failureReason: null,
         targetId: 88,
         targetUrl: 'https://example.test/imported',
     ));
+
+    $page->step = ImportPagesPage::STEP_EXECUTING;
+    $page->refreshStatus();
 
     expect($page->step)->toBe(ImportPagesPage::STEP_COMPLETED)
         ->and($page->sessionStatus)->toBe(ImportSessionStatus::Completed->value)
@@ -181,36 +192,11 @@ it('covers advance-to-validation decision sanitizers and guard branches', functi
 
     expect($missingSessionState->step)->toBe(ImportPagesPage::STEP_UPLOAD);
 
-    $sanitizedPageDecisions = new ReflectionMethod(AdvancePageImportToValidationAction::class, 'sanitizedPageDecisions');
-
-    $sanitizedRelations = new ReflectionMethod(AdvancePageImportToValidationAction::class, 'sanitizedRelationDecisions');
-
-    $hydrateResolutionMap = new ReflectionMethod(AdvancePageImportToValidationAction::class, 'hydrateResolutionMap');
-
-    expect($sanitizedPageDecisions->invoke($action, [
-        'page-one' => ['action' => PageReviewRow::ACTION_UPDATE, 'notes' => 'Keep copy'],
-        'page-two' => ['action' => 12, 'notes' => ''],
-        4 => ['action' => PageReviewRow::ACTION_SKIP],
-        'page-three' => 'bad',
-    ]))->toBe([
-        'page-one' => ['action' => PageReviewRow::ACTION_UPDATE, 'notes' => 'Keep copy'],
-        'page-two' => ['action' => PageReviewRow::ACTION_CREATE],
-    ])
-        ->and($sanitizedRelations->invoke($action, [
-            'site:1' => ['action' => RelationResolveRow::ACTION_USE_EXISTING, 'target_id' => '44', 'notes' => 'Matched'],
-            'site:2' => ['target_id' => ''],
-            8 => ['action' => RelationResolveRow::ACTION_SKIP],
-            'site:3' => false,
-        ]))->toBe([
-            'site:1' => [
-                'action' => RelationResolveRow::ACTION_USE_EXISTING,
-                'target_id' => '44',
-                'notes' => 'Matched',
-            ],
-            'site:2' => ['action' => RelationResolveRow::ACTION_USE_EXISTING],
-        ]);
-
-    $map = $hydrateResolutionMap->invoke($action, [
+    Storage::fake('local');
+    migrationAssistantActingAsImportPagesUser();
+    $initial = startResidualImport(['pages/page-one.json' => residualImportPage('page-one', '/one')]);
+    $session = ImportSession::query()->findOrFail($initial->sessionId);
+    $session->forceFill(['resolution_map' => [
         'resolved' => [
             'site:1' => [
                 'local_id' => '44',
@@ -226,104 +212,99 @@ it('covers advance-to-validation decision sanitizers and guard branches', functi
             'site:bad' => 'invalid',
         ],
         'unresolved' => ['site:9', 12, 'site:10'],
-    ]);
+    ]])->save();
 
-    expect($map->resolved)->toHaveKey('site:1')
-        ->and($map->resolved['site:1']->localId)->toBe('44')
-        ->and($map->resolved['site:1']->alternatives)->toHaveCount(1)
-        ->and($map->unresolved)->toBe(['site:9', 'site:10']);
+    $validated = $action->handle(PageImportDecisionData::from([
+        'sessionId' => $initial->sessionId,
+        'reviewRows' => $initial->reviewRows,
+        'pageDecisions' => [
+            'page-one' => ['action' => PageReviewRow::ACTION_UPDATE, 'notes' => 'Keep copy'],
+            'page-two' => ['action' => 12, 'notes' => ''],
+            4 => ['action' => PageReviewRow::ACTION_SKIP],
+            'page-three' => 'bad',
+        ],
+        'resolveRows' => [],
+        'relationDecisions' => [
+            'site:1' => ['action' => RelationResolveRow::ACTION_USE_EXISTING, 'target_id' => '44', 'notes' => 'Matched'],
+            'site:2' => ['target_id' => ''],
+            8 => ['action' => RelationResolveRow::ACTION_SKIP],
+            'site:3' => false,
+        ],
+        'canUpdateSharedRelations' => false,
+    ]), true);
+    $relationsSummary = $validated->validationSummary['relations'] ?? null;
+    throw_unless(is_array($relationsSummary), RuntimeException::class);
+    expect($validated->step)->toBe(ImportPagesPage::STEP_VALIDATE)
+        ->and($validated->pageDecisions)->toBe([
+            'page-one' => ['action' => PageReviewRow::ACTION_UPDATE, 'notes' => 'Keep copy'],
+            'page-two' => ['action' => PageReviewRow::ACTION_CREATE],
+        ])
+        ->and($validated->relationDecisions)->toBe([
+            'site:1' => ['action' => RelationResolveRow::ACTION_USE_EXISTING, 'target_id' => '44', 'notes' => 'Matched'],
+            'site:2' => ['action' => RelationResolveRow::ACTION_USE_EXISTING],
+        ])
+        ->and($session->refresh()->page_decisions)->toBe($validated->pageDecisions)
+        ->and($session->relation_decisions)->toBe($validated->relationDecisions)
+        ->and($relationsSummary['match'])->toBe(1)
+        ->and($validated->validationSummary['blocking_errors'])->toHaveCount(2);
 });
 
-it('derives start page import helper values from upload state and review rows', function (): void {
-    $action = new StartPageImportAction;
+it('derives import target names and default decisions from secured upload state', function (): void {
+    Storage::fake('local');
+    migrationAssistantActingAsImportPagesUser();
+    $localLayoutId = Layout::factory()->create(['name' => 'Known import layout'])->getKey();
+    throw_unless(is_int($localLayoutId), RuntimeException::class);
+    $detector = new class implements PageCollisionDetector
+    {
+        #[Override]
+        public function detect(array $urls, ?int $resolvedSiteId): array
+        {
+            return ($urls[0]['url'] ?? '') === '/update'
+                ? [PageReviewRow::COLLISION_URL_LIVE, [], PageReviewRow::ACTION_UPDATE]
+                : [PageReviewRow::COLLISION_NONE, [], PageReviewRow::ACTION_CREATE];
+        }
+    };
+    app()->instance(BuildPageReviewRowsAction::class, new BuildPageReviewRowsAction($detector));
+    resolve(RelationMatchResolverRegistry::class)->set('layouts', new readonly class($localLayoutId) implements MatchResolver
+    {
+        public function __construct(private int $localId) {}
 
-    $archiveTokenFrom = migrationAssistantReflectionMethod(StartPageImportAction::class, 'archiveTokenFrom');
-    $workspaceNameFrom = migrationAssistantReflectionMethod(StartPageImportAction::class, 'workspaceNameFrom');
-    $pageDecisionsFromReviewRows = migrationAssistantReflectionMethod(StartPageImportAction::class, 'pageDecisionsFromReviewRows');
-    $relationDecisionsFromResolveRows = migrationAssistantReflectionMethod(StartPageImportAction::class, 'relationDecisionsFromResolveRows');
-
-    $reviewRows = [
-        new PageReviewRow(
-            uuid: 'page-home',
-            title: 'Home',
-            primaryUrl: '/home',
-            resolvedSiteId: 12,
-            siteRef: 'site:12',
-            urls: [['site_id' => 12, 'language_id' => 1, 'url' => '/home']],
-            collisionState: PageReviewRow::COLLISION_NONE,
-            conflictMessages: [],
-            suggestedAction: PageReviewRow::ACTION_CREATE,
-        ),
-        new PageReviewRow(
-            uuid: 'page-about',
-            title: 'About',
-            primaryUrl: '/about',
-            resolvedSiteId: null,
-            siteRef: null,
-            urls: [],
-            collisionState: PageReviewRow::COLLISION_URL_LIVE,
-            conflictMessages: ['Live URL already exists.'],
-            suggestedAction: PageReviewRow::ACTION_UPDATE,
-        ),
+        #[Override]
+        public function resolve(array $descriptor, ?int $siteId = null): ?MatchResolution
+        {
+            return ($descriptor['ref'] ?? null) === 'layout:matched'
+                ? new MatchResolution(localId: $this->localId, strategy: 'key', confidence: 1.0, reason: 'Known layout key')
+                : null;
+        }
+    });
+    $payload = [
+        'pages/page-home.json' => residualImportPage('page-home', '/home'),
+        'pages/page-about.json' => residualImportPage('page-about', '/about'),
+        'pages/page-update.json' => residualImportPage('page-update', '/update'),
+        'relations/layouts/matched.json' => json_encode(['ref' => 'layout:matched', 'name' => 'Known import layout'], JSON_THROW_ON_ERROR),
+        'relations/layouts/unmatched.json' => json_encode(['ref' => 'layout:missing', 'name' => 'Unmatched import layout'], JSON_THROW_ON_ERROR),
     ];
-    $resolveRows = [
-        new RelationResolveRow(
-            group: RelationResolveRow::GROUP_SITES,
-            ref: 'site:12',
-            topMatch: ['local_id' => 12, 'strategy' => 'slug', 'confidence' => 0.98, 'reason' => 'Matched slug'],
-            alternatives: [],
-            warnings: [],
-            suggestedAction: RelationResolveRow::ACTION_USE_EXISTING,
-        ),
-        new RelationResolveRow(
-            group: RelationResolveRow::GROUP_LAYOUTS,
-            ref: 'layout:7',
-            topMatch: null,
-            alternatives: [],
-            warnings: ['No local match.'],
-            suggestedAction: RelationResolveRow::ACTION_CREATE_NEW,
-        ),
-    ];
+    $named = startResidualImport($payload, 'Imported Workspace', true);
+    $defaulted = startResidualImport($payload, '');
 
-    $defaultWorkspaceName = (string) __('capell-admin::exchanger.import_workspace_default_name');
-
-    throw_if($defaultWorkspaceName === '', RuntimeException::class, 'Expected default import workspace translation to be non-empty.');
-
-    expect($archiveTokenFrom->invoke($action, ['archive' => ['first' => 'upload-token']]))
-        ->toBe('upload-token')
-        ->and($archiveTokenFrom->invoke($action, ['archive' => 'direct-token']))
-        ->toBe('direct-token')
-        ->and($archiveTokenFrom->invoke($action, []))
-        ->toBe('')
-        ->and($workspaceNameFrom->invoke($action, ['workspace_name' => 'Imported Workspace']))
-        ->toBe('Imported Workspace')
-        ->and($workspaceNameFrom->invoke($action, ['workspace_name' => '']))
-        ->toStartWith($defaultWorkspaceName)
-        ->and($pageDecisionsFromReviewRows->invoke($action, $reviewRows))
-        ->toBe([
+    expect(fn (): PageImportWizardStateData => (new StartPageImportAction)->handle([]))->toThrow(RuntimeException::class, StartPageImportAction::ERROR_UPLOAD_REQUIRED);
+    $defaultName = (string) __('capell-admin::exchanger.import_workspace_default_name');
+    throw_if($defaultName === '', RuntimeException::class);
+    expect(ImportSession::query()->findOrFail($named->sessionId)->target_label)->toBe('Imported Workspace')
+        ->and(ImportSession::query()->findOrFail($defaulted->sessionId)->target_label)->toStartWith($defaultName)
+        ->and($named->pageDecisions)->toBe([
             'page-home' => ['action' => PageReviewRow::ACTION_CREATE],
-            'page-about' => ['action' => PageReviewRow::ACTION_UPDATE],
+            'page-about' => ['action' => PageReviewRow::ACTION_CREATE],
+            'page-update' => ['action' => PageReviewRow::ACTION_UPDATE],
         ])
-        ->and($relationDecisionsFromResolveRows->invoke($action, $resolveRows))
-        ->toBe([
-            'site:12' => [
-                'action' => RelationResolveRow::ACTION_USE_EXISTING,
-                'target_id' => 12,
-            ],
-            'layout:7' => [
-                'action' => RelationResolveRow::ACTION_CREATE_NEW,
-                'target_id' => null,
-            ],
-        ]);
+        ->and($named->relationDecisions['layout:missing'])->toBe(['action' => RelationResolveRow::ACTION_CREATE_NEW, 'target_id' => null])
+        ->and($named->relationDecisions['layout:matched'])->toBe(['action' => RelationResolveRow::ACTION_USE_EXISTING, 'target_id' => $localLayoutId])
+        ->and($defaulted->pageDecisions)->toBe($named->pageDecisions)
+        ->and($defaulted->relationDecisions)->toBe($named->relationDecisions)
+        ->and(data_get(ImportSession::query()->findOrFail($named->sessionId)->resolution_map, 'resolved.layout:matched.local_id'))->toBe($localLayoutId);
 });
 
 it('summarizes validation buckets blockers warnings and media reuse branches', function (): void {
-    $action = new BuildImportValidationSummaryAction;
-
-    $summarizePages = migrationAssistantReflectionMethod(BuildImportValidationSummaryAction::class, 'summarizePages');
-    $summarizeRelations = migrationAssistantReflectionMethod(BuildImportValidationSummaryAction::class, 'summarizeRelations');
-    $summarizeMedia = migrationAssistantReflectionMethod(BuildImportValidationSummaryAction::class, 'summarizeMedia');
-
     $reviewRows = [
         new PageReviewRow('page-create', 'Create Page', '/create', 1, 'site:1', [], PageReviewRow::COLLISION_NONE, [], PageReviewRow::ACTION_CREATE),
         new PageReviewRow('page-live', 'Live Collision', '/live', 1, 'site:1', [], PageReviewRow::COLLISION_URL_LIVE, [], PageReviewRow::ACTION_CREATE),
@@ -331,20 +312,12 @@ it('summarizes validation buckets blockers warnings and media reuse branches', f
         new PageReviewRow('page-skip', 'Skip Page', '/skip', 1, 'site:1', [], PageReviewRow::COLLISION_NONE, [], PageReviewRow::ACTION_SKIP),
     ];
 
-    [$pageBuckets, $pageBlockers, $pageWarnings] = $summarizePages->invoke($action, $reviewRows, [
+    $pageDecisions = [
         'page-create' => ['action' => PageReviewRow::ACTION_UPDATE],
         'page-live' => ['action' => PageReviewRow::ACTION_CREATE],
         'page-workspace' => ['action' => PageReviewRow::ACTION_CREATE],
         'page-skip' => ['action' => PageReviewRow::ACTION_SKIP],
-    ]);
-
-    expect($pageBuckets)->toBe(['create' => 2, 'update' => 1, 'skip' => 1])
-        ->and($pageBlockers)->toBe([
-            'Page page-workspace cannot be created — its URL is already claimed by another workspace.',
-        ])
-        ->and($pageWarnings)->toBe([
-            'Page Live Collision is set to "create" but its URL already exists on a live page.',
-        ]);
+    ];
 
     $map = new ResolutionMap(
         resolved: [
@@ -363,7 +336,7 @@ it('summarizes validation buckets blockers warnings and media reuse branches', f
         unresolved: ['layout:missing', 'type:missing', 'media:missing', 'site:missing'],
     );
 
-    [$relationBuckets, $relationBlockers, $relationWarnings] = $summarizeRelations->invoke($action, $map, [
+    $relationDecisions = [
         'site:1' => ['action' => RelationResolveRow::ACTION_USE_EXISTING, 'target_id' => 1],
         'layout:7' => ['action' => RelationResolveRow::ACTION_CREATE_NEW],
         'type:9' => ['action' => RelationResolveRow::ACTION_CLONE_IMPORTED],
@@ -372,16 +345,7 @@ it('summarizes validation buckets blockers warnings and media reuse branches', f
         'layout:missing' => ['action' => RelationResolveRow::ACTION_CREATE_NEW],
         'type:missing' => ['action' => RelationResolveRow::ACTION_CLONE_IMPORTED],
         'media:missing' => ['action' => RelationResolveRow::ACTION_SKIP],
-    ]);
-
-    expect($relationBuckets)->toBe(['match' => 1, 'create' => 2, 'clone' => 2, 'update' => 1, 'skip' => 2])
-        ->and($relationBlockers)->toBe([
-            'Relation media:3 is set to "update existing" but has no target id.',
-            'Relation site:missing is unresolved — pick create/clone/skip before dispatching.',
-        ])
-        ->and($relationWarnings)->toBe([
-            'Relation site:1 has a low-confidence alternative (#2 at 49%).',
-        ]);
+    ];
 
     $package = new PackageReadResult(
         archivePath: '/tmp/import.zip',
@@ -397,64 +361,154 @@ it('summarizes validation buckets blockers warnings and media reuse branches', f
         ],
     );
 
-    expect($summarizeMedia->invoke($action, $package, $map))->toBe([
+    $detector = new class implements PageCollisionDetector
+    {
+        #[Override]
+        public function detect(array $urls, ?int $resolvedSiteId): array
+        {
+            return match ($urls[0]['url'] ?? '') {
+                '/live' => [PageReviewRow::COLLISION_URL_LIVE, [], PageReviewRow::ACTION_CREATE],
+                '/workspace' => [PageReviewRow::COLLISION_URL_WORKSPACE, [], PageReviewRow::ACTION_CREATE],
+                '/skip' => [PageReviewRow::COLLISION_NONE, [], PageReviewRow::ACTION_SKIP],
+                default => [PageReviewRow::COLLISION_NONE, [], PageReviewRow::ACTION_CREATE],
+            };
+        }
+    };
+    $pages = [];
+    foreach ($reviewRows as $row) {
+        $pages['pages/' . $row->uuid . '.json'] = json_encode([
+            'type' => 'page', 'uuid' => $row->uuid, 'attributes' => ['title' => $row->title],
+            'owned_relations' => ['page_urls' => [['url' => $row->primaryUrl, 'site_id' => 1, 'language_id' => 1]]],
+            'shared_relations' => ['site' => ['ref' => 'site:1']],
+        ], JSON_THROW_ON_ERROR);
+    }
+
+    $package = new PackageReadResult($package->archivePath, $package->manifest, $package->integrity, [...$package->payload, ...$pages]);
+    $summary = new BuildImportValidationSummaryAction(new BuildPageReviewRowsAction($detector))->run($package, $map, $pageDecisions, $relationDecisions);
+    $pageBuckets = $summary->pages;
+    $relationBuckets = $summary->relations;
+    $pageBlockers = array_slice($summary->blockingErrors, 0, 1);
+    $relationBlockers = array_slice($summary->blockingErrors, 1);
+    $pageWarnings = array_slice($summary->warnings, 0, 1);
+    $relationWarnings = array_slice($summary->warnings, 1);
+
+    expect($pageBuckets)->toBe(['create' => 2, 'update' => 1, 'skip' => 1])
+        ->and($pageBlockers)->toBe([
+            'Page page-workspace cannot be created — its URL is already claimed by another workspace.',
+        ])
+        ->and($pageWarnings)->toBe([
+            'Page Live Collision is set to "create" but its URL already exists on a live page.',
+        ]);
+
+    expect($relationBuckets)->toBe(['match' => 1, 'create' => 2, 'clone' => 2, 'update' => 1, 'skip' => 2])
+        ->and($relationBlockers)->toBe([
+            'Relation media:3 is set to "update existing" but has no target id.',
+            'Relation site:missing is unresolved — pick create/clone/skip before dispatching.',
+        ])
+        ->and($relationWarnings)->toBe([
+            'Relation site:1 has a low-confidence alternative (#2 at 49%).',
+        ]);
+
+    expect($summary->media)->toBe([
         'import' => 2,
         'reuse' => 1,
     ]);
 });
 
-it('covers import page permission guards notice dispatchers and status matching helpers', function (): void {
+it('passes page decisions to public workflow actions and sends their notices', function (): void {
     $page = new ImportPagesPage;
-
-    expect($page->canUpdateSharedRelations())->toBeFalse()
-        ->and($page->canPublishLive())->toBeFalse();
-
-    $decisionData = migrationAssistantReflectionMethod(ImportPagesPage::class, 'decisionData');
-    $sendWizardNotice = migrationAssistantReflectionMethod(ImportPagesPage::class, 'sendWizardNotice');
-    $sendStatusNotice = migrationAssistantReflectionMethod(ImportPagesPage::class, 'sendStatusNotice');
-
+    expect($page->canUpdateSharedRelations())->toBeFalse()->and($page->canPublishLive())->toBeFalse();
     $page->sessionId = 5;
     $page->reviewRows = [['uuid' => 'page-home']];
     $page->pageDecisions = ['page-home' => ['action' => PageReviewRow::ACTION_SKIP]];
     $page->resolveRows = [['ref' => 'site:1']];
     $page->relationDecisions = ['site:1' => ['action' => RelationResolveRow::ACTION_CREATE_NEW]];
 
-    $data = $decisionData->invoke($page);
-
-    expect($data)->toBeInstanceOf(PageImportDecisionData::class)
-        ->and($data->sessionId)->toBe(5)
-        ->and($data->canUpdateSharedRelations)->toBeFalse();
-
     foreach ([
-        PageImportWizardStateData::NOTICE_UNRESOLVED_REFERENCES,
-        PageImportWizardStateData::NOTICE_BLOCKED_BY_WORKSPACE_CONFLICT,
-        PageImportWizardStateData::NOTICE_BLOCKED_PENDING_DECISIONS,
-        null,
-    ] as $notice) {
-        $sendWizardNotice->invoke($page, new PageImportWizardStateData(
-            step: ImportPagesPage::STEP_RESOLVE,
-            notice: $notice,
-            noticeCount: 3,
-        ));
+        PageImportWizardStateData::NOTICE_UNRESOLVED_REFERENCES => 'unresolved_references',
+        PageImportWizardStateData::NOTICE_BLOCKED_BY_WORKSPACE_CONFLICT => 'blocked_by_workspace_conflict',
+        PageImportWizardStateData::NOTICE_BLOCKED_PENDING_DECISIONS => 'blocked_pending_decisions',
+    ] as $notice => $translation) {
+        session()->forget('filament.notifications');
+        fakeResidualImportAction(new AdvancePageImportToValidationAction, new PageImportWizardStateData(step: ImportPagesPage::STEP_RESOLVE, sessionId: 5, notice: $notice, noticeCount: 3), function (PageImportDecisionData $decision, bool $force): void {
+            expect($decision->sessionId)->toBe(5)
+                ->and($decision->canUpdateSharedRelations)->toBeFalse()
+                ->and($force)->toBeTrue();
+        });
+        $page->advanceToValidate();
+        Notification::assertNotified(__('capell-admin::exchanger.' . $translation));
+        expect($page->step)->toBe(ImportPagesPage::STEP_RESOLVE);
     }
 
     foreach ([
-        PageImportStatusData::NOTICE_SUMMARY_BLOCKING_ERRORS,
-        PageImportStatusData::NOTICE_CONFIRMATION_MISMATCH,
-        PageImportStatusData::NOTICE_IMPORT_QUEUED,
-        null,
-    ] as $notice) {
-        $sendStatusNotice->invoke($page, new PageImportStatusData(
-            step: ImportPagesPage::STEP_VALIDATE,
-            notice: $notice,
-            noticeBody: 'Blocking error',
-        ));
+        PageImportStatusData::NOTICE_SUMMARY_BLOCKING_ERRORS => 'summary_blocking_errors',
+        PageImportStatusData::NOTICE_CONFIRMATION_MISMATCH => 'confirmation_mismatch',
+        PageImportStatusData::NOTICE_IMPORT_QUEUED => 'import_queued',
+    ] as $notice => $translation) {
+        session()->forget('filament.notifications');
+        $page->step = ImportPagesPage::STEP_VALIDATE;
+        fakeResidualImportAction(new DispatchPageImportAction, new PageImportStatusData(step: ImportPagesPage::STEP_VALIDATE, notice: $notice, noticeBody: 'Blocking error'));
+        $page->dispatchImport();
+        Notification::assertNotified(__('capell-admin::exchanger.' . $translation));
     }
 
-    $confirmationMatches = migrationAssistantReflectionMethod(DispatchPageImportAction::class, 'confirmationMatches');
-    $dispatch = new DispatchPageImportAction;
-
-    expect($confirmationMatches->invoke($dispatch, '', ''))->toBeTrue()
-        ->and($confirmationMatches->invoke($dispatch, ' imported workspace ', 'Imported Workspace'))->toBeTrue()
-        ->and($confirmationMatches->invoke($dispatch, 'wrong', 'Imported Workspace'))->toBeFalse();
+    Storage::fake('local');
+    Queue::fake();
+    migrationAssistantActingAsImportPagesUser();
+    foreach ([' imported workspace ' => true, 'wrong' => false] as $confirmation => $matches) {
+        $state = startResidualImport(['pages/confirmation.json' => residualImportPage('confirmation', '/confirmation')], 'Imported Workspace');
+        $session = ImportSession::query()->findOrFail($state->sessionId);
+        $session->forceFill(['status' => ImportSessionStatus::Validated, 'validation_results' => ['blocking_errors' => []]])->save();
+        DispatchPageImportAction::clearFake();
+        $status = (new DispatchPageImportAction)->handle($state->sessionId, [], $confirmation, 'Imported Workspace');
+        expect($status->notice)->toBe($matches ? PageImportStatusData::NOTICE_IMPORT_QUEUED : PageImportStatusData::NOTICE_CONFIRMATION_MISMATCH);
+    }
 });
+
+function fakeResidualImportAction(object $action, PageImportWizardStateData|PageImportStatusData $state, ?Closure $assertArguments = null): void
+{
+    $mock = Mockery::mock($action);
+    $mock->shouldReceive('handle')->once()->andReturnUsing(function (mixed ...$arguments) use ($assertArguments, $state): PageImportWizardStateData|PageImportStatusData {
+        if ($assertArguments instanceof Closure) {
+            $assertArguments(...$arguments);
+        }
+
+        return $state;
+    });
+    app()->instance('LaravelActions:AsFake:' . $action::class, $mock);
+
+}
+
+/** @param array<string, string> $payload */
+function startResidualImport(array $payload, string $name = 'Residual import', bool $arrayToken = false): PageImportWizardStateData
+{
+    $manifest = json_encode(['schema_version' => 1, 'package_type' => 'page-export'], JSON_THROW_ON_ERROR);
+    $files = ['manifest.json' => $manifest, ...$payload];
+    $integrity = [];
+    foreach ($files as $path => $contents) {
+        $integrity[$path] = ChecksumGenerator::forString($contents);
+    }
+
+    $path = BindMigrationArchiveUploadAction::STAGING_DIRECTORY . '/' . Str::uuid() . '.zip';
+    Storage::disk('local')->makeDirectory(dirname($path));
+    $zip = new ZipArchive;
+    $zip->open(Storage::disk('local')->path($path), ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    foreach ($files as $filename => $contents) {
+        $zip->addFromString($filename, $contents);
+    }
+
+    $zip->addFromString('integrity.json', json_encode(['files' => $integrity], JSON_THROW_ON_ERROR));
+    $zip->close();
+
+    $state = BindMigrationArchiveUploadAction::run(['archive' => $path, 'workspace_name' => $name]);
+    if ($arrayToken) {
+        $state['archive'] = ['first' => $state['archive']];
+    }
+
+    return (new StartPageImportAction)->handle($state);
+}
+
+function residualImportPage(string $uuid, string $url): string
+{
+    return json_encode(['type' => 'page', 'uuid' => $uuid, 'attributes' => ['title' => $uuid], 'owned_relations' => ['page_urls' => [['url' => $url, 'language_id' => 1]]]], JSON_THROW_ON_ERROR);
+}

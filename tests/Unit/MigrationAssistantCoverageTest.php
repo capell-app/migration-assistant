@@ -24,6 +24,7 @@ use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Exceptions\NotImplementedException;
+use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\Pages\ListImportSessions;
@@ -41,7 +42,9 @@ use Capell\MigrationAssistant\Support\ImportTargetRegistry;
 use Capell\MigrationAssistant\Tests\Fixtures\MigrationAssistantRoleOnlyUserForPolicy;
 use Capell\Tests\Fixtures\Models\User;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
+use Filament\Navigation\NavigationItem;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -108,7 +111,7 @@ it('keeps dispatch on validate when no session can be resolved', function (): vo
 });
 
 it('declares migration assistant admin pages tables and health compatibility', function (): void {
-    expect(ImportSitesPage::getNavigationLabel())->toBeString()
+    expect(ImportSitesPage::getNavigationLabel())->not->toBe('')
         ->and((new ImportSitesPage)->getTitle())->toBeString()
         ->and(ImportSessionResource::getModel())->toBe(ImportSession::class)
         ->and(ImportSessionResource::getPages())->toHaveKeys(['index', 'view'])
@@ -183,9 +186,9 @@ it('resolves page import status targets and terminal status flags', function ():
         'result_summary' => ['pages_imported' => 2],
     ]);
 
-    expect(ResolvePageImportSessionAction::run((int) $session->getKey()))->toBeInstanceOf(ImportSession::class);
+    expect(ResolvePageImportSessionAction::run($session->id))->toBeInstanceOf(ImportSession::class);
 
-    $status = RefreshPageImportStatusAction::run((int) $session->getKey(), null);
+    $status = RefreshPageImportStatusAction::run($session->id, null);
 
     expect($status->step)->toBe('completed')
         ->and($status->targetId)->toBe(987)
@@ -220,15 +223,14 @@ it('exposes null import target and collision defaults', function (): void {
 });
 
 it('declares import session table columns and summary formatting', function (): void {
-    $reflection = new ReflectionMethod(ImportSessionsTable::class, 'getTableColumns');
-
-    $columns = capell_test_collect($reflection->invoke(null));
+    test()->actingAsAdmin();
+    $columns = collect(ImportSessionsTable::configure(Table::make(new ListImportSessions))->getColumns());
     $summaryColumn = $columns->first(
         fn (mixed $column): bool => $column instanceof TextColumn && $column->getName() === 'result_summary',
     );
 
+    throw_unless($summaryColumn instanceof TextColumn, RuntimeException::class, 'Expected the import summary column.');
     expect($columns)->not->toBeEmpty()
-        ->and($summaryColumn)->toBeInstanceOf(TextColumn::class)
         ->and($summaryColumn->formatState([
             'pages_created' => 3,
             'relations_resolved' => 2,
@@ -436,7 +438,16 @@ it('covers remaining migration assistant support adapters and admin page accesso
     $validReport = new ManifestValidationReport(warnings: ['Optional metadata missing.']);
     $invalidReport = new ManifestValidationReport(errors: ['Schema version is unsupported.']);
     $listPage = new ListImportSessions;
-    $getActions = new ReflectionMethod(ListImportSessions::class, 'getActions');
+    $listPage->cacheInteractsWithHeaderActions();
+    $navigation = [];
+    foreach ($listPage->getSubNavigation() as $item) {
+        expect($item)->toBeInstanceOf(NavigationItem::class);
+        if (! $item instanceof NavigationItem) {
+            throw new RuntimeException('Import navigation must expose direct destination links.');
+        }
+
+        $navigation[] = ['label' => $item->getLabel(), 'url' => $item->getUrl()];
+    }
 
     expect($contributor->extraAttributes($site))->toBe([])
         ->and($contributor->normalizeIncomingRow(['name' => 'Imported']))->toBe(['name' => 'Imported'])
@@ -449,8 +460,11 @@ it('covers remaining migration assistant support adapters and admin page accesso
         ->and($invalidReport->isValid())->toBeFalse()
         ->and(ListImportSessions::getResource())->toBe(ImportSessionResource::class)
         ->and($listPage->getSubheading())->toBeString()
-        ->and($listPage->getSubNavigation())->toBeArray()
-        ->and($getActions->invoke($listPage))->toBe([]);
+        ->and($navigation)->toContain(
+            ['label' => __('capell-admin::exchanger.import_pages'), 'url' => ImportPagesPage::getUrl()],
+            ['label' => __('capell-admin::exchanger.import_sites'), 'url' => ImportSitesPage::getUrl()],
+        )
+        ->and($listPage->getCachedHeaderActions())->toBe([]);
 });
 
 it('maps external type fields and builds failed notification mail fallback URLs', function (): void {

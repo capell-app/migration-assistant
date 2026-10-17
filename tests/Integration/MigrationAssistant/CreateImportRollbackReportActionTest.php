@@ -11,22 +11,36 @@ use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
+use Illuminate\Database\MySqlConnection;
+use Illuminate\Database\Schema\Grammars\MySqlGrammar;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
-it('uses mysql-safe foreign key names for import rollback reports', function (): void {
-    $migration = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php');
+it('migrates rollback reports with database-safe foreign keys and a session date index', function (): void {
+    $migration = require dirname(__DIR__, 3) . '/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php';
+    $connection = Schema::getConnection();
+    $mysql = new MySqlConnection($connection->getPdo());
+    $mysql->setSchemaGrammar(new MySqlGrammar($mysql));
 
-    expect($migration)
-        ->toContain("Schema::create('import_rollback_reports'")
-        ->toContain("indexName: 'import_rollback_reports_session_fk'")
-        ->toContain("indexName: 'import_rollback_reports_user_fk'")
-        ->toContain("'import_rollback_reports_session_executed_idx'")
-        ->and(strlen('import_rollback_reports_session_fk'))->toBeLessThanOrEqual(64)
-        ->and(strlen('import_rollback_reports_user_fk'))->toBeLessThanOrEqual(64)
-        ->and(strlen('import_rollback_reports_session_executed_idx'))->toBeLessThanOrEqual(64);
+    // SQLite verifies the installed schema; MySQL's grammar verifies its identifier limit offline.
+    Schema::swap($mysql->getSchemaBuilder());
+    try {
+        $queries = $mysql->pretend(fn () => $migration->up());
+    } finally {
+        Schema::swap($connection->getSchemaBuilder());
+    }
+    $sql = implode('\n', array_column($queries, 'query'));
+    preg_match_all('/(?:constraint|(?:add )?index) `([^`]+)`/i', $sql, $names);
+    expect($names[1])->not->toBeEmpty();
+    foreach ($names[1] as $name) {
+        expect(strlen($name))->toBeLessThanOrEqual(64);
+    }
+    expect(array_column(Schema::getForeignKeys('import_rollback_reports'), 'columns'))
+        ->toContain(['import_session_id'], ['user_id']);
+    expect(collect(Schema::getIndexes('import_rollback_reports'))->pluck('columns')->all())
+        ->toContain(['import_session_id', 'executed_at']);
 });
-
 it('includes created site and domain records in rollback reports', function (): void {
     $session = ImportSession::query()->create([
         'uuid' => (string) Str::uuid(),

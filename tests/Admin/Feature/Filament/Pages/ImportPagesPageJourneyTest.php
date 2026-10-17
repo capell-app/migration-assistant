@@ -15,22 +15,33 @@ beforeEach(function (): void {
 });
 
 it('renders the package-owned view with the complete progress rail', function (): void {
-    $view = new ReflectionClass(ImportPagesPage::class)
-        ->getProperty('view')
-        ->getDefaultValue();
-
-    expect($view)->toBe('migration-assistant::pages.import-pages');
-
     $html = Livewire::test(ImportPagesPage::class)->html();
 
-    expect($html)->toContain(
+    throw_if($html === '', RuntimeException::class, 'Expected rendered journey HTML.');
+    $document = new DOMDocument;
+    $document->loadHTML($html, LIBXML_NOERROR | LIBXML_NOWARNING);
+    $xpath = new DOMXPath($document);
+    $steps = $xpath->query('//nav/ol/li/span[2]');
+    throw_unless($steps instanceof DOMNodeList, RuntimeException::class, 'Expected journey steps.');
+    $labels = [];
+    foreach ($steps as $label) {
+        throw_unless($label instanceof DOMNode, RuntimeException::class, 'Expected a rendered step label.');
+        $labels[] = trim($label->textContent);
+    }
+    expect($labels)->toBe([
         __('migration-assistant::imports.journey.source'),
         __('migration-assistant::imports.journey.review'),
         __('migration-assistant::imports.journey.resolve'),
         __('migration-assistant::imports.journey.validate'),
         __('migration-assistant::imports.journey.import'),
         __('migration-assistant::imports.journey.result'),
-    );
+    ])
+        ->and($xpath->evaluate('normalize-space(//nav//span[@aria-current="step"])'))->toBe('1');
+
+    $reviewHtml = Livewire::test(ImportPagesPage::class)->set('step', ImportPagesPage::STEP_REVIEW)->html();
+    throw_if($reviewHtml === '', RuntimeException::class, 'Expected rendered review HTML.');
+    $document->loadHTML($reviewHtml, LIBXML_NOERROR | LIBXML_NOWARNING);
+    expect((new DOMXPath($document))->evaluate('normalize-space(//nav//span[@aria-current="step"])'))->toBe('2');
 });
 
 it('discloses review blockers, technical matches, the write boundary, and report inspection', function (): void {

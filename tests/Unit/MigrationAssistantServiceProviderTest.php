@@ -8,11 +8,14 @@ use Capell\MigrationAssistant\Contracts\MigrationAssistantRowContributor;
 use Capell\MigrationAssistant\Contracts\NullMigrationAssistantContextResolver;
 use Capell\MigrationAssistant\Contracts\NullMigrationAssistantRowContributor;
 use Capell\MigrationAssistant\Contracts\PageCollisionDetector;
+use Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider;
 use Capell\MigrationAssistant\Services\Import\CsvReader;
 use Capell\MigrationAssistant\Services\Import\PageUrlCollisionDetector;
 use Capell\MigrationAssistant\Services\Import\Resolvers\RelationMatchResolverRegistry;
 use Capell\MigrationAssistant\Services\Import\XmlReader;
 use Capell\MigrationAssistant\Support\ImportSourceRegistry;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 it('registers migration-assistant config and default contracts', function (): void {
     expect(config('migration-assistant.paths.exports'))->toBe('migration-assistant/exports')
@@ -39,30 +42,21 @@ it('registers default relation resolver groups', function (): void {
         ->and($registry->hasGroup('media'))->toBeTrue();
 });
 
-it('does not install permissions during application boot', function (): void {
-    $provider = file_get_contents(dirname(__DIR__, 2) . '/src/Providers/MigrationAssistantServiceProvider.php');
-    $manifest = json_decode((string) file_get_contents(dirname(__DIR__, 2) . '/capell.json'), true);
-    $providers = is_array($manifest) ? $manifest['providers'] ?? null : null;
+it('boots safely before permission storage exists without writing permissions', function (): void {
+    $provider = new MigrationAssistantServiceProvider(app());
+    $provider->register();
+    $queries = DB::connection()->pretend(fn () => $provider->boot());
 
-    if (! is_array($providers)) {
-        throw new RuntimeException('Expected package manifest providers to be an array.');
-    }
-
-    $installProviders = $providers['install'] ?? [];
-
-    if (! is_array($installProviders)) {
-        throw new RuntimeException('Expected package install providers to be an array.');
-    }
-
-    expect($provider)->not->toBeFalse()
-        ->and($provider)->not->toContain('InstallMigrationAssistantPermissionsAction::run()')
-        ->and($installProviders)->toBe([
-            'Capell\\MigrationAssistant\\Providers\\MigrationAssistantInstallServiceProvider',
-        ]);
+    expect(collect($queries)->filter(fn (array $query): bool => preg_match('/\b(?:insert|update|delete)\b/i', $query['query']) === 1)->all())->toBe([]);
 });
-
 it('does not require the permissions table during install-provider boot', function (): void {
-    InstallMigrationAssistantPermissionsAction::run();
-
-    expect(true)->toBeTrue();
+    $permissionTable = config('permission.table_names.permissions');
+    config()->set('permission.table_names.permissions', 'missing_permission_storage');
+    try {
+        expect(Schema::hasTable('missing_permission_storage'))->toBeFalse();
+        InstallMigrationAssistantPermissionsAction::run();
+        expect(Schema::hasTable('missing_permission_storage'))->toBeFalse();
+    } finally {
+        config()->set('permission.table_names.permissions', $permissionTable);
+    }
 });
