@@ -4,12 +4,12 @@
     "scenarios": {
         "default": {
             "source": {
-                "ref": "63f03a6a2",
-                "commit": "63f03a6a2e08b0827365457dcf69efde6b663528",
+                "ref": "origin/main",
+                "commit": "efbc87535c86ad861e07bfeff04bd41a7dd340d2",
                 "providers": {
                     "Providers/AdminServiceProvider.php": "4c477fd0e4653496df9f19a14001487963d5fabcf9006c76503b5d05f5cdc670",
                     "Providers/MigrationAssistantInstallServiceProvider.php": "efd0cdac7d81ba4c11b24d09af6847376f6ac3dab679051a0c7ac5737db79f9a",
-                    "Providers/MigrationAssistantServiceProvider.php": "4536d40b494538f6eb890dc9cbf6a6558b71436a430c715939648ee81a4557f4"
+                    "Providers/MigrationAssistantServiceProvider.php": "883173dad4e58385aac117c9c4ca8fcc3daf3fe91fccc5da27d0b99aa871b1a2"
                 }
             },
             "disabledContributions": [
@@ -21,7 +21,8 @@
                 "import-session.view",
                 "import-session.cancel",
                 "import-session.retry",
-                "import-session.rollback"
+                "import-session.rollback",
+                "import-session.legal-hold"
             ],
             "backgroundInventory": {
                 "admin": [
@@ -18276,6 +18277,7 @@
                 "commands": {
                     "migration-assistant:export": "Capell\\MigrationAssistant\\Console\\Commands\\ExportMigrationAssistantPackageCommand",
                     "migration-assistant:import": "Capell\\MigrationAssistant\\Console\\Commands\\ImportMigrationAssistantPackageCommand",
+                    "migration-assistant:prune": "Capell\\MigrationAssistant\\Console\\Commands\\PruneImportEvidenceCommand",
                     "migration-assistant:reclaim-stale": "Capell\\MigrationAssistant\\Console\\Commands\\ReclaimStaleImportSessionsCommand",
                     "migration-assistant:rollback-execute": "Capell\\MigrationAssistant\\Console\\Commands\\ExecuteMigrationAssistantRollbackCommand",
                     "migration-assistant:rollback-report": "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantRollbackReportCommand",
@@ -18306,7 +18308,9 @@
                     "migration-assistant.queue.name",
                     "migration-assistant.recovery",
                     "migration-assistant.recovery.batch_limit",
-                    "migration-assistant.recovery.stale_after_minutes"
+                    "migration-assistant.recovery.stale_after_minutes",
+                    "migration-assistant.retention",
+                    "migration-assistant.retention.days"
                 ],
                 "listeners": {
                     "Capell\\MigrationAssistant\\Events\\ImportCompleted": [
@@ -18577,6 +18581,7 @@
                 "commands": {
                     "migration-assistant:export": "Capell\\MigrationAssistant\\Console\\Commands\\ExportMigrationAssistantPackageCommand",
                     "migration-assistant:import": "Capell\\MigrationAssistant\\Console\\Commands\\ImportMigrationAssistantPackageCommand",
+                    "migration-assistant:prune": "Capell\\MigrationAssistant\\Console\\Commands\\PruneImportEvidenceCommand",
                     "migration-assistant:reclaim-stale": "Capell\\MigrationAssistant\\Console\\Commands\\ReclaimStaleImportSessionsCommand",
                     "migration-assistant:rollback-execute": "Capell\\MigrationAssistant\\Console\\Commands\\ExecuteMigrationAssistantRollbackCommand",
                     "migration-assistant:rollback-report": "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantRollbackReportCommand",
@@ -18607,63 +18612,15 @@
                     "migration-assistant.queue.name",
                     "migration-assistant.recovery",
                     "migration-assistant.recovery.batch_limit",
-                    "migration-assistant.recovery.stale_after_minutes"
+                    "migration-assistant.recovery.stale_after_minutes",
+                    "migration-assistant.retention",
+                    "migration-assistant.retention.days"
                 ],
                 "views": {
                     "migration-assistant": ["<package>/resources/views"]
                 }
             },
-            "removableUninstalledSurfaces": [],
-            "installationReceiptEmissions": [
-                [
-                    "admin-resource",
-                    "resource:ImportSession:default",
-                    "Capell\\MigrationAssistant\\Filament\\Resources\\ImportSessions\\ImportSessionResource",
-                    "Capell\\Admin\\Support\\CapellAdminManager",
-                    "admin",
-                    "context"
-                ],
-                [
-                    "admin-page",
-                    "Capell\\MigrationAssistant\\Filament\\Pages\\ImportPagesPage",
-                    "Capell\\MigrationAssistant\\Filament\\Pages\\ImportPagesPage",
-                    "Capell\\Admin\\Support\\CapellAdminManager",
-                    "admin",
-                    "context"
-                ],
-                [
-                    "admin-page",
-                    "Capell\\MigrationAssistant\\Filament\\Pages\\ImportSitesPage",
-                    "Capell\\MigrationAssistant\\Filament\\Pages\\ImportSitesPage",
-                    "Capell\\Admin\\Support\\CapellAdminManager",
-                    "admin",
-                    "context"
-                ],
-                [
-                    "model",
-                    "model:Capell\\MigrationAssistant\\Models\\ImportRollbackReport",
-                    "Capell\\MigrationAssistant\\Models\\ImportRollbackReport",
-                    "Capell\\Core\\Support\\CapellCoreManager",
-                    "runtime",
-                    "context"
-                ],
-                [
-                    "model",
-                    "model:Capell\\MigrationAssistant\\Models\\ImportRollbackAudit",
-                    "Capell\\MigrationAssistant\\Models\\ImportRollbackAudit",
-                    "Capell\\Core\\Support\\CapellCoreManager",
-                    "runtime",
-                    "context"
-                ],
-                [
-                    "model",
-                    "model:Capell\\MigrationAssistant\\Models\\ImportSession",
-                    "Capell\\MigrationAssistant\\Models\\ImportSession",
-                    "Capell\\Core\\Support\\CapellCoreManager",
-                    "runtime",
-                    "context"
-                ]
-            ]
+            "removableUninstalledSurfaces": []
         }
     }
 }

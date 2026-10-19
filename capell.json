@@ -74,7 +74,8 @@
                 "migration-assistant:status",
                 "migration-assistant:reclaim-stale",
                 "migration-assistant:rollback-report",
-                "migration-assistant:rollback-execute"
+                "migration-assistant:rollback-execute",
+                "migration-assistant:prune"
             ],
             "commandClasses": [
                 "Capell\\MigrationAssistant\\Console\\Commands\\ExportMigrationAssistantPackageCommand",
@@ -82,7 +83,8 @@
                 "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantStatusCommand",
                 "Capell\\MigrationAssistant\\Console\\Commands\\ReclaimStaleImportSessionsCommand",
                 "Capell\\MigrationAssistant\\Console\\Commands\\ShowMigrationAssistantRollbackReportCommand",
-                "Capell\\MigrationAssistant\\Console\\Commands\\ExecuteMigrationAssistantRollbackCommand"
+                "Capell\\MigrationAssistant\\Console\\Commands\\ExecuteMigrationAssistantRollbackCommand",
+                "Capell\\MigrationAssistant\\Console\\Commands\\PruneImportEvidenceCommand"
             ]
         },
         {
@@ -102,7 +104,8 @@
                 "import-session.view",
                 "import-session.cancel",
                 "import-session.retry",
-                "import-session.rollback"
+                "import-session.rollback",
+                "import-session.legal-hold"
             ]
         },
         {
@@ -129,7 +132,8 @@
         "export": "migration-assistant:export",
         "import": "migration-assistant:import",
         "rollback-report": "migration-assistant:rollback-report",
-        "rollback-execute": "migration-assistant:rollback-execute"
+        "rollback-execute": "migration-assistant:rollback-execute",
+        "prune": "migration-assistant:prune"
     },
     "settings": [],
     "permissions": [
@@ -140,7 +144,8 @@
         "import-session.view",
         "import-session.cancel",
         "import-session.retry",
-        "import-session.rollback"
+        "import-session.rollback",
+        "import-session.legal-hold"
     ],
     "capabilities": [
         "migration-assistant",
@@ -200,7 +205,8 @@
                 "import-session.view",
                 "import-session.cancel",
                 "import-session.retry",
-                "import-session.rollback"
+                "import-session.rollback",
+                "import-session.legal-hold"
             ]
         }
     },

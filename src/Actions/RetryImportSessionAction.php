@@ -56,35 +56,7 @@ final class RetryImportSessionAction
         return $archivePath !== '' && self::archiveDisk()->exists($archivePath);
     }
 
-    public function handle(ImportSession $session): ImportSession
-    {
-        throw_if($session->status !== ImportSessionStatus::Failed, RuntimeException::class, 'Only failed sessions can be retried.');
-
-        $executor = resolve(ImportSessionExecutorRegistry::class)->executorFor($session);
-
-        if ($executor !== null) {
-            throw_unless($executor->canRetry($session), RuntimeException::class, 'Import session source data is no longer present and cannot be retried.');
-
-            return $this->dispatchRetry($session);
-        }
-
-        throw_if(self::hasUnresolvedCreatedModels($session), RuntimeException::class, 'Created content must be rolled back before this import session can be retried.');
-        throw_if($session->resolution_map === null || $session->page_decisions === null || $session->relation_decisions === null, RuntimeException::class, 'Session is missing resolution data and cannot be retried.');
-
-        $archivePath = (string) $session->source_package_path;
-        throw_if($archivePath === '' || ! self::archiveDisk()->exists($archivePath), RuntimeException::class, 'Source archive is no longer present on disk.');
-
-        return $this->dispatchRetry($session);
-    }
-
-    private static function archiveDisk(): Filesystem
-    {
-        $diskName = config('migration-assistant.disk', 'local');
-
-        return Storage::disk(is_string($diskName) ? $diskName : 'local');
-    }
-
-    private static function hasUnresolvedCreatedModels(ImportSession $session): bool
+    public static function hasUnresolvedCreatedModels(ImportSession $session): bool
     {
         $session = $session->fresh();
 
@@ -130,6 +102,34 @@ final class RetryImportSessionAction
         }
 
         return false;
+    }
+
+    public function handle(ImportSession $session): ImportSession
+    {
+        throw_if($session->status !== ImportSessionStatus::Failed, RuntimeException::class, 'Only failed sessions can be retried.');
+
+        $executor = resolve(ImportSessionExecutorRegistry::class)->executorFor($session);
+
+        if ($executor !== null) {
+            throw_unless($executor->canRetry($session), RuntimeException::class, 'Import session source data is no longer present and cannot be retried.');
+
+            return $this->dispatchRetry($session);
+        }
+
+        throw_if(self::hasUnresolvedCreatedModels($session), RuntimeException::class, 'Created content must be rolled back before this import session can be retried.');
+        throw_if($session->resolution_map === null || $session->page_decisions === null || $session->relation_decisions === null, RuntimeException::class, 'Session is missing resolution data and cannot be retried.');
+
+        $archivePath = (string) $session->source_package_path;
+        throw_if($archivePath === '' || ! self::archiveDisk()->exists($archivePath), RuntimeException::class, 'Source archive is no longer present on disk.');
+
+        return $this->dispatchRetry($session);
+    }
+
+    private static function archiveDisk(): Filesystem
+    {
+        $diskName = config('migration-assistant.disk', 'local');
+
+        return Storage::disk(is_string($diskName) ? $diskName : 'local');
     }
 
     private static function rollbackReportIsResolved(ImportRollbackReport $rollbackReport): bool

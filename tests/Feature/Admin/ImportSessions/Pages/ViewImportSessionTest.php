@@ -7,6 +7,7 @@ use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
 use Capell\MigrationAssistant\Actions\InstallMigrationAssistantPermissionsAction;
 use Capell\MigrationAssistant\Actions\PrepareMigrationScreenshotDetailAction;
 use Capell\MigrationAssistant\Actions\RetryImportSessionAction;
+use Capell\MigrationAssistant\Actions\SetImportLegalHoldAction;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
@@ -15,7 +16,9 @@ use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
 use Capell\MigrationAssistant\Support\RollbackProvenance;
+use Capell\Tests\Fixtures\Models\User;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,7 +29,9 @@ use Spatie\Permission\PermissionRegistrar;
 uses(CreatesAdminUser::class)->group('import-session-resource');
 
 it('prepares visible validation relation and signed rollback screenshot sections', function (): void {
+    $previousPath = getenv('CAPELL_SCREENSHOT_APP_PATH');
     putenv('CAPELL_SCREENSHOT_FIXTURE=record-state');
+    putenv('CAPELL_SCREENSHOT_APP_PATH=' . base_path());
     try {
         $session = (new PrepareMigrationScreenshotDetailAction)->handle();
         Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
@@ -39,6 +44,7 @@ it('prepares visible validation relation and signed rollback screenshot sections
             ->and($session->rollbackReports()->count())->toBe(1);
     } finally {
         putenv('CAPELL_SCREENSHOT_FIXTURE');
+        putenv($previousPath === false ? 'CAPELL_SCREENSHOT_APP_PATH' : 'CAPELL_SCREENSHOT_APP_PATH=' . $previousPath);
     }
 });
 
@@ -251,4 +257,36 @@ it('does not queue duplicate retry jobs from stale failed session models', funct
         ->and($secondResult->failure_reason)->toBeNull();
 
     Queue::assertPushed(ExecuteImportPlanJob::class, 1);
+});
+
+it('lets an authorised global administrator place and release a legal hold without resetting retention age', function (): void {
+    $admin = test()->createUserWithRole('super_admin');
+    if (! $admin instanceof User) {
+        throw new UnexpectedValueException('Expected an admin fixture.');
+    }
+
+    $admin->givePermissionTo('import-session.legal-hold');
+
+    test()->actingAs($admin);
+    $session = makeImportSession();
+    $session->forceFill(['updated_at' => now()->subDays(40)])->save();
+    $updatedAt = $session->updated_at;
+
+    Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
+        ->callAction('legalHold')->assertHasNoActionErrors();
+    expect($session->refresh()->legal_hold)->toBeTrue()
+        ->and($session->updated_at?->toISOString())->toBe($updatedAt?->toISOString());
+    Livewire::test(ViewImportSession::class, ['record' => $session->getRouteKey()])
+        ->callAction('legalHold')->assertHasNoActionErrors();
+    expect($session->refresh()->legal_hold)->toBeFalse()
+        ->and($session->updated_at?->toISOString())->toBe($updatedAt?->toISOString());
+});
+
+it('denies legal hold changes for non-global actors', function (): void {
+    $session = makeImportSession();
+    $user = test()->createUserWithPermission('import-session.legal-hold');
+    test()->actingAs($user);
+    expect(fn (): mixed => SetImportLegalHoldAction::run($session, true))
+        ->toThrow(AuthorizationException::class);
+    expect($session->refresh()->legal_hold)->toBeFalse();
 });

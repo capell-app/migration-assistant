@@ -10,6 +10,10 @@ return [
         'name' => Env::get('MIGRATOR_QUEUE', 'migration-assistant'),
     ],
 
+    'retention' => [
+        'days' => 30,
+    ],
+
     'recovery' => [
         'stale_after_minutes' => 30,
         'batch_limit' => 100,

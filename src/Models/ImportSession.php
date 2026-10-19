@@ -21,6 +21,7 @@ use Override;
 
 /**
  * @property int $id
+ * @property bool $legal_hold
  * @property string $uuid
  * @property int|null $user_id
  * @property int|null $workspace_id
@@ -119,6 +120,7 @@ class ImportSession extends Model implements Userstampable
     protected function casts(): array
     {
         return [
+            'legal_hold' => 'boolean',
             'kind' => ImportSessionKind::class,
             'status' => ImportSessionStatus::class,
             'target_id' => 'integer',

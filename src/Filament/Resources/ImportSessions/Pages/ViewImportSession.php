@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Filament\Resources\ImportSessions\Pages;
 
 use Capell\MigrationAssistant\Actions\CancelImportSessionAction;
 use Capell\MigrationAssistant\Actions\RetryImportSessionAction;
+use Capell\MigrationAssistant\Actions\SetImportLegalHoldAction;
 use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\ImportSessionResource;
 use Capell\MigrationAssistant\Filament\Resources\ImportSessions\Schemas\ImportSessionInfolist;
@@ -51,10 +52,25 @@ class ViewImportSession extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            $this->legalHoldAction(),
             $this->downloadArchiveAction(),
             $this->cancelAction(),
             $this->retryAction(),
         ];
+    }
+
+    private function legalHoldAction(): Action
+    {
+        return Action::make('legalHold')
+            ->label(fn (): string => $this->record->legal_hold
+                ? (string) __('migration-assistant::retention.release')
+                : (string) __('migration-assistant::retention.hold'))
+            ->requiresConfirmation()
+            ->visible(fn (): bool => auth()->user()?->can(MigrationAssistantPermission::ImportSessionLegalHold->value) ?? false)
+            ->action(function (): void {
+                SetImportLegalHoldAction::run($this->record, ! $this->record->legal_hold);
+                $this->record->refresh();
+            });
     }
 
     private function downloadArchiveAction(): Action

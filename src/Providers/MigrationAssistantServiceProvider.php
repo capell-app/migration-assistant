@@ -12,6 +12,7 @@ use Capell\Core\Support\Packages\AbstractPackageServiceProvider;
 use Capell\MigrationAssistant\Console\Commands\ExecuteMigrationAssistantRollbackCommand;
 use Capell\MigrationAssistant\Console\Commands\ExportMigrationAssistantPackageCommand;
 use Capell\MigrationAssistant\Console\Commands\ImportMigrationAssistantPackageCommand;
+use Capell\MigrationAssistant\Console\Commands\PruneImportEvidenceCommand;
 use Capell\MigrationAssistant\Console\Commands\ReclaimStaleImportSessionsCommand;
 use Capell\MigrationAssistant\Console\Commands\ShowMigrationAssistantRollbackReportCommand;
 use Capell\MigrationAssistant\Console\Commands\ShowMigrationAssistantStatusCommand;
@@ -64,6 +65,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
                 ExportMigrationAssistantPackageCommand::class,
                 ImportMigrationAssistantPackageCommand::class,
                 ReclaimStaleImportSessionsCommand::class,
+                PruneImportEvidenceCommand::class,
                 ShowMigrationAssistantRollbackReportCommand::class,
                 ShowMigrationAssistantStatusCommand::class,
             ])
@@ -73,6 +75,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
                 '2026_06_04_000001_rename_import_rollback_reports_table',
                 '2026_07_10_000002_encrypt_import_diagnostics',
                 '2026_07_10_120000_harden_import_rollback_provenance',
+                '2026_10_18_000001_add_import_session_legal_hold',
             ]);
     }
 

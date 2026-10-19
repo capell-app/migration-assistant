@@ -8,6 +8,7 @@ use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
+use Capell\ScreenshotFixtures\FixtureState;
 use RuntimeException;
 
 final class PrepareMigrationScreenshotDetailAction
@@ -15,6 +16,9 @@ final class PrepareMigrationScreenshotDetailAction
     public function handle(): ImportSession
     {
         throw_unless(app()->environment('local', 'testing') && getenv('CAPELL_SCREENSHOT_FIXTURE') === 'record-state', RuntimeException::class, 'Migration screenshot fixtures require the disposable screenshot environment.');
+
+        require_once dirname(__DIR__, 4) . '/scripts/screenshots/FixtureState.php';
+        FixtureState::boot();
 
         return (new ImportSession)->getConnection()->transaction(static function (): ImportSession {
             $session = ImportSession::query()->updateOrCreate([

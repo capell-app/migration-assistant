@@ -13,6 +13,7 @@ enum MigrationAssistantPermission: string
     case ImportSessionView = 'import-session.view';
     case ImportSessionCancel = 'import-session.cancel';
     case ImportSessionRetry = 'import-session.retry';
+    case ImportSessionLegalHold = 'import-session.legal-hold';
     case ImportSessionRollback = 'import-session.rollback';
 
     /**

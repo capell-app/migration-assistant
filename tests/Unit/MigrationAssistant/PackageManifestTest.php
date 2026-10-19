@@ -9,6 +9,7 @@ use Capell\Core\Contracts\Extensions\RegistersExtensionPermission;
 use Capell\MigrationAssistant\Console\Commands\ExecuteMigrationAssistantRollbackCommand;
 use Capell\MigrationAssistant\Console\Commands\ExportMigrationAssistantPackageCommand;
 use Capell\MigrationAssistant\Console\Commands\ImportMigrationAssistantPackageCommand;
+use Capell\MigrationAssistant\Console\Commands\PruneImportEvidenceCommand;
 use Capell\MigrationAssistant\Console\Commands\ReclaimStaleImportSessionsCommand;
 use Capell\MigrationAssistant\Console\Commands\ShowMigrationAssistantRollbackReportCommand;
 use Capell\MigrationAssistant\Console\Commands\ShowMigrationAssistantStatusCommand;
@@ -111,6 +112,7 @@ it('declares migration assistant install surfaces and contribution traceability'
         'import-session.cancel',
         'import-session.retry',
         'import-session.rollback',
+        'import-session.legal-hold',
     ];
 
     expect($manifest)
@@ -161,6 +163,7 @@ it('declares migration assistant install surfaces and contribution traceability'
                 'migration-assistant:reclaim-stale',
                 'migration-assistant:rollback-report',
                 'migration-assistant:rollback-execute',
+                'migration-assistant:prune',
             ],
             'commandClasses' => [
                 ExportMigrationAssistantPackageCommand::class,
@@ -169,6 +172,7 @@ it('declares migration assistant install surfaces and contribution traceability'
                 ReclaimStaleImportSessionsCommand::class,
                 ShowMigrationAssistantRollbackReportCommand::class,
                 ExecuteMigrationAssistantRollbackCommand::class,
+                PruneImportEvidenceCommand::class,
             ],
         ],
         [
