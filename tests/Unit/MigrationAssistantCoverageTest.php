@@ -421,7 +421,8 @@ it('requires global admin status and import-session permission for policy reads'
         ->and($policy->view($deniedUser, $session))->toBeFalse()
         ->and($policy->create($allowedUser))->toBeFalse()
         ->and($policy->update($allowedUser, $session))->toBeFalse()
-        ->and($policy->delete($allowedUser, $session))->toBeFalse();
+        ->and($policy->delete($allowedUser, $session))->toBeFalse()
+        ->and($policy->deleteAny($allowedUser))->toBeFalse();
 });
 
 it('falls back to the super admin role when host users do not expose global admin helpers', function (): void {

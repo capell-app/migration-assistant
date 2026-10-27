@@ -46,6 +46,7 @@ Screenshot contract: `docs/screenshots.json`.
 
 - `Capell\MigrationAssistant\Providers\MigrationAssistantInstallServiceProvider`
 - `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`
+- `Capell\MigrationAssistant\Providers\AdminServiceProvider`
 
 ### Config files
 
@@ -58,6 +59,7 @@ Screenshot contract: `docs/screenshots.json`.
 - `packages/migration-assistant/database/migrations/2026_06_04_000001_rename_import_rollback_reports_table.php`
 - `packages/migration-assistant/database/migrations/2026_07_10_000002_encrypt_import_diagnostics.php`
 - `packages/migration-assistant/database/migrations/2026_07_10_120000_harden_import_rollback_provenance.php`
+- `packages/migration-assistant/database/migrations/2026_10_18_000001_add_import_session_legal_hold.php`
 
 ### Models
 
@@ -126,10 +128,12 @@ Screenshot contract: `docs/screenshots.json`.
 - `StartSiteImportAction`
 - `InstallMigrationAssistantPermissionsAction`
 - `PrepareMigrationScreenshotDetailAction`
+- `PruneImportEvidenceAction`
 - `ReauthorizeImportSessionActorAction`
 - `ReauthorizeImportSessionExecutionAction`
 - `ReclaimStaleImportSessionsAction`
 - `RetryImportSessionAction`
+- `SetImportLegalHoldAction`
 - `StoreImportedMediaAction`
 
 ### Data objects
@@ -140,6 +144,7 @@ Screenshot contract: `docs/screenshots.json`.
 - `ExternalImportReadResult`
 - `ExternalPageImportTargetData`
 - `ImportRecoveryStatusData`
+- `ImportRetentionReportData`
 - `ImportValidationSummary`
 - `ExternalPageImportExecutionResult`
 - `PageImportDecisionData`
@@ -159,6 +164,8 @@ Screenshot contract: `docs/screenshots.json`.
 
 - `migration-assistant:export`
 - `migration-assistant:import`
+- `migration-assistant:prune`
+- `migration-assistant:reclaim-stale`
 - `migration-assistant:rollback-execute`
 - `migration-assistant:rollback-report`
 - `migration-assistant:status`
@@ -172,6 +179,7 @@ Screenshot contract: `docs/screenshots.json`.
 - `ExecuteMigrationAssistantRollbackCommand`
 - `ExportMigrationAssistantPackageCommand`
 - `ImportMigrationAssistantPackageCommand`
+- `PruneImportEvidenceCommand`
 - `ReclaimStaleImportSessionsCommand`
 - `ShowMigrationAssistantRollbackReportCommand`
 - `ShowMigrationAssistantStatusCommand`
@@ -201,7 +209,7 @@ Screenshot contract: `docs/screenshots.json`.
 - Required tables: `import_sessions`, `import_rollback_reports`, `import_rollback_audits`.
 - Models: `ImportRollbackAudit`, `ImportRollbackReport`, `ImportSession`.
 - Core record references in migrations: `users via user_id`.
-- Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`, `2026_07_10_000002_encrypt_import_diagnostics.php`, `2026_07_10_120000_harden_import_rollback_provenance.php`.
+- Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`, `2026_07_10_000002_encrypt_import_diagnostics.php`, `2026_07_10_120000_harden_import_rollback_provenance.php`, `2026_10_18_000001_add_import_session_legal_hold.php`.
 - Migration impact: run host migrations through the package install flow before opening package surfaces.
 - Deletion/retention behaviour: migrations declare cascade-on-delete relationships and null-on-delete relationships; no timed pruning or retention schedule is declared in `capell.json`.
 
@@ -210,14 +218,14 @@ Screenshot contract: `docs/screenshots.json`.
 - Required packages: `capell-app/admin`, `capell-app/core`.
 - Admin navigation: declares `admin-page: ImportPagesPageContribution`, `admin-page: ImportSitesPageContribution`, `admin-resource: ImportSessionResourceContribution`; each Filament page or resource controls its own navigation visibility.
 - Admin/editor extensions: none declared.
-- Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`, `import-session.rollback`; Shield-generated page permissions for `Capell\MigrationAssistant\Filament\Pages\ImportPagesPage` (names and grants depend on host Shield configuration); access also governed by package policies: `ImportSessionPolicy`.
+- Permissions: `page.export`, `page.import`, `page.import.update-shared-relations`, `page.import.publish-live`, `import-session.view`, `import-session.cancel`, `import-session.retry`, `import-session.rollback`, `import-session.legal-hold`; Shield-generated page permissions for `Capell\MigrationAssistant\Filament\Pages\ImportPagesPage` (names and grants depend on host Shield configuration); access also governed by package policies: `ImportSessionPolicy`.
 - Public routes: none declared.
 - Database changes: package migrations are declared.
 - Config: `config/migration-assistant.php`.
 - Settings: no package settings declared.
 - Queues or schedules: scheduled commands `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`; queue jobs `ExecuteImportPlanJob`.
 - Cache tags: none declared.
-- Commands: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
+- Commands: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:prune`, `migration-assistant:reclaim-stale`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
 
 ## Common Pitfalls
 
@@ -238,6 +246,12 @@ Screenshot contract: `docs/screenshots.json`.
 
 1. Install the package: `composer require capell-app/migration-assistant`.
 2. Open the package admin surface at `/admin/migration-assistant/import-sessions` and confirm Migration Assistant is available.
+
+## Upgrading
+
+No manual steps between minor versions.
+
+Read [CHANGELOG.md](CHANGELOG.md) before upgrading.
 
 ## Next Steps
 

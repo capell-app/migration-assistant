@@ -117,6 +117,7 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
             remediation: $passed
                 ? null
                 : (string) __('migration-assistant::imports.health.package_reader.remediation'),
+            id: 'legacy.migration.assistant.package.reader',
         );
     }
 
@@ -141,6 +142,7 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
             remediation: $passed
                 ? null
                 : (string) __('migration-assistant::imports.health.rollback_report.remediation'),
+            id: 'legacy.migration.assistant.rollback.reports',
         );
     }
 
@@ -161,6 +163,7 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
             remediation: $passed
                 ? null
                 : (string) __('migration-assistant::imports.health.media_ingest.remediation'),
+            id: 'legacy.migration.assistant.media.ingest',
         );
     }
 
@@ -180,6 +183,7 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
             remediation: $missingTables === []
                 ? null
                 : (string) __('migration-assistant::imports.health.storage_tables.remediation'),
+            id: 'legacy.migration.assistant.storage.tables',
         );
     }
 
@@ -200,6 +204,7 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
             remediation: $unregisteredAliases === []
                 ? null
                 : (string) __('migration-assistant::imports.health.morph_aliases.remediation'),
+            id: 'legacy.migration.assistant.model.morph.aliases',
         );
     }
 
@@ -220,6 +225,7 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
             remediation: $unsupportedExtensions === []
                 ? null
                 : (string) __('migration-assistant::imports.health.source_readers.remediation'),
+            id: 'legacy.migration.assistant.source.readers',
         );
     }
 
@@ -240,6 +246,7 @@ final class MigrationAssistantHealthCheck implements ChecksExtensionHealth
             remediation: $maximumMediaBytes > 0
                 ? null
                 : (string) __('migration-assistant::imports.health.media_limit.remediation'),
+            id: 'legacy.migration.assistant.media.ingest.limit',
         );
     }
 

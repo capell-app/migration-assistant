@@ -94,6 +94,7 @@
             class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200"
         >
             {{ __('migration-assistant::imports.journey.write_boundary') }}
+            <p class="mt-2">{{ __('migration-assistant::imports.journey.warning_decisions') }}</p>
         </div>
     @endif
 

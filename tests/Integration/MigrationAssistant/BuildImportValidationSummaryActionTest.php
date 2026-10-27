@@ -2,14 +2,21 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Models\Language;
+use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Actions\BuildImportValidationSummaryAction;
 use Capell\MigrationAssistant\Data\PageReviewRow;
 use Capell\MigrationAssistant\Data\RelationResolveRow;
+use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
 use Capell\MigrationAssistant\Services\Import\Resolvers\MatchResolution;
+use Capell\Tests\Support\Concerns\CreatesAdminUser;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
+
+uses(CreatesAdminUser::class);
 
 /**
  * @param  array<string, mixed>  $overrides
@@ -166,4 +173,40 @@ it('treats an unresolved ref with use_existing as a blocking error', function ()
     );
 
     expect($summary->blockingErrors)->not->toBeEmpty();
+});
+
+it('keeps concrete live URL and low confidence decisions visible without making warnings blockers', function (): void {
+    $language = Language::factory()->create();
+    $site = Site::factory()->language($language)->withTranslations($language)->create();
+    $page = Page::factory()->site($site)->withTranslations($language, slug: '/collision-review')->create();
+    $uuid = (string) Str::uuid();
+    $ref = 'site:' . $site->getKey();
+    $map = new ResolutionMap(resolved: [
+        $ref => new MatchResolution(localId: (int) $site->getKey(), strategy: 'slug', alternatives: [
+            new MatchResolution(localId: 9876, strategy: 'slug', confidence: 0.3),
+        ]),
+    ], unresolved: []);
+    $summary = (new BuildImportValidationSummaryAction)->run(
+        validationPackage($uuid, (int) $site->getKey(), '/collision-review'),
+        $map,
+        [$uuid => ['action' => PageReviewRow::ACTION_CREATE]],
+        [$ref => ['action' => RelationResolveRow::ACTION_USE_EXISTING, 'target_id' => $site->getKey()]],
+    );
+
+    expect($summary->warnings)->toHaveCount(2)
+        ->and(implode(' ', $summary->warnings))->toContain('Imported', $ref, '9876', '30%')
+        ->and($summary->blockingErrors)->toBe([])
+        ->and($summary->isClean())->toBeTrue()
+        ->and($summary->pages['create'])->toBe(1)
+        ->and($page->fresh())->not->toBeNull();
+
+    $this->actingAsAdmin();
+    $view = Livewire::test(ImportPagesPage::class)
+        ->set('validationSummary', $summary->toArray())
+        ->set('step', ImportPagesPage::STEP_VALIDATE);
+    foreach ($summary->warnings as $warning) {
+        $view->assertSee($warning);
+    }
+
+    $view->assertSee(__('migration-assistant::imports.journey.warning_decisions'));
 });

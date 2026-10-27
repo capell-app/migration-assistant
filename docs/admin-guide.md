@@ -6,9 +6,9 @@ This guide is for editors running a content import and owners planning a migrati
 
 ### How to start an import
 
-1. Open **Recovery Center** and choose **Import pages** or **Import sites**.
+1. Open **System > Import Sessions** and choose **Import Pages** or **Import Sites**.
 2. Upload the Capell package archive (`.zip`), give the workspace a name, and optionally add a note.
-3. Continue to create an import session you can return to from **Import sessions**.
+3. Continue to create an import session you can return to from **Import Sessions**.
 
 ![An administrator reviews import sessions and their current migration state.](screenshots/import-session-index-or-host-admin-surface.png)
 
@@ -23,7 +23,9 @@ This guide is for editors running a content import and owners planning a migrati
 1. Complete page review and relation resolution, then open the validation step.
 2. Read the errors and warnings for the package and your decisions.
 3. Fix the package or review decisions for anything marked as an error, then validate again.
-4. Warnings are safe to proceed with, but worth reading first.
+4. Warnings do not block dispatch, but each needs a deliberate review decision. Resolve the warning or record why you accept its consequence in the relevant page or relation review notes before confirming the import.
+
+A `create` decision whose URL already exists on a live page requires you to check the affected page and intended destination: change the URL, choose the correct update target, or skip it as appropriate. A low-confidence relation alternative shows the reference, candidate record and confidence; inspect those records and choose the intended match rather than trusting the suggested mapping. Return to validation after changing a decision. A warning is not an assurance that the import is correct. Keep a current backup and preview a small sample before the full run.
 
 ![An operator reviews validation errors and warnings before executing an import.](screenshots/import-validation-summary.png)
 
@@ -43,7 +45,7 @@ This guide is for editors running a content import and owners planning a migrati
 
 ### How to import pages through Recovery Center
 
-1. Open **Recovery Center** and choose **Import pages**.
+1. Open **System > Import Sessions** and choose **Import Pages**.
 2. Upload a Capell page package, then work through page review, relation resolution, and validation.
 3. Dispatch the import and watch its progress.
 4. If something goes wrong, you can roll the import back from here.
@@ -74,7 +76,7 @@ This guide is for editors running a content import and owners planning a migrati
 
 ### Turn on first
 
-- **A backup and a small test import.** Always back up first, then import a small batch to confirm the mapping before importing everything.
+- A backup and a small test import. Always back up first, then import a small batch to confirm the mapping before importing everything.
 
 ### Add when needed
 
@@ -92,7 +94,7 @@ This guide is for editors running a content import and owners planning a migrati
 | Role       | First useful screen                                 |
 | ---------- | --------------------------------------------------- |
 | Editor     | Recovery Center: review, resolve, validate, and run |
-| Site owner | **Import sessions**: track progress and results     |
+| Site owner | **Import Sessions**: track progress and results     |
 
 ## Troubleshooting for editors
 

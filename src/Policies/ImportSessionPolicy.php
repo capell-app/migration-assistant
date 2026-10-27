@@ -39,6 +39,11 @@ class ImportSessionPolicy
         return false;
     }
 
+    public function deleteAny(Authenticatable $user): bool
+    {
+        return false;
+    }
+
     private function isGlobalAdmin(Authenticatable $user): bool
     {
         if ($this->hasDeclaredPublicMethod($user, 'isGlobalAdmin')) {
