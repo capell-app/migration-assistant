@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Support;
 
+use Capell\Core\Models\Media;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\Core\Models\SiteDomain;
@@ -17,16 +18,23 @@ use Throwable;
 final class RollbackProvenance
 {
     /**
+     * Provenance type of a role assignment row. A pivot row has no model of its own, so it is journalled by its
+     * identifying triple and rolled back by deleting that row.
+     */
+    public const string ROLE_PAIR = 'model_has_roles';
+
+    /**
      * @var array<string, class-string<Model>>
      */
     private const array TARGETS = [
         'page' => Page::class,
         'site' => Site::class,
         'site_domain' => SiteDomain::class,
+        'media' => Media::class,
     ];
 
     /**
-     * @return array{version: int, report_uuid: string, session_uuid: string, session_user_id: int|null, executed_at: string, entries: list<array{type: string, id: int|string, site_id: int, created_at: string, updated_at: string}>}
+     * @return array{version: int, report_uuid: string, session_uuid: string, session_user_id: int|null, executed_at: string, entries: list<array{type: string, id: int|string, site_id: int|null, created_at: string, updated_at: string}>}
      */
     public static function create(string $reportUuid, ImportSession $session, ImportExecutionReport $report): array
     {
@@ -100,7 +108,10 @@ final class RollbackProvenance
             return null;
         }
 
-        $class = self::TARGETS[$type];
+        $class = self::targets()[$type] ?? null;
+        if (! is_string($class) || ! class_exists($class)) {
+            return null;
+        }
         $query = $class::query()->withoutGlobalScopes()->whereKey($id);
 
         if ($lockForUpdate) {
@@ -112,21 +123,60 @@ final class RollbackProvenance
 
     public static function isAllowedType(string $type): bool
     {
-        return self::hasTargetType($type);
+        return $type === self::ROLE_PAIR || self::hasTargetType($type);
     }
 
     /**
-     * @return array{type: string, id: int|string, site_id: int, created_at: string, updated_at: string}
+     * @return array{type: string, id: string, site_id: null, operation: string, role_id: int|string, model_type: string, model_id: int|string, team_id: int|string|null, mapping: null, before_hash: string, after_hash: string}
+     */
+    public static function rolePairEntry(int|string $roleId, string $modelType, int|string $modelId, int|string|null $teamId = null): array
+    {
+        $pair = ['role_id' => $roleId, 'model_type' => $modelType, 'model_id' => $modelId, 'team_id' => $teamId];
+
+        return [
+            'type' => self::ROLE_PAIR,
+            'id' => $roleId . ':' . $modelType . ':' . $modelId . ($teamId === null ? '' : ':team' . $teamId),
+            'site_id' => null,
+            'operation' => 'created',
+            ...$pair,
+            'mapping' => null,
+            'before_hash' => hash('sha256', json_encode(null, JSON_THROW_ON_ERROR)),
+            'after_hash' => hash('sha256', json_encode($pair, JSON_THROW_ON_ERROR)),
+        ];
+    }
+
+    /**
+     * The configured pivot table, role key and model key of role assignments.
+     *
+     * @return array{table: string, role: string, model: string, team: string|null} team is the team foreign key column when permission teams are enabled
+     */
+    public static function rolePairColumns(): array
+    {
+        $table = config('permission.table_names.model_has_roles');
+        $role = config('permission.column_names.role_pivot_key');
+        $model = config('permission.column_names.model_morph_key');
+        $team = config('permission.column_names.team_foreign_key');
+
+        return [
+            'table' => is_string($table) && $table !== '' ? $table : 'model_has_roles',
+            'role' => is_string($role) && $role !== '' ? $role : 'role_id',
+            'model' => is_string($model) && $model !== '' ? $model : 'model_id',
+            'team' => config('permission.teams') && is_string($team) && $team !== '' ? $team : null,
+        ];
+    }
+
+    /**
+     * @return array{type: string, id: int|string, site_id: int|null, created_at: string, updated_at: string}
      */
     public static function entryFor(Model $model): array
     {
-        $type = array_search($model::class, self::TARGETS, true);
-        $siteId = $model instanceof Site ? $model->getKey() : $model->getAttribute('site_id');
+        $type = array_search($model::class, self::targets(), true);
+        $siteId = $model instanceof Site ? $model->getKey() : (array_key_exists('site_id', $model->getAttributes()) ? $model->getAttribute('site_id') : null);
         $createdAt = self::modelTimestamp($model, $model->getCreatedAtColumn());
         $updatedAt = self::modelTimestamp($model, $model->getUpdatedAtColumn());
 
-        if (! is_string($type) || ! is_int($siteId) || $createdAt === null || $updatedAt === null) {
-            throw new LogicException('Rollback provenance requires an allowlisted site-owned model with immutable timestamps.');
+        if (! is_string($type) || ($siteId !== null && ! is_int($siteId)) || $createdAt === null || $updatedAt === null) {
+            throw new LogicException('Rollback provenance requires an allowlisted model with immutable timestamps.');
         }
 
         $key = $model->getKey();
@@ -179,7 +229,7 @@ final class RollbackProvenance
      */
     private static function findModel(string $class, int|string $id): ?Model
     {
-        if (! in_array($class, self::TARGETS, true)) {
+        if (! in_array($class, self::targets(), true)) {
             return null;
         }
 
@@ -188,7 +238,28 @@ final class RollbackProvenance
 
     private static function hasTargetType(string $type): bool
     {
-        return array_key_exists($type, self::TARGETS);
+        return array_key_exists($type, self::targets());
+    }
+
+    /** @return array<string, class-string<Model>> */
+    private static function targets(): array
+    {
+        $targets = self::TARGETS;
+        $userClass = config('auth.providers.users.model');
+        if (is_string($userClass) && is_subclass_of($userClass, Model::class)) {
+            $targets['user'] = $userClass;
+        }
+
+        $configured = config('migration-assistant.rollback_targets', []);
+        if (is_array($configured)) {
+            foreach ($configured as $type => $class) {
+                if (is_string($type) && is_string($class) && is_subclass_of($class, Model::class)) {
+                    $targets[$type] = $class;
+                }
+            }
+        }
+
+        return $targets;
     }
 
     private static function modelTimestamp(Model $model, ?string $column): ?string

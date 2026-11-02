@@ -5,7 +5,7 @@
     "displayName": "Migration Assistant",
     "kind": "package",
     "capellApiVersion": "^1.0",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Import external content through staged mapping, validation and queued execution, with row-level results, retries and rollback reports.",
     "product": {
         "group": "Capell Operations",
@@ -17,6 +17,7 @@
     "dependencies": {
         "requires": ["capell-app/admin", "capell-app/core"],
         "supports": [
+            "capell-app/html-cache",
             "capell-app/media-library",
             "capell-app/seo-suite",
             "capell-app/site-discovery",
@@ -120,7 +121,8 @@
         "requiredTables": [
             "import_sessions",
             "import_rollback_reports",
-            "import_rollback_audits"
+            "import_rollback_audits",
+            "import_source_keys"
         ]
     },
     "commands": {
@@ -165,6 +167,7 @@
         },
         "sensitiveData": {
             "encryptedFields": [
+                "Capell\\MigrationAssistant\\Models\\ImportRollbackReport::$before_images",
                 "Capell\\MigrationAssistant\\Models\\ImportRollbackReport::$created_models",
                 "Capell\\MigrationAssistant\\Models\\ImportRollbackReport::$manual_instructions",
                 "Capell\\MigrationAssistant\\Models\\ImportRollbackReport::$source_filename",
@@ -180,7 +183,7 @@
                 "Capell\\MigrationAssistant\\Models\\ImportSession::$validation_results",
                 "Capell\\MigrationAssistant\\Models\\ImportSession::$working_dir"
             ],
-            "hashedTokenFields": [],
+            "hashedTokenFields": ["import_source_keys.source_key_hash"],
             "redactedOutputClasses": [],
             "plaintextJustifications": []
         },

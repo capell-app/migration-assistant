@@ -13,6 +13,7 @@ use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Events\ImportCompleted;
 use Capell\MigrationAssistant\Events\ImportFailed;
+use Capell\MigrationAssistant\Exceptions\DatabaseImportFailureException;
 use Capell\MigrationAssistant\Exceptions\ImportExecutionAuthorizationException;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\MediaIngestService;
@@ -158,7 +159,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
                 throw $throwable;
             }
 
-            $this->markFailed($session, $throwable->getMessage());
+            $this->markFailed($session, $throwable instanceof DatabaseImportFailureException ? $throwable->failureReason() : $throwable->getMessage());
 
             throw $throwable;
         } finally {
@@ -186,7 +187,7 @@ final class ExecuteImportPlanJob implements ShouldQueue
             return;
         }
 
-        $this->markFailed($session, $exception->getMessage());
+        $this->markFailed($session, $exception instanceof DatabaseImportFailureException ? $exception->failureReason() : $exception->getMessage());
     }
 
     private function targetContextId(ImportSession $session): ?int

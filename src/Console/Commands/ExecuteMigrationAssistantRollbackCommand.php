@@ -66,6 +66,7 @@ final class ExecuteMigrationAssistantRollbackCommand extends Command
 
         $this->components->info((string) __('migration-assistant::commands.rollback_execute.summary', [
             'deleted' => $result->deleted,
+            'restored' => $result->restored,
             'matched' => $result->matched,
             'skipped' => count($result->skipped),
         ]));

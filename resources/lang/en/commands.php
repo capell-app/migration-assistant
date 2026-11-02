@@ -43,9 +43,9 @@ return [
     'rollback_execute' => [
         'description' => 'Execute a signed Migration Assistant rollback report as an authorized actor.',
         'actor_required' => 'A valid --actor user ID is required to authorize rollback execution.',
-        'dry_run' => 'Dry run only; no imported records were deleted.',
+        'dry_run' => 'Dry run only; no imported records were deleted or restored.',
         'not_found' => 'Rollback report for import session [:session] could not be found.',
         'rejected' => 'Rollback execution was rejected because its provenance or actor authorization is invalid.',
-        'summary' => 'Matched :matched imported record(s), deleted :deleted, skipped :skipped.',
+        'summary' => 'Matched :matched imported record(s), deleted :deleted, restored :restored, skipped :skipped.',
     ],
 ];

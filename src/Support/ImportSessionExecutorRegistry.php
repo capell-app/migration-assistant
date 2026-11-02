@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Support;
 
+use Capell\MigrationAssistant\Contracts\DatabaseImportSessionExecutor;
 use Capell\MigrationAssistant\Contracts\ImportSessionExecutor;
 use Capell\MigrationAssistant\Models\ImportSession;
+use LogicException;
 
 final class ImportSessionExecutorRegistry
 {
@@ -27,6 +29,10 @@ final class ImportSessionExecutorRegistry
     {
         foreach ($this->executors as $executor) {
             if ($executor->supports($session)) {
+                if (is_array($session->manifest) && ($session->manifest['type'] ?? null) === 'database' && ! $executor instanceof DatabaseImportSessionExecutor) {
+                    throw new LogicException('Database sources require a guarded database executor.');
+                }
+
                 return $executor;
             }
         }

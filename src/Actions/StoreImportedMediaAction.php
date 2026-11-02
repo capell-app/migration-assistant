@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Actions;
 
 use Capell\Core\Models\Media;
 use Capell\MigrationAssistant\Services\Import\MediaContainerValidator;
+use Closure;
 use finfo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -25,7 +26,9 @@ final class StoreImportedMediaAction
     use AsFake;
     use AsObject;
 
-    /** @param resource $stream */
+    /** @param resource $stream
+     * @param  (Closure(string, string, resource): void)|null  $onCreated
+     */
     public function handle(
         mixed $stream,
         string $fileName,
@@ -33,6 +36,8 @@ final class StoreImportedMediaAction
         int $size,
         Model $owner,
         string $collectionName = 'default',
+        ?Media $candidate = null,
+        ?Closure $onCreated = null,
     ): Media {
         [$mimeType, $extension] = $this->mediaType($stream);
         $existing = Media::query()
@@ -41,7 +46,7 @@ final class StoreImportedMediaAction
             ->where('custom_properties->checksum', $checksum)
             ->first();
 
-        if ($existing instanceof Media && $existing->mime_type === $mimeType
+        if ($candidate === null && $existing instanceof Media && $existing->mime_type === $mimeType
             && pathinfo($existing->file_name, PATHINFO_EXTENSION) === $extension
             && $this->mediaFileExists($existing)) {
             return $existing;
@@ -51,7 +56,8 @@ final class StoreImportedMediaAction
         $disk = is_string($diskConfig) ? $diskConfig : 'public';
         $safeFileName = $this->safeFileName($fileName, substr($checksum, strlen('sha256-')), $extension);
 
-        $media = new Media;
+        $media = $candidate ?? new Media;
+        throw_if($media->exists, RuntimeException::class, 'Existing media cannot be replaced through this operation.');
         $media->forceFill([
             'model_type' => $owner->getMorphClass(),
             'model_id' => $owner->getKey(),
@@ -72,14 +78,45 @@ final class StoreImportedMediaAction
         try {
             $path = $this->safeStoragePath($media);
             rewind($stream);
-            $stored = Storage::disk($disk)->put($path, $stream);
-
-            throw_unless($stored === true, RuntimeException::class, sprintf(
-                'Failed to store media binary [%s].',
-                $fileName,
-            ));
+            if ($candidate !== null) {
+                $filesystem = Storage::disk($disk);
+                throw_unless($filesystem instanceof FilesystemAdapter && $filesystem->getAdapter() instanceof LocalFilesystemAdapter, RuntimeException::class, 'Imported media requires a local destination disk.');
+                throw_if($filesystem->exists($path), RuntimeException::class, 'Media destination already exists.');
+                $directory = dirname($path);
+                throw_unless($filesystem->makeDirectory($directory), RuntimeException::class, 'Failed to create media destination.');
+                $output = fopen($filesystem->path($path), 'xb');
+                throw_unless($output !== false, RuntimeException::class, 'Failed to create media destination.');
+                try {
+                    $created = fstat($output);
+                    throw_unless($created !== false, RuntimeException::class, 'Failed to identify media destination.');
+                    if ($onCreated !== null) {
+                        $onCreated($disk, $path, $output);
+                    }
+                    $written = stream_copy_to_stream($stream, $output);
+                    throw_unless($written === $size, RuntimeException::class, 'Failed to store media binary.');
+                } catch (Throwable $exception) {
+                    $current = @lstat($filesystem->path($path));
+                    if (isset($created) && $created !== false && $current !== false && $current['dev'] === $created['dev'] && $current['ino'] === $created['ino']) {
+                        try {
+                            if (! $filesystem->delete($path)) {
+                                logger()->error('Imported media cleanup failed.');
+                            }
+                        } catch (Throwable) {
+                            logger()->error('Imported media cleanup failed.');
+                        }
+                    }
+                    throw $exception;
+                } finally {
+                    fclose($output);
+                }
+            } else {
+                $stored = Storage::disk($disk)->put($path, $stream);
+                throw_unless($stored === true, RuntimeException::class, sprintf('Failed to store media binary [%s].', $fileName));
+            }
         } catch (Throwable $throwable) {
-            $media->deleteQuietly();
+            if ($candidate === null) {
+                $media->deleteQuietly();
+            }
 
             throw $throwable;
         }

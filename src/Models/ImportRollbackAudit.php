@@ -17,6 +17,7 @@ use Override;
  * @property bool $dry_run
  * @property string $outcome
  * @property int $matched
+ * @property int $restored
  * @property int $deleted
  * @property array<int, array{type: string, id: int|string, reason: string}> $skipped
  * @property CarbonImmutable|null $created_at
@@ -34,6 +35,7 @@ class ImportRollbackAudit extends Model
         'outcome',
         'matched',
         'deleted',
+        'restored',
         'skipped',
     ];
 

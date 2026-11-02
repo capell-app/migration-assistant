@@ -22,6 +22,7 @@ use Override;
  * @property string|null $source_package_checksum
  * @property array<int, array{class: string, id: int|string}>|null $created_models
  * @property array<array-key, mixed>|null $provenance
+ * @property array<array-key, mixed>|null $before_images
  * @property string|null $provenance_signature
  * @property array<array-key, mixed>|null $summary
  * @property string $manual_instructions
@@ -69,7 +70,7 @@ class ImportRollbackReport extends Model
     protected static function booted(): void
     {
         static::updating(static function (self $report): void {
-            if ($report->isDirty(['uuid', 'import_session_id', 'provenance', 'provenance_signature'])) {
+            if ($report->isDirty(['uuid', 'import_session_id', 'provenance', 'provenance_signature', 'before_images'])) {
                 throw new LogicException('Rollback provenance cannot be changed after the report is created.');
             }
         });
@@ -82,6 +83,7 @@ class ImportRollbackReport extends Model
             'source_filename' => 'encrypted',
             'created_models' => 'encrypted:array',
             'provenance' => 'array',
+            'before_images' => 'encrypted:array',
             'summary' => 'encrypted:array',
             'manual_instructions' => 'encrypted',
             'executed_at' => 'immutable_datetime',

@@ -121,6 +121,7 @@ it('declares migration assistant install surfaces and contribution traceability'
             'import_sessions',
             'import_rollback_reports',
             'import_rollback_audits',
+            'import_source_keys',
         ])
         ->and($manifest['permissions'] ?? [])->toBe($permissions)
         ->and(data_get($manifest, 'security.adminSurface.permissions', []))->toBe($permissions)

@@ -12,6 +12,7 @@ use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Support\ImportSessionExecutorRegistry;
+use Capell\MigrationAssistant\Support\RollbackProvenance;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 use Lorisleiva\Actions\Concerns\AsFake;
@@ -134,6 +135,21 @@ final class RetryImportSessionAction
 
     private static function rollbackReportIsResolved(ImportRollbackReport $rollbackReport): bool
     {
+        $provenance = $rollbackReport->provenance;
+        if (is_array($provenance) && ($provenance['version'] ?? null) === 2) {
+            $entries = $provenance['entries'] ?? null;
+            $summary = $rollbackReport->summary;
+            $execution = is_array($summary) ? ($summary['rollback_execution'] ?? null) : null;
+
+            return RollbackProvenance::hasValidSignature($provenance, $rollbackReport->provenance_signature)
+                && is_array($entries) && array_is_list($entries)
+                && is_array($execution) && ($execution['resolved'] ?? null) === count($entries)
+                && is_array($execution['resolved_indices'] ?? null)
+                && $execution['resolved_indices'] === array_keys($entries)
+                && is_string($execution['resolved_signature'] ?? null)
+                && RollbackProvenance::hasValidSignature(['report_uuid' => $rollbackReport->uuid, 'resolved_indices' => $execution['resolved_indices']], $execution['resolved_signature']);
+        }
+
         $createdModels = $rollbackReport->created_models;
 
         if (! is_array($createdModels) || ! array_is_list($createdModels)) {

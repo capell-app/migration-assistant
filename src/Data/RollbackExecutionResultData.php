@@ -17,5 +17,6 @@ final class RollbackExecutionResultData extends Data
         public array $skipped,
         public bool $dryRun,
         public bool $rejected = false,
+        public int $restored = 0,
     ) {}
 }

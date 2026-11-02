@@ -198,3 +198,41 @@ final class ExamplePathAwareImportSourceReaderImplementation implements \Capell\
 
 app()->bind(\Capell\MigrationAssistant\Contracts\PathAwareImportSourceReader::class, ExamplePathAwareImportSourceReaderImplementation::class);
 ```
+
+<!-- example: contract Capell\MigrationAssistant\Contracts\SafeDatabaseFailureContext -->
+
+```php
+<?php
+declare(strict_types=1);
+final class ExampleSafeDatabaseFailureContext extends \RuntimeException implements \Capell\MigrationAssistant\Contracts\SafeDatabaseFailureContext
+{
+    public function __construct(private readonly string $entity, private readonly string $sourceId)
+    {
+        parent::__construct('A source row could not be imported.');
+    }
+
+    public function safeFailureContext(): array
+    {
+        return ['entity' => $this->entity, 'source_id' => $this->sourceId];
+    }
+}
+
+app()->bind(\Capell\MigrationAssistant\Contracts\SafeDatabaseFailureContext::class, ExampleSafeDatabaseFailureContext::class);
+```
+
+<!-- example: contract Capell\MigrationAssistant\Contracts\SafeFailureMessage -->
+
+```php
+<?php
+declare(strict_types=1);
+final class ExampleSafeFailureMessage extends \LogicException implements \Capell\MigrationAssistant\Contracts\SafeFailureMessage
+{
+    public function __construct()
+    {
+        // Fixed text only: never interpolate a source value into the message.
+        parent::__construct('A destination record already exists.');
+    }
+}
+
+app()->bind(\Capell\MigrationAssistant\Contracts\SafeFailureMessage::class, ExampleSafeFailureMessage::class);
+```

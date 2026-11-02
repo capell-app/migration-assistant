@@ -21,7 +21,7 @@ Status details:
 
 ## Why It Matters
 
-**For developers:** Source, target, and executor registries keep import formats and destinations replaceable while Actions own validation, authorization, recovery, and rollback.
+**For developers:** Source, target, and executor registries support file and database imports; database executors validate a previewed schema and track source keys for repeat imports.
 
 **For teams:** Teams can review migration problems before content is written and keep a recovery path when an import needs to be undone.
 
@@ -60,6 +60,10 @@ Screenshot contract: `docs/screenshots.json`.
 - `packages/migration-assistant/database/migrations/2026_07_10_000002_encrypt_import_diagnostics.php`
 - `packages/migration-assistant/database/migrations/2026_07_10_120000_harden_import_rollback_provenance.php`
 - `packages/migration-assistant/database/migrations/2026_10_18_000001_add_import_session_legal_hold.php`
+- `packages/migration-assistant/database/migrations/2026_10_29_000001_create_import_source_keys_table.php`
+- `packages/migration-assistant/database/migrations/2026_10_29_000002_add_rollback_before_images.php`
+- `packages/migration-assistant/database/migrations/2026_10_30_000001_add_source_identity_to_import_source_keys.php`
+- `packages/migration-assistant/database/migrations/2026_10_30_000002_create_database_source_labels_table.php`
 
 ### Models
 
@@ -83,6 +87,7 @@ Screenshot contract: `docs/screenshots.json`.
 
 ### Extension contracts
 
+- `DatabaseImportSessionExecutor`
 - `ImportSessionExecutor`
 - `ImportSessionSubNavigationExtender`
 - `ImportSourceReader`
@@ -95,6 +100,8 @@ Screenshot contract: `docs/screenshots.json`.
 - `PageCollisionDetector`
 - `PageImportTargetResolver`
 - `PathAwareImportSourceReader`
+- `SafeDatabaseFailureContext`
+- `SafeFailureMessage`
 
 ### Events
 
@@ -108,12 +115,14 @@ Screenshot contract: `docs/screenshots.json`.
 
 ### Actions
 
+- `AssertDatabaseSourceLabelBoundAction`
 - `BuildImportRecoveryStatusAction`
 - `BuildImportValidationSummaryAction`
 - `BuildPageReviewRowsAction`
 - `BuildRelationResolveRowsAction`
 - `CancelImportSessionAction`
 - `ClaimImportSessionForExecutionAction`
+- `CreateDatabaseRollbackReportAction`
 - `CreateImportRollbackReportAction`
 - `ExecuteImportRollbackAction`
 - `AdvancePageImportToValidationAction`
@@ -127,17 +136,21 @@ Screenshot contract: `docs/screenshots.json`.
 - `StartPageImportAction`
 - `StartSiteImportAction`
 - `InstallMigrationAssistantPermissionsAction`
+- `InvalidateRollbackCachesAction`
 - `PrepareMigrationScreenshotDetailAction`
 - `PruneImportEvidenceAction`
 - `ReauthorizeImportSessionActorAction`
 - `ReauthorizeImportSessionExecutionAction`
 - `ReclaimStaleImportSessionsAction`
+- `RegisterDatabaseSourceLabelAction`
 - `RetryImportSessionAction`
 - `SetImportLegalHoldAction`
 - `StoreImportedMediaAction`
 
 ### Data objects
 
+- `DatabaseRollbackChange`
+- `DatabaseSourceManifest`
 - `DependencyGraph`
 - `ExportOptions`
 - `ExternalImportPreview`
@@ -155,6 +168,7 @@ Screenshot contract: `docs/screenshots.json`.
 - `PageReviewRow`
 - `RelationResolveRow`
 - `RollbackExecutionResultData`
+- `SourceKeyImportResult`
 
 ### Jobs
 
@@ -206,10 +220,10 @@ Screenshot contract: `docs/screenshots.json`.
 
 ## Data Model
 
-- Required tables: `import_sessions`, `import_rollback_reports`, `import_rollback_audits`.
+- Required tables: `import_sessions`, `import_rollback_reports`, `import_rollback_audits`, `import_source_keys`.
 - Models: `ImportRollbackAudit`, `ImportRollbackReport`, `ImportSession`.
 - Core record references in migrations: `users via user_id`.
-- Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`, `2026_07_10_000002_encrypt_import_diagnostics.php`, `2026_07_10_120000_harden_import_rollback_provenance.php`, `2026_10_18_000001_add_import_session_legal_hold.php`.
+- Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`, `2026_07_10_000002_encrypt_import_diagnostics.php`, `2026_07_10_120000_harden_import_rollback_provenance.php`, `2026_10_18_000001_add_import_session_legal_hold.php`, `2026_10_29_000001_create_import_source_keys_table.php`, `2026_10_29_000002_add_rollback_before_images.php`, `2026_10_30_000001_add_source_identity_to_import_source_keys.php`, `2026_10_30_000002_create_database_source_labels_table.php`.
 - Migration impact: run host migrations through the package install flow before opening package surfaces.
 - Deletion/retention behaviour: migrations declare cascade-on-delete relationships and null-on-delete relationships; no timed pruning or retention schedule is declared in `capell.json`.
 
@@ -266,6 +280,6 @@ Read [CHANGELOG.md](CHANGELOG.md) before upgrading.
 - [Capell content language plan](../../docs/CONTENT_LANGUAGE_PLAN.md)
 - [Capell documentation design system](../../docs/DESIGN_SYSTEM.md)
 - [Capell and package ERD notes](../../docs/erd/capell-and-package-erds.md)
-- Related packages: [Media Library](../media-library/README.md), [Seo Suite](../seo-suite/README.md), [Site Discovery](../site-discovery/README.md), [Url Manager](../url-manager/README.md), [Wordpress Importer](../wordpress-importer/README.md).
+- Related packages: [Html Cache](../html-cache/README.md), [Media Library](../media-library/README.md), [Seo Suite](../seo-suite/README.md), [Site Discovery](../site-discovery/README.md), [Url Manager](../url-manager/README.md), [Wordpress Importer](../wordpress-importer/README.md).
 
 <!-- prettier-ignore-end -->

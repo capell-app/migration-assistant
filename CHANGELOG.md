@@ -4,6 +4,13 @@ All notable changes to `capell-app/migration-assistant` will be documented in th
 
 ## Unreleased
 
+- A rollback marks the cached URLs of the affected sites stale when the HTML cache is installed.
+- Refuse a PostgreSQL source identity for a role without EXECUTE on `pg_control_system()` and name the missing privilege.
+- Rollback reports can journal created role assignments (`model_has_roles`), and rolling back a created row purges it instead of soft-deleting it.
+- Bound database source labels and manifests to the live server identity, and refuse a prepared session whose label has since been repointed.
+- Stored database import failures now include the underlying exception class and message, without row values.
+- Added guarded database-source manifests, persistent source-key tracking, and encrypted before-images for database import rollback.
+
 - Added structured import execution errors and corrected the manifest admin wizard query budget to a pinned `120`.
 - Added `migration-assistant:export` and `migration-assistant:import` for headless package export/import workflows in CI and scripted migrations.
 - Added `ExecuteImportRollbackAction` and `migration-assistant:rollback-execute` for dry-run capable rollback execution from recorded created models.

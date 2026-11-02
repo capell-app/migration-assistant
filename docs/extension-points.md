@@ -92,3 +92,15 @@ Use package-specific group names unless the resolver intentionally contributes t
 | `migration-assistant.connection` | Queue/database connection setting where configured.    |
 
 The package also has model, table, and path config used by import internals. Document those only when a host app needs to change them.
+
+## Database sources for executors
+
+At preview, resolve a configured database connection by name and collect the source table names. Use `DatabaseSourceManifest::preview($connection, $tables, $sourceLabel)` and save its array on the session. The stable, operator-supplied source label distinguishes different databases restored into the same endpoint. Never include credentials in the manifest or reports. The preview fingerprint covers the columns returned by Laravel's schema builder. Preview again if the schema changes.
+
+Database executors extend `DatabaseImportSessionExecutor` and implement `executeDatabase()`. Its final `execute()` validates the manifest and checks the fingerprint before the implementation runs, including direct calls. Register the executor in `ImportSessionExecutorRegistry` as with file-source executors.
+
+For each row, `SourceKeyImporter::import($session, $entityType, $sourceKey, $row, $targetClass, $apply, $force)` uses the session's stable source environment, site context, entity type and source key. Set `target_type` to `site` and `target_id` to the site ID for site-owned targets; sessions without that context can import siteless targets only. The importer checks the target's site before updating it and after the callback. Its result distinguishes created, updated, skipped and conflict outcomes. Persist rollback evidence in the same transaction as imported changes; before-images can contain secrets and require encryption. A conflict indicates the target changed after the previous import. An executor may explicitly force the update after review.
+
+For a new source key, the importer supplies a new unsaved target to the callback; save and return that same instance. The importer callback must write the target on the same database connection as the mapping. Wrap row changes and `CreateDatabaseRollbackReportAction::run()` in one outer transaction. For each created or updated row, pass `new DatabaseRollbackChange($target, $result->beforeImage, $result)` to the report action. Skipped and conflicted rows do not need rollback entries. Global administrators with the rollback permission can execute database rollback; target update or delete policies also apply. Rollback skips targets or source mappings that changed since the import.
+
+Optional rollback model types are configured in `migration-assistant.rollback_targets`; unavailable classes are ignored. Created database rollback entries require a source-key result, while updated entries carry a before-image. Deleted-record before-images are not supported yet. The importer accepts a programmatic force flag, but an operator-facing `--force` option is not supported yet.

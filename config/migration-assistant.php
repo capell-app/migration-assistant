@@ -5,6 +5,17 @@ declare(strict_types=1);
 use Illuminate\Support\Env;
 
 return [
+    // Optional targets are resolved only when the corresponding package is installed.
+    'rollback_targets' => [
+        'page_url' => 'Capell\\Core\\Models\\PageUrl',
+        'translation' => 'Capell\\Core\\Models\\Translation',
+        'permission' => 'Spatie\\Permission\\Models\\Permission',
+        'role' => 'Spatie\\Permission\\Models\\Role',
+        'setting' => 'Spatie\\LaravelSettings\\Models\\SettingsProperty',
+        'navigation' => 'Capell\\Navigation\\Models\\Navigation',
+        'article' => 'Capell\\Blog\\Models\\Article',
+    ],
+
     'queue' => [
         'connection' => Env::get('MIGRATOR_QUEUE_CONNECTION'),
         'name' => Env::get('MIGRATOR_QUEUE', 'migration-assistant'),

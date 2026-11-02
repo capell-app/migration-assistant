@@ -298,3 +298,65 @@ function migrationAssistantConsoleRollbackActor(): User
 
     return $actor;
 }
+
+it('lists recent sessions and explains when there are none', function (): void {
+    expect(Artisan::call('migration-assistant:status'))->toBe(0);
+    expect(Artisan::output())->toContain((string) __('migration-assistant::commands.status.empty'));
+    $session = ImportSession::query()->create(['kind' => ImportSessionKind::PageImport, 'status' => ImportSessionStatus::Queued, 'source_filename' => 'queued.zip']);
+    expect(Artisan::call('migration-assistant:status'))->toBe(0);
+    expect(Artisan::output())->toContain($session->uuid)->toContain('queued.zip');
+    expect(Artisan::call('migration-assistant:status', ['--json' => true]))->toBe(0);
+    expect(migrationAssistantConsoleJsonRows())->toHaveCount(1);
+});
+
+it('requires a report and actor for console rollback and supports a dry run', function (): void {
+    expect(Artisan::call('migration-assistant:rollback-execute', ['session' => 'missing']))->toBe(1);
+    $actor = migrationAssistantConsoleRollbackActor();
+    $page = Page::factory()->create();
+    $session = ImportSession::query()->create(['user_id' => $actor->getKey(), 'kind' => ImportSessionKind::PageImport, 'status' => ImportSessionStatus::Completed]);
+    CreateImportRollbackReportAction::run($session, new ImportExecutionReport(1, 0, [migrationAssistantConsoleModelIntKey($page)], []));
+    expect(Artisan::call('migration-assistant:rollback-execute', ['session' => $session->uuid]))->toBe(1);
+    expect(Artisan::call('migration-assistant:rollback-execute', ['session' => $session->uuid, '--actor' => $actor->getKey(), '--dry-run' => true]))->toBe(0);
+    expect(Page::query()->whereKey($page->getKey())->exists())->toBeTrue();
+});
+
+it('runs stale session recovery with explicit limits', function (): void {
+    expect(Artisan::call('migration-assistant:reclaim-stale', ['--minutes' => '30', '--limit' => '2']))->toBe(0);
+    expect(Artisan::output())->toContain('0');
+});
+
+it('refuses invalid import and export inputs before creating sessions', function (): void {
+    expect(Artisan::call('migration-assistant:import', ['archive' => '/missing/archive.zip']))->toBe(1);
+    $path = tempnam(sys_get_temp_dir(), 'capell-import-');
+    if (! is_string($path)) {
+        throw new LogicException('Could not create test archive.');
+    }
+    try {
+        expect(Artisan::call('migration-assistant:import', ['archive' => $path, '--kind' => 'unknown']))->toBe(1);
+        expect(ImportSession::query()->count())->toBe(0);
+        expect(Artisan::call('migration-assistant:export'))->toBe(1);
+        expect(Artisan::call('migration-assistant:export', ['--page' => ['1'], '--site' => ['1']]))->toBe(1);
+        expect(Artisan::call('migration-assistant:rollback-report', ['session' => 'missing']))->toBe(1);
+    } finally {
+        unlink($path);
+    }
+});
+
+it('shows rollback instructions and imported model identifiers in the human-readable report', function (): void {
+    $page = Page::factory()->create();
+    $session = ImportSession::query()->create(['kind' => ImportSessionKind::PageImport, 'status' => ImportSessionStatus::Completed]);
+    $report = CreateImportRollbackReportAction::run($session, new ImportExecutionReport(1, 0, [migrationAssistantConsoleModelIntKey($page)], []));
+    expect(Artisan::call('migration-assistant:rollback-report', ['session' => $session->uuid]))->toBe(0);
+    expect(Artisan::output())->toContain($report->manual_instructions)->toContain(Page::class)->toContain(migrationAssistantConsoleModelStringKey($page));
+});
+
+it('explains a rejected rollback without changing its target', function (): void {
+    $actor = migrationAssistantConsoleRollbackActor();
+    $page = Page::factory()->create();
+    $session = ImportSession::query()->create(['user_id' => $actor->getKey(), 'kind' => ImportSessionKind::PageImport, 'status' => ImportSessionStatus::Completed]);
+    $report = CreateImportRollbackReportAction::run($session, new ImportExecutionReport(1, 0, [migrationAssistantConsoleModelIntKey($page)], []));
+    $report->forceFill(['provenance_signature' => str_repeat('0', 64)])->saveQuietly();
+    expect(Artisan::call('migration-assistant:rollback-execute', ['session' => $session->uuid, '--actor' => $actor->getKey()]))->toBe(1);
+    expect(Artisan::output())->toContain((string) __('migration-assistant::commands.rollback_execute.rejected'))
+        ->and(Page::query()->whereKey($page->getKey())->exists())->toBeTrue();
+});

@@ -12,9 +12,12 @@ use Capell\Core\Models\Theme;
 use Capell\MigrationAssistant\Actions\BuildImportRecoveryStatusAction;
 use Capell\MigrationAssistant\Actions\ExecuteImportRollbackAction;
 use Capell\MigrationAssistant\Actions\ReclaimStaleImportSessionsAction;
+use Capell\MigrationAssistant\Actions\RegisterDatabaseSourceLabelAction;
 use Capell\MigrationAssistant\Actions\RetryImportSessionAction;
+use Capell\MigrationAssistant\Contracts\DatabaseImportSessionExecutor;
 use Capell\MigrationAssistant\Contracts\ImportSessionExecutor;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
+use Capell\MigrationAssistant\Data\DatabaseSourceManifest;
 use Capell\MigrationAssistant\Data\DependencyGraph;
 use Capell\MigrationAssistant\Data\PackageManifest;
 use Capell\MigrationAssistant\Data\PageImportTargetData;
@@ -38,6 +41,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
@@ -920,3 +924,94 @@ function executeImportPlanSessionKey(ImportSession $session): int
 
     return $key;
 }
+
+it('refuses a database source handoff when the schema changed since preview', function (): void {
+    config(['database.connections.source_fixture' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
+    $schema = DB::connection('source_fixture')->getSchemaBuilder();
+    $schema->create('import_dispatch_source', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+    });
+    try {
+        $manifest = DatabaseSourceManifest::preview('source_fixture', ['import_dispatch_source'], 'fixture');
+        $executor = new class extends DatabaseImportSessionExecutor
+        {
+            public int $executions = 0;
+
+            public function supports(ImportSession $session): bool
+            {
+                return $session->source_environment === 'handoff-test';
+            }
+
+            public function canRetry(ImportSession $session): bool
+            {
+                return true;
+            }
+
+            protected function executeDatabase(ImportSession $session, DatabaseSourceManifest $source): void
+            {
+                $this->executions++;
+            }
+        };
+        resolve(ImportSessionExecutorRegistry::class)->register($executor);
+        $session = ImportSession::query()->create([
+            'user_id' => migrationAssistantGlobalQueueActor()->getKey(),
+            'kind' => ImportSessionKind::PageImport,
+            'status' => ImportSessionStatus::Queued,
+            'source_environment' => 'handoff-test',
+            'manifest' => $manifest->toArray(),
+        ]);
+        $schema->table('import_dispatch_source', function (Illuminate\Database\Schema\Blueprint $table): void {
+            $table->string('changed');
+        });
+        expect(fn () => $manifest->assertUnchanged())->toThrow(RuntimeException::class, 'Source database schema changed');
+        try {
+            executeImportPlanJob($session);
+            throw new LogicException('Expected the source schema check to fail.');
+        } catch (RuntimeException $exception) {
+            expect($exception->getMessage())->toBe('RuntimeException: import_failed')
+                ->and($exception->getPrevious())->toBeNull();
+        }
+        expect($executor->executions)->toBe(0);
+    } finally {
+        $schema->dropIfExists('import_dispatch_source');
+    }
+});
+
+it('keeps query bindings out of the queued database import failure reason', function (): void {
+    config(['database.connections.queue_source' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
+    DB::connection('queue_source')->statement('CREATE TABLE fixture (id INTEGER)');
+    $manifest = DatabaseSourceManifest::preview('queue_source', ['fixture'], 'fixture');
+    resolve(RegisterDatabaseSourceLabelAction::class)->handle('fixture', 'queue_source', false, false);
+    $executor = new class extends DatabaseImportSessionExecutor
+    {
+        #[Override]
+        public function supports(ImportSession $session): bool
+        {
+            return $session->source_environment === 'queue-secret-test';
+        }
+
+        #[Override]
+        public function canRetry(ImportSession $session): bool
+        {
+            return false;
+        }
+
+        #[Override]
+        protected function executeDatabase(ImportSession $session, DatabaseSourceManifest $source): void
+        {
+            throw new QueryException('queue_source', 'SELECT ?', ['synthetic-secret-binding'], new PDOException('fixture error'));
+        }
+    };
+    resolve(ImportSessionExecutorRegistry::class)->register($executor);
+    $session = ImportSession::query()->create(['user_id' => migrationAssistantGlobalQueueActor()->getKey(), 'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Queued, 'source_environment' => 'queue-secret-test', 'manifest' => $manifest->toArray()]);
+    try {
+        executeImportPlanJob($session);
+        throw new LogicException('Expected the executor to fail.');
+    } catch (RuntimeException $exception) {
+        expect($exception->getMessage())->not->toContain('synthetic-secret-binding')
+            ->and($exception->getPrevious())->toBeNull()
+            ->and((string) $exception)->not->toContain('synthetic-secret-binding')
+            ->and($session->refresh()->failure_reason)->toContain('QueryException')->not->toContain('synthetic-secret-binding');
+    }
+});

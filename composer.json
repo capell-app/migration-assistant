@@ -12,6 +12,13 @@
         "lorisleiva/laravel-actions": "^2.8",
         "spatie/laravel-package-tools": "^1.15"
     },
+    "suggest": {
+        "capell-app/html-cache": "Marks the affected site's cached URLs stale after a rollback.",
+        "capell-app/blog": "Rollback imported articles.",
+        "capell-app/navigation": "Rollback imported navigation.",
+        "spatie/laravel-permission": "Rollback imported roles.",
+        "spatie/laravel-settings": "Rollback imported settings."
+    },
     "autoload": {
         "psr-4": {
             "Capell\\MigrationAssistant\\": "src"

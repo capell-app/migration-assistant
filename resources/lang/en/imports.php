@@ -109,4 +109,9 @@ return [
             'remediation' => 'Set migration-assistant.limits.max_media_bytes to a positive byte count.',
         ],
     ],
+    'source_label_repointed' => 'The source label ":label" is bound to a different database server. Re-run with --repoint-source to move it to this one.',
+    'source_label_shared' => 'This database server is already bound to another source label. Re-run with --new-source to bind it to a second label.',
+    'source_label_unregistered' => 'The source label ":label" is not registered. Start a new import session for it.',
+    'pgsql_identity_privilege' => 'The PostgreSQL role cannot identify the server because it lacks EXECUTE on pg_control_system(), which only a superuser has by default. Run GRANT EXECUTE ON FUNCTION pg_control_system() TO <role> as a superuser, or connect with a role that has it, then retry.',
+    'source_label_moved' => 'The source label ":label" has been repointed to a different database server since this session was prepared. Start a new import session.',
 ];

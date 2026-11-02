@@ -19,7 +19,7 @@
     },
     "whyItMatters": {
         "developers": {
-            "text": "Source, target, and executor registries keep import formats and destinations replaceable while Actions own validation, authorization, recovery, and rollback.",
+            "text": "Source, target, and executor registries support file and database imports; database executors validate a previewed schema and track source keys for repeat imports.",
             "evidence": [
                 "src/Support/ImportSourceRegistry.php",
                 "src/Support/ImportTargetRegistry.php",
