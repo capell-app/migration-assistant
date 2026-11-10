@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Capell\Admin\Support\SiteScope;
+use Capell\Core\Enums\ContentStructure;
 use Capell\Core\Models\Blueprint;
 use Capell\Core\Models\Layout;
 use Capell\Core\Models\Page;
@@ -103,6 +104,45 @@ it('executes external preview rows into pages with an import session and rollbac
         ->and(migrationAssistantNumericAttribute($page, 'site_id'))->toBe(migrationAssistantModelId($site))
         ->and($rollbackReport->summary['pages_created'] ?? null)->toBe(1)
         ->and($rollbackReport->created_models[0]['id'] ?? null)->toBe($page->getKey());
+});
+
+it('gives imported pages a translation so they can be read and rendered', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->page()->create();
+    $site = Site::factory()->create();
+    $preview = (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'csv',
+        columns: ['title', 'content'],
+        rows: [['title' => 'Imported title', 'content' => '<p>Imported body</p>']],
+        suggestedTarget: 'page',
+    ));
+    $target = migrationAssistantExternalTarget($site, $layout, $type);
+
+    ExecuteExternalPageImportAction::run($preview, $target);
+
+    /** @var Model $translation */
+    $translation = Page::query()->where('name', 'Imported title')->sole()->translations()->sole();
+    expect($translation->getAttribute('language_id'))->toBe($target->languageId)
+        ->and($translation->getAttribute('title'))->toBe('Imported title')
+        ->and($translation->getAttribute('content'))->toBe('<p>Imported body</p>');
+});
+
+it('keeps imported HTML renderable on a blocks blueprint', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->page()->contentStructure(ContentStructure::Blocks)->create();
+    $site = Site::factory()->create();
+    $preview = (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'csv',
+        columns: ['title', 'content'],
+        rows: [['title' => 'Imported title', 'content' => '<p>Imported body</p>']],
+        suggestedTarget: 'page',
+    ));
+
+    ExecuteExternalPageImportAction::run($preview, migrationAssistantExternalTarget($site, $layout, $type));
+
+    $page = Page::query()->where('name', 'Imported title')->sole();
+
+    expect($page->content_structure)->toBe(ContentStructure::Html);
 });
 
 it('rejects external previews without an authenticated actor before writing', function (): void {
@@ -258,7 +298,7 @@ it('rejects a target site outside the actor scope and ignores row supplied targe
     expect(fn (): mixed => ExecuteExternalPageImportAction::run(
         $preview,
         migrationAssistantExternalTarget($otherSite, $otherLayout, $otherBlueprint),
-    ))->toThrow(AuthorizationException::class, 'not authorized');
+    ))->toThrow(AuthorizationException::class, __('migration-assistant::imports.external_target_site_not_authorized'));
 
     $result = ExecuteExternalPageImportAction::run(
         $preview,

@@ -264,6 +264,28 @@ final class ExecuteExternalPageImportAction
     }
 
     /**
+     * The title and body an editor and the public page read live on the
+     * translation, so an imported page without one is unreachable.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return list<array{language_id: int, title: string|null, content: string|null}>
+     */
+    private function translationsFrom(array $attributes): array
+    {
+        $languageId = $attributes['language_id'] ?? null;
+
+        if (! is_numeric($languageId)) {
+            return [];
+        }
+
+        return [[
+            'language_id' => (int) $languageId,
+            'title' => $this->stringFromScalar($attributes['name'] ?? null),
+            'content' => $this->stringFromScalar(data_get($attributes, 'meta.content')),
+        ]];
+    }
+
+    /**
      * @param  array<string, mixed>  $defaultPageAttributes
      */
     private function packageFromPreview(ExternalImportPreview $preview, array $defaultPageAttributes): PackageReadResult
@@ -291,7 +313,10 @@ final class ExecuteExternalPageImportAction
                 'uuid' => (string) Str::uuid(),
                 'id' => $this->sourceIdFrom($attributes, $rowNumber),
                 'attributes' => $attributes,
-                'owned_relations' => ['page_urls' => $this->pageUrlsFrom($attributes)],
+                'owned_relations' => [
+                    'page_urls' => $this->pageUrlsFrom($attributes),
+                    'translations' => $this->translationsFrom($attributes),
+                ],
                 'shared_relations' => [],
                 'media_bindings' => [],
             ], JSON_THROW_ON_ERROR);

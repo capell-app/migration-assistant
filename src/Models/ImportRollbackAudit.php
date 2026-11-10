@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Models;
 
+use Capell\Core\Concerns\HasCapellTable;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User;
@@ -26,6 +29,11 @@ use Override;
  */
 class ImportRollbackAudit extends Model
 {
+    use HasCapellTable;
+
+    /** @use HasFactory<Factory<static>> */
+    use HasFactory;
+
     public const UPDATED_AT = null;
 
     protected $fillable = [

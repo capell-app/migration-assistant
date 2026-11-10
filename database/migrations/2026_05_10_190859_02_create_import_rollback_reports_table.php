@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Support\TableName;
+use Capell\Core\Support\UserKeyType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,25 +14,25 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (Schema::hasTable('import_rollback_reports')) {
+        if (TableName::existsAndIsOwned('import_rollback_reports', basename(__FILE__, '.php'))) {
             return;
         }
 
         if (Schema::hasTable(self::LEGACY_ROLLBACK_REPORTS_TABLE)) {
-            Schema::rename(self::LEGACY_ROLLBACK_REPORTS_TABLE, 'import_rollback_reports');
+            Schema::rename(self::LEGACY_ROLLBACK_REPORTS_TABLE, TableName::resolve('import_rollback_reports'));
 
             return;
         }
 
-        Schema::create('import_rollback_reports', function (Blueprint $table): void {
+        Schema::create(TableName::resolve('import_rollback_reports'), function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();
             $table->foreignId('import_session_id')
-                ->constrained('import_sessions', indexName: 'import_rollback_reports_session_fk')
+                ->constrained(TableName::resolve('import_sessions'), indexName: TableName::namedIndex('import_rollback_reports', 'import_rollback_reports_session_fk'))
                 ->cascadeOnDelete();
-            $table->foreignId('user_id')
+            $table->foreignId('user_id')->type(UserKeyType::columnType())
                 ->nullable()
-                ->constrained('users', indexName: 'import_rollback_reports_user_fk')
+                ->constrained('users', indexName: TableName::namedIndex('import_rollback_reports', 'import_rollback_reports_user_fk'))
                 ->nullOnDelete();
             $table->string('source_filename')->nullable();
             $table->string('source_package_checksum')->nullable();
@@ -40,12 +42,12 @@ return new class extends Migration
             $table->timestamp('executed_at')->nullable();
             $table->timestamps();
 
-            $table->index(['import_session_id', 'executed_at'], 'import_rollback_reports_session_executed_idx');
+            $table->index(['import_session_id', 'executed_at'], TableName::namedIndex('import_rollback_reports', 'import_rollback_reports_session_executed_idx'));
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('import_rollback_reports');
+        Schema::dropIfExists(TableName::resolve('import_rollback_reports'));
     }
 };

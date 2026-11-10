@@ -84,6 +84,7 @@ final class StoreImportedMediaAction
                 throw_if($filesystem->exists($path), RuntimeException::class, 'Media destination already exists.');
                 $directory = dirname($path);
                 throw_unless($filesystem->makeDirectory($directory), RuntimeException::class, 'Failed to create media destination.');
+                // capell-security-scan: local-stream reads a path on the local import filesystem disk
                 $output = fopen($filesystem->path($path), 'xb');
                 throw_unless($output !== false, RuntimeException::class, 'Failed to create media destination.');
                 try {

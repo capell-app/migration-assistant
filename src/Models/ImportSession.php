@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Models;
 
+use Capell\Core\Concerns\HasCapellTable;
 use Capell\Core\Models\Concerns\HasUserstamps;
 use Capell\Core\Models\Contracts\Userstampable;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
@@ -54,6 +55,8 @@ use Override;
  */
 class ImportSession extends Model implements Userstampable
 {
+    use HasCapellTable;
+
     /** @use HasFactory<Factory<static>> */
     use HasFactory;
 

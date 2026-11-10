@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Support\TableName;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +11,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('import_source_keys', function (Blueprint $table): void {
+        Schema::create(TableName::resolve('import_source_keys'), function (Blueprint $table): void {
             $table->id();
             $table->string('site_scope', 32);
             $table->string('source_environment', 128);
@@ -21,13 +22,13 @@ return new class extends Migration
             $table->string('source_checksum', 64);
             $table->string('target_checksum', 64);
             $table->timestamps();
-            $table->index(['target_class', 'target_id'], 'import_source_keys_target_index');
-            $table->unique(['site_scope', 'source_environment', 'entity_type', 'source_key_hash'], 'import_source_keys_identity_unique');
+            $table->index(['target_class', 'target_id'], TableName::namedIndex('import_source_keys', 'import_source_keys_target_index'));
+            $table->unique(['site_scope', 'source_environment', 'entity_type', 'source_key_hash'], TableName::namedIndex('import_source_keys', 'import_source_keys_identity_unique'));
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('import_source_keys');
+        Schema::dropIfExists(TableName::resolve('import_source_keys'));
     }
 };

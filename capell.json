@@ -17,8 +17,10 @@
     "dependencies": {
         "requires": ["capell-app/admin", "capell-app/core"],
         "supports": [
+            "capell-app/blog",
             "capell-app/html-cache",
             "capell-app/media-library",
+            "capell-app/navigation",
             "capell-app/seo-suite",
             "capell-app/site-discovery",
             "capell-app/url-manager",
@@ -27,7 +29,9 @@
         "conflicts": []
     },
     "providers": {
-        "metadata": [],
+        "metadata": [
+            "Capell\\MigrationAssistant\\Providers\\MigrationMetadataServiceProvider"
+        ],
         "install": [
             "Capell\\MigrationAssistant\\Providers\\MigrationAssistantInstallServiceProvider"
         ],
@@ -122,7 +126,9 @@
             "import_sessions",
             "import_rollback_reports",
             "import_rollback_audits",
-            "import_source_keys"
+            "import_source_keys",
+            "database_source_labels",
+            "database_source_label_locks"
         ]
     },
     "commands": {
@@ -256,6 +262,22 @@
     },
     "marketplace": {
         "summary": "Safely move pages and media into Capell: preview every change, validate before you write, and keep a rollback report for every import.",
+        "problem": "Our team cannot confidently move external content without seeing what each import will change.",
+        "outcome": "Our team has a validated import plan and row-level results to review.",
+        "faq": [
+            {
+                "question": "Can we inspect a plan before writing?",
+                "answer": "Admins can map source data and validate the plan before running the import."
+            },
+            {
+                "question": "How can a team undo an import?",
+                "answer": "The package provides rollback reports and rollback execution commands."
+            },
+            {
+                "question": "Where can we inspect import problems?",
+                "answer": "Admins can review row-level results after an import."
+            }
+        ],
         "screenshots": [
             {
                 "path": "docs/assets/marketplace/extension-card.jpg",

@@ -1,0 +1,64 @@
+{
+    "01_create_import_sessions_table": {
+        "names": [],
+        "sha256": [
+            "67921698998bbcc65e1c4b3d6a2d88aaea491fcc0a1ac11fc3ea69a61d06ad48"
+        ]
+    },
+    "02_create_import_rollback_dashboard-dashboard_reports_table": {
+        "names": [],
+        "sha256": [
+            "6b72fb11a0f222089987209f473356c4a0124ff6dbca4cc90b1f6c8ac8736961"
+        ]
+    },
+    "create_database_source_labels_table": {
+        "names": [
+            "2026_10_30_000002_create_database_source_labels_table"
+        ],
+        "sha256": [
+            "1928c0f26e300f75bfa0db90ce968c44f69775e1611603307e7fdec81181f787",
+            "5cc23db1eb25ee4cf23dcb8c3ec9ae597f8837cf3834393c272d060372fe2241"
+        ]
+    },
+    "create_import_rollback_dashboard-dashboard_reports_table": {
+        "names": [
+            "2026_05_10_190859_02_create_import_rollback_dashboard-dashboard_reports_table"
+        ],
+        "sha256": [
+            "23d36b1a39a7d90ae01411b48925dd804bf9483522b363aede24d98286e60703",
+            "6b72fb11a0f222089987209f473356c4a0124ff6dbca4cc90b1f6c8ac8736961"
+        ]
+    },
+    "create_import_rollback_reports_table": {
+        "names": [
+            "2026_05_10_190859_02_create_import_rollback_reports_table"
+        ],
+        "sha256": [
+            "1a08422f7944b71ef453c15e5ea2b9743ef5d546a0e4be6788183498e01536d7",
+            "25094b37525087b411d75c6b24ffcb4eed804719cf82905e46b08fbdb7411fcd",
+            "8e6dfd7f5455f15a2ef5983093810f60f8dbd95636b41d39c7b41e173ac1c2e8",
+            "a5005e9cc659767e04bd163c020d468aa773d3cec55760eaa24a61fbdbc50f26",
+            "fd25563ae98528d2993dea2b90cb28e64216740b4512cc3f0f51eaf9688ef0e0"
+        ]
+    },
+    "create_import_sessions_table": {
+        "names": [
+            "2026_05_10_190859_01_create_import_sessions_table"
+        ],
+        "sha256": [
+            "0c2a7112ac58faa4c056e62a32349120d34d6bebbb9fa56672250dfc48857b7c",
+            "4c1364b80deefc95d5fe78f9cc8758d1583e3806c7fd9e93eb2bf7ee04cfa751",
+            "67921698998bbcc65e1c4b3d6a2d88aaea491fcc0a1ac11fc3ea69a61d06ad48",
+            "7d39a5d1ea12694c07d2d1b128223bd890759b12296d0fbb20e2f91d75246d26"
+        ]
+    },
+    "create_import_source_keys_table": {
+        "names": [
+            "2026_10_29_000001_create_import_source_keys_table"
+        ],
+        "sha256": [
+            "52edf2212c4b90ab57564892e8eb44c9594ad667afd842e487c488c784c87c03",
+            "f6e01f53ded64124a6569660e3e25867a8fc29a05195653e4a82aec9a022a741"
+        ]
+    }
+}

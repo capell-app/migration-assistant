@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Support\TableName;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\Schema;
 
@@ -11,12 +12,12 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (Schema::hasTable('import_rollback_reports')) {
+        if (Schema::hasTable(TableName::resolve('import_rollback_reports'))) {
             return;
         }
 
         if (Schema::hasTable(self::LEGACY_ROLLBACK_REPORTS_TABLE)) {
-            Schema::rename(self::LEGACY_ROLLBACK_REPORTS_TABLE, 'import_rollback_reports');
+            Schema::rename(self::LEGACY_ROLLBACK_REPORTS_TABLE, TableName::resolve('import_rollback_reports'));
         }
     }
 
@@ -26,8 +27,8 @@ return new class extends Migration
             return;
         }
 
-        if (Schema::hasTable('import_rollback_reports')) {
-            Schema::rename('import_rollback_reports', self::LEGACY_ROLLBACK_REPORTS_TABLE);
+        if (Schema::hasTable(TableName::resolve('import_rollback_reports'))) {
+            Schema::rename(TableName::resolve('import_rollback_reports'), self::LEGACY_ROLLBACK_REPORTS_TABLE);
         }
     }
 };

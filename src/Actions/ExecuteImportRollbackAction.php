@@ -6,7 +6,10 @@ namespace Capell\MigrationAssistant\Actions;
 
 use BackedEnum;
 use Capell\Core\Models\Site;
+use Capell\Core\Support\TableName;
+use Capell\MigrationAssistant\Data\DatabaseImportWritePlan;
 use Capell\MigrationAssistant\Data\RollbackExecutionResultData;
+use Capell\MigrationAssistant\Enums\InPlaceDatabaseRefusalReason;
 use Capell\MigrationAssistant\Enums\MigrationAssistantPermission;
 use Capell\MigrationAssistant\Models\ImportRollbackAudit;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
@@ -20,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Lorisleiva\Actions\Concerns\AsFake;
 use Lorisleiva\Actions\Concerns\AsObject;
+use Spatie\LaravelSettings\Models\SettingsProperty;
 use Spatie\Permission\PermissionRegistrar;
 use Throwable;
 use UnexpectedValueException;
@@ -37,11 +41,32 @@ final class ExecuteImportRollbackAction
         ?Authenticatable $actor = null,
         bool $dryRun = false,
     ): RollbackExecutionResultData {
+        $provenance = $report->provenance;
+        if (is_array($provenance) && array_key_exists('write_plan', $provenance)) {
+            if (! RollbackProvenance::hasValidSignature($provenance, $report->provenance_signature)) {
+                throw InPlaceDatabaseRefusalReason::Invalid->exception('Invalid signed in-place rollback plan.');
+            }
+
+            $plan = DatabaseImportWritePlan::fromArray(is_array($provenance['write_plan']) ? $provenance['write_plan'] : []);
+
+            return $plan->within(fn (): RollbackExecutionResultData => $this->executeBound($report, $actor, $dryRun, $plan));
+        }
+
+        return $this->executeBound($report, $actor, $dryRun, null);
+    }
+
+    private function executeBound(ImportRollbackReport $report, ?Authenticatable $actor, bool $dryRun, ?DatabaseImportWritePlan $plan): RollbackExecutionResultData
+    {
+        $connection = DB::connection($plan?->writerConnection);
+        if ($plan instanceof DatabaseImportWritePlan && $actor instanceof Model) {
+            $actor = (clone $actor)->setConnection($plan->readerConnection);
+        }
+
         $siteIds = [];
-        $result = DB::transaction(function () use ($report, $actor, $dryRun, &$siteIds): RollbackExecutionResultData {
+        $result = $connection->transaction(function () use ($report, $actor, $dryRun, &$siteIds, $connection, $plan): RollbackExecutionResultData {
             $actor = $this->freshActor($actor);
             $reportKey = $this->scalarKey($report);
-            $lockedReport = ImportRollbackReport::query()
+            $lockedReport = ImportRollbackReport::on($plan?->writerConnection)
                 ->with('importSession')
                 ->lockForUpdate()
                 ->find($reportKey);
@@ -49,10 +74,18 @@ final class ExecuteImportRollbackAction
             if (! $lockedReport instanceof ImportRollbackReport) {
                 throw new UnexpectedValueException('Rollback report no longer exists.');
             }
+
             $provenance = is_array($lockedReport->provenance) ? $lockedReport->provenance : [];
 
             if (! $this->hasValidProvenance($lockedReport, $provenance)) {
                 return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
+            }
+
+            if ($plan instanceof DatabaseImportWritePlan) {
+                $savedManifest = $lockedReport->importSession?->manifest;
+                if (! is_array($savedManifest) || ($savedManifest['write_plan'] ?? null) !== $plan->toArray()) {
+                    throw InPlaceDatabaseRefusalReason::Invalid->exception('The rollback physical plan does not match the imported session.');
+                }
             }
 
             $entries = $provenance['entries'] ?? null;
@@ -65,18 +98,26 @@ final class ExecuteImportRollbackAction
             if (! is_int($version)) {
                 return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
             }
+
             $images = $lockedReport->before_images;
             if ($version === 2 && (! is_array($images) || ! array_is_list($images) || count($images) !== count($entries))) {
                 return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
             }
 
             foreach ($entries as $index => $entry) {
+                if ($plan instanceof DatabaseImportWritePlan && $plan->executionMode !== 'dedicated-process' && (! is_array($entry) || ($entry['type'] ?? null) !== 'setting' || ($entry['site_id'] ?? null) !== null || count($plan->targets) !== 1)) {
+                    throw InPlaceDatabaseRefusalReason::Target->exception('The rollback target is outside the in-place settings plan.');
+                }
+
                 if (! is_array($entry) || ! $this->isValidEntry($entry, $version) || ($version === 2 && ((! is_string($entry['before_hash'] ?? null) || ! hash_equals($entry['before_hash'], hash('sha256', json_encode($images[$index], JSON_THROW_ON_ERROR)))) || (($entry['operation'] === 'created') !== ($images[$index] === null)) || ($images[$index] !== null && ! is_array($images[$index]))))) {
                     return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
                 }
             }
 
-            if (($version === 2 && ($actor === null || ! $this->isGlobalActor($actor) || ! $this->hasGlobalRollbackPermission($actor))) || ! $this->actorCanRollbackEntries($actor, $entries)) {
+            $authorized = $plan instanceof DatabaseImportWritePlan
+                ? $actor instanceof Model && $this->actorIsActive($actor) && resolve(AuthorizeInPlaceRollbackActorAction::class)->handle($plan->readerConnection, $actor)
+                : (($version !== 2 || ! (! $actor instanceof Authenticatable || ! $this->isGlobalActor($actor) || ! $this->hasGlobalRollbackPermission($actor))) && $this->actorCanRollbackEntries($actor, $entries));
+            if (! $authorized) {
                 return $this->rejectedResult($lockedReport, $actor, $dryRun, 'unauthorized');
             }
 
@@ -89,11 +130,13 @@ final class ExecuteImportRollbackAction
                 if (! is_array($resolved) || ! array_is_list($resolved) || ! is_string($signature) || ! RollbackProvenance::hasValidSignature(['report_uuid' => $lockedReport->uuid, 'resolved_indices' => $resolved], $signature)) {
                     return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
                 }
+
                 $seenIndices = [];
                 foreach ($resolved as $resolvedIndex) {
                     if (! is_int($resolvedIndex) || ! array_key_exists($resolvedIndex, $entries) || isset($seenIndices[$resolvedIndex])) {
                         return $this->rejectedResult($lockedReport, $actor, $dryRun, 'invalid_provenance');
                     }
+
                     $seenIndices[$resolvedIndex] = true;
                 }
             }
@@ -109,6 +152,7 @@ final class ExecuteImportRollbackAction
                 if ($version === 2 && in_array($index, $resolved, true)) {
                     continue;
                 }
+
                 if (($entry['type'] ?? null) === RollbackProvenance::ROLE_PAIR) {
                     if (! $this->rolePairRow($entry, lock: true)) {
                         $missing[] = [$index, null];
@@ -116,33 +160,53 @@ final class ExecuteImportRollbackAction
 
                         continue;
                     }
+
                     $matched++;
                     $pairs[] = [$entry, $index];
 
                     continue;
                 }
-                $model = RollbackProvenance::findEntryModel($entry, lockForUpdate: true);
+
+                $targetClass = null;
+                if ($plan instanceof DatabaseImportWritePlan) {
+                    if ($plan->executionMode === 'dedicated-process') {
+                        $entryMapping = $entry['mapping'] ?? null;
+                        $plannedClass = is_array($entryMapping) ? ($entryMapping['target_class'] ?? null) : null;
+                        if (! is_string($plannedClass) || ! isset($plan->targets[$plannedClass])) {
+                            throw InPlaceDatabaseRefusalReason::Target->exception('The signed rollback mapping is outside its original target plan.');
+                        }
+
+                        $targetClass = $plannedClass;
+                    } else {
+                        $targetClass = array_key_first($plan->targets);
+                    }
+                }
+
+                $model = RollbackProvenance::findEntryModel($entry, lockForUpdate: true, connection: $plan?->writerConnection, targetClass: $targetClass);
 
                 if (! $model instanceof Model) {
                     if ($version === 2) {
                         $mapping = $entry['mapping'];
                         if (is_array($mapping)) {
-                            $currentMapping = DB::table('import_source_keys')->where('id', $mapping['id'])->lockForUpdate()->first();
+                            $currentMapping = $connection->table(TableName::resolve('import_source_keys'))->where('id', $mapping['id'])->lockForUpdate()->first();
                             if ($currentMapping !== null && ($currentMapping->target_class !== $mapping['target_class'] || $currentMapping->target_id !== $mapping['target_id'] || $currentMapping->source_checksum !== $mapping['source_checksum'] || $currentMapping->target_checksum !== $mapping['target_checksum'])) {
                                 $skipped[] = $this->skip($entry, 'mapping_changed');
 
                                 continue;
                             }
                         }
+
                         $missing[] = [$index, is_array($mapping) ? $mapping['id'] : null];
                     }
+
                     $skipped[] = $this->skip($entry, 'missing');
 
                     continue;
                 }
 
+                $plan?->assertTarget($model);
                 $matched++;
-                $reason = RollbackProvenance::matchesEntry($model, $entry);
+                $reason = RollbackProvenance::matchesEntry($model, $entry, $plan instanceof DatabaseImportWritePlan && ($plan->executionMode !== 'dedicated-process' || $model instanceof SettingsProperty) ? 'setting' : null);
 
                 if ($reason === null && $version === 2 && (! is_string($entry['after_hash'] ?? null) || ! hash_equals($entry['after_hash'], hash('sha256', json_encode($model->getAttributes(), JSON_THROW_ON_ERROR))))) {
                     $reason = 'edited_after_import';
@@ -156,7 +220,7 @@ final class ExecuteImportRollbackAction
 
                 $mapping = $version === 2 ? $entry['mapping'] : null;
                 if (is_array($mapping)) {
-                    $currentMapping = DB::table('import_source_keys')->where('id', $mapping['id'])->lockForUpdate()->first();
+                    $currentMapping = $connection->table(TableName::resolve('import_source_keys'))->where('id', $mapping['id'])->lockForUpdate()->first();
                     if ($currentMapping === null || $currentMapping->target_class !== $model::class || $currentMapping->target_id !== $mapping['target_id'] || $currentMapping->target_class !== $mapping['target_class'] || $currentMapping->target_id !== $mapping['target_id'] || $currentMapping->source_checksum !== $mapping['source_checksum'] || $currentMapping->target_checksum !== $mapping['target_checksum']) {
                         $skipped[] = $this->skip($entry, 'mapping_changed');
 
@@ -178,30 +242,40 @@ final class ExecuteImportRollbackAction
             if (! $dryRun) {
                 foreach ($missing as [$index, $mappingId]) {
                     if ($mappingId !== null) {
-                        DB::table('import_source_keys')->where('id', $mappingId)->delete();
+                        $connection->table(TableName::resolve('import_source_keys'))->where('id', $mappingId)->delete();
                     }
+
                     $resolved[] = $index;
                 }
+
                 foreach ($pairs as [$entry, $index]) {
                     $this->rolePairQuery($entry)->delete();
                     $deleted++;
                     $resolved[] = $index;
                 }
+
                 if ($pairs !== [] && class_exists(PermissionRegistrar::class)) {
                     resolve(PermissionRegistrar::class)->forgetCachedPermissions();
                 }
+
                 foreach ($deletable as [$model, $operation, $image, $mapping, $index]) {
+                    if ($plan instanceof DatabaseImportWritePlan) {
+                        resolve(FinalisePlannedContentGraphAction::class)->handle($plan, $model);
+                    }
+
                     if ($operation === 'updated') {
                         $imageKey = is_array($image) ? ($image[$model->getKeyName()] ?? null) : null;
                         $modelKey = $model->getKey();
                         if ((! is_int($imageKey) && ! is_string($imageKey)) || (! is_int($modelKey) && ! is_string($modelKey)) || (string) $imageKey !== (string) $modelKey) {
                             throw new UnexpectedValueException('Invalid rollback before-image.');
                         }
+
                         $model->setRawAttributes($image);
                         $model->timestamps = false;
                         if (! $model->save()) {
                             throw new UnexpectedValueException('Rollback target could not be restored.');
                         }
+
                         $restored++;
                     } else {
                         // A row the import created is purged, not soft-deleted, so its unique keys are free for a re-import.
@@ -211,20 +285,24 @@ final class ExecuteImportRollbackAction
                             // Rows added after the import reference this one; a purge would cascade into them.
                             $softDeleted[] = ['type' => RollbackProvenance::entryFor($model)['type'], 'id' => $this->scalarKey($model), 'reason' => 'has_references:' . $blocker];
                         }
+
                         $removed = $soft && $blocker === null ? $model->forceDelete() : $model->delete();
                         if ($removed !== true) {
                             throw new UnexpectedValueException('Rollback target could not be deleted.');
                         }
+
                         $deleted++;
                     }
+
                     if ($version === 2) {
                         $resolved[] = $index;
                     }
+
                     if (is_array($mapping)) {
                         if ($operation === 'created') {
-                            DB::table('import_source_keys')->where('id', $mapping['id'])->delete();
+                            $connection->table(TableName::resolve('import_source_keys'))->where('id', $mapping['id'])->delete();
                         } else {
-                            DB::table('import_source_keys')->where('id', $mapping['id'])->update([
+                            $connection->table(TableName::resolve('import_source_keys'))->where('id', $mapping['id'])->update([
                                 'source_checksum' => $mapping['previous_source_checksum'],
                                 'target_checksum' => $mapping['previous_target_checksum'],
                                 'updated_at' => now(),
@@ -285,6 +363,7 @@ final class ExecuteImportRollbackAction
                 'session_user_id',
                 'session_uuid',
                 'version',
+                ...(array_key_exists('write_plan', $provenance) ? ['write_plan'] : []),
             ])
             && in_array($provenance['version'] ?? null, [1, 2], true)
             && ($provenance['report_uuid'] ?? null) === $report->uuid
@@ -336,7 +415,7 @@ final class ExecuteImportRollbackAction
      */
     private function rolePairRow(array $entry, bool $lock): bool
     {
-        $columns = RollbackProvenance::rolePairColumns();
+        RollbackProvenance::rolePairColumns();
         $query = $this->rolePairQuery($entry);
         if ($lock) {
             $query->lockForUpdate();
@@ -357,8 +436,9 @@ final class ExecuteImportRollbackAction
         $query = DB::table($columns['table'])->where($columns['role'], $entry['role_id'])->where('model_type', $entry['model_type'])->where($columns['model'], $entry['model_id']);
         $teamColumn = $columns['team'];
         if ($teamColumn === null && ($entry['team_id'] ?? null) !== null) {
-            $teamColumn = is_string(config('permission.column_names.team_foreign_key')) ? (string) config('permission.column_names.team_foreign_key') : 'team_id';
+            $teamColumn = is_string(config('permission.column_names.team_foreign_key')) ? config('permission.column_names.team_foreign_key') : 'team_id';
         }
+
         if ($teamColumn !== null) {
             ($entry['team_id'] ?? null) === null ? $query->whereNull($teamColumn) : $query->where($teamColumn, $entry['team_id']);
         }
@@ -371,12 +451,15 @@ final class ExecuteImportRollbackAction
         if ($mapping === null) {
             return true;
         }
+
         if (! is_array($mapping) || ! $this->hasExactKeys($mapping, ['id', 'target_class', 'target_id', 'source_checksum', 'target_checksum', 'previous_source_checksum', 'previous_target_checksum'])) {
             return false;
         }
+
         if ($operation === 'created' && ($mapping['previous_source_checksum'] !== null || $mapping['previous_target_checksum'] !== null)) {
             return false;
         }
+
         if ($operation === 'updated' && (! is_string($mapping['previous_source_checksum']) || ! is_string($mapping['previous_target_checksum']))) {
             return false;
         }
@@ -392,7 +475,7 @@ final class ExecuteImportRollbackAction
      */
     private function actorCanRollbackEntries(?Authenticatable $actor, array $entries): bool
     {
-        if ($actor === null || ! $this->actorIsActive($actor)) {
+        if (! $actor instanceof Authenticatable || ! $this->actorIsActive($actor)) {
             return false;
         }
 
@@ -406,13 +489,7 @@ final class ExecuteImportRollbackAction
 
         $siteIds = array_values(array_unique(array_filter(array_column($entries, 'site_id'), is_int(...))));
 
-        foreach ($siteIds as $siteId) {
-            if (! $this->actorCanRollbackSite($actor, $siteId)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all($siteIds, fn (int $siteId): bool => $this->actorCanRollbackSite($actor, $siteId));
     }
 
     private function actorCanRollbackSite(Authenticatable $actor, int $siteId): bool
@@ -578,7 +655,7 @@ final class ExecuteImportRollbackAction
     ): void {
         $actorId = $actor?->getAuthIdentifier();
 
-        ImportRollbackAudit::query()->create([
+        ImportRollbackAudit::on($report->getConnectionName())->create([
             'import_rollback_report_id' => $report->getKey(),
             'actor_id' => is_int($actorId) ? $actorId : null,
             'dry_run' => $result->dryRun,

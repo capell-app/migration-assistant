@@ -17,7 +17,7 @@ final class PrepareMigrationScreenshotDetailAction
     {
         throw_unless(app()->environment('local', 'testing') && getenv('CAPELL_SCREENSHOT_FIXTURE') === 'record-state', RuntimeException::class, 'Migration screenshot fixtures require the disposable screenshot environment.');
 
-        require_once dirname(__DIR__, 4) . '/scripts/screenshots/FixtureState.php';
+        require_once (str_contains(__DIR__, '/vendor/capell-app/') ? dirname(__DIR__, 5) : dirname(__DIR__, 4)) . '/scripts/screenshots/FixtureState.php';
         FixtureState::boot();
 
         return (new ImportSession)->getConnection()->transaction(static function (): ImportSession {

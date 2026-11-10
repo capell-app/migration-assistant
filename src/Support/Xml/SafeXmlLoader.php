@@ -47,6 +47,7 @@ final class SafeXmlLoader
             ));
         }
 
+        // capell-security-scan: local-stream reads a local XML export whose size was read with filesize() above
         $contents = @file_get_contents($path);
         if ($contents === false) {
             throw new RuntimeException(sprintf('XML file [%s] could not be read.', $path));

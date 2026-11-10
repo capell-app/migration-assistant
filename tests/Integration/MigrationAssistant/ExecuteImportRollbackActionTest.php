@@ -552,6 +552,45 @@ it('uses configured optional rollback target classes', function (): void {
         ->and(RollbackProvenance::findEntryModel(['type' => 'custom_user', 'id' => $user->id])?->getKey())->toBe($user->id);
 });
 
+it('rolls back an imported Blog article through its default rollback target', function (): void {
+    app()->register(FrontendServiceProvider::class);
+    (require __DIR__ . '/../../../../blog/database/migrations/2026_05_10_190842_01_create_articles_table.php')->up();
+    $actor = migrationAssistantRollbackActor();
+    $article = Article::withoutEvents(static fn () => Article::query()->create(['name' => 'Imported', 'site_id' => Site::factory()->create()->getKey(), 'blueprint_id' => Blueprint::factory()->create()->getKey(), 'layout_id' => Layout::factory()->create()->getKey()]));
+    $session = ImportSession::query()->create([
+        'user_id' => $actor->getKey(), 'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Completed, 'source_environment' => 'fixture', 'executed_at' => now(),
+    ]);
+
+    expect(RollbackProvenance::isAllowedType('article'))->toBeTrue()
+        ->and(RollbackProvenance::findEntryModel(['type' => 'article', 'id' => $article->getKey()]))->toBeInstanceOf(Article::class);
+
+    $report = CreateDatabaseRollbackReportAction::run($session, [migrationAssistantCreatedChange($article, $session)]);
+    $result = ExecuteImportRollbackAction::run($report, actor: $actor);
+
+    expect($result->skipped)->toBe([])
+        ->and(Article::query()->withoutGlobalScopes()->whereKey($article->getKey())->exists())->toBeFalse();
+});
+
+it('rolls back an imported Navigation menu through its default rollback target', function (): void {
+    (require __DIR__ . '/../../../../navigation/database/migrations/2026_05_10_190860_01_create_navigations_table.php')->up();
+    $actor = migrationAssistantRollbackActor();
+    $navigation = Navigation::factory()->create();
+    $session = ImportSession::query()->create([
+        'user_id' => $actor->getKey(), 'kind' => ImportSessionKind::PageImport,
+        'status' => ImportSessionStatus::Completed, 'source_environment' => 'fixture', 'executed_at' => now(),
+    ]);
+
+    expect(RollbackProvenance::isAllowedType('navigation'))->toBeTrue()
+        ->and(RollbackProvenance::findEntryModel(['type' => 'navigation', 'id' => $navigation->getKey()]))->toBeInstanceOf(Navigation::class);
+
+    $report = CreateDatabaseRollbackReportAction::run($session, [migrationAssistantCreatedChange($navigation, $session)]);
+    $result = ExecuteImportRollbackAction::run($report, actor: $actor);
+
+    expect($result->skipped)->toBe([])
+        ->and(Navigation::query()->withoutGlobalScopes()->whereKey($navigation->getKey())->exists())->toBeFalse();
+});
+
 function migrationAssistantCreatedChange(Model $model, ImportSession $session): DatabaseRollbackChange
 {
     $key = migrationAssistantRollbackModelKey($model);

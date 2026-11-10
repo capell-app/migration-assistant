@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Contracts;
 
 use Capell\MigrationAssistant\Actions\AssertDatabaseSourceLabelBoundAction;
+use Capell\MigrationAssistant\Data\DatabaseImportWritePlan;
 use Capell\MigrationAssistant\Data\DatabaseSourceManifest;
 use Capell\MigrationAssistant\Exceptions\DatabaseImportFailureException;
 use Capell\MigrationAssistant\Exceptions\MissingDatabaseSourceLabelException;
@@ -21,7 +22,25 @@ abstract class DatabaseImportSessionExecutor implements ImportSessionExecutor
     #[Override]
     final public function execute(ImportSession $session): void
     {
+        $inPlace = is_array($session->manifest) && array_key_exists('write_plan', $session->manifest);
         try {
+            $manifest = $session->manifest;
+            if (is_array($manifest) && array_key_exists('write_plan', $manifest)) {
+                $source = DatabaseSourceManifest::fromArray($manifest);
+                if (! $source->writePlan instanceof DatabaseImportWritePlan) {
+                    throw new InvalidArgumentException('Invalid in-place source plan.');
+                }
+
+                $source->writePlan->within(function () use ($session, $source): void {
+                    $source->assertUnchanged();
+                    resolve(AssertDatabaseSourceLabelBoundAction::class)->handle($source);
+                    $session->setConnection($source->writePlan?->writerConnection);
+                    $this->executeDatabase($session, $source);
+                });
+
+                return;
+            }
+
             if (! is_array($session->manifest)) {
                 throw new InvalidArgumentException('Invalid database source manifest.');
             }
@@ -30,13 +49,14 @@ abstract class DatabaseImportSessionExecutor implements ImportSessionExecutor
             $source->assertUnchanged();
             resolve(AssertDatabaseSourceLabelBoundAction::class)->handle($source);
             $this->executeDatabase($session, $source);
-        } catch (Throwable $exception) {
-            $reason = $exception instanceof MissingDatabaseSourceLabelException ? MissingDatabaseSourceLabelException::MESSAGE : $exception::class . ': import_failed';
-            $cause = $exception instanceof MissingDatabaseSourceLabelException ? null : SafeFailureCause::describe($exception);
-            $context = $exception instanceof SafeDatabaseFailureContext ? $exception->safeFailureContext() : null;
+        } catch (Throwable $throwable) {
+            $reason = $throwable instanceof MissingDatabaseSourceLabelException ? MissingDatabaseSourceLabelException::MESSAGE : $throwable::class . ': import_failed';
+            $cause = $throwable instanceof MissingDatabaseSourceLabelException ? null : SafeFailureCause::describe($throwable);
+            $context = $throwable instanceof SafeDatabaseFailureContext ? $throwable->safeFailureContext() : null;
             if ($context !== null && (preg_match('/\A[a-z_]+\z/D', $context['entity']) !== 1 || ($context['source_id'] !== 'unknown' && ! ctype_digit($context['source_id'])))) {
                 $context = null;
             }
+
             // Never report the raw exception: a query exception carries its bound row values (emails, password
             // hashes) in its message and trace arguments. Report only the class, the safe cause, the session
             // and the row's source key, with no previous chain.
@@ -51,13 +71,14 @@ abstract class DatabaseImportSessionExecutor implements ImportSessionExecutor
                 $context,
                 $cause,
             ));
-            if ($session->exists) {
+            if ($session->exists && ! $inPlace) {
                 try {
                     $session->forceFill(['failure_reason' => $cause === null ? $reason : $reason . ' (' . $cause . ')'])->save();
                 } catch (Throwable) {
                     logger()->error('Could not store database import failure classification.');
                 }
             }
+
             throw new DatabaseImportFailureException($reason, $context, $cause);
         }
     }

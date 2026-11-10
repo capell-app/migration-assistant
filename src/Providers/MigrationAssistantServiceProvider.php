@@ -76,6 +76,10 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
                 '2026_07_10_000002_encrypt_import_diagnostics',
                 '2026_07_10_120000_harden_import_rollback_provenance',
                 '2026_10_18_000001_add_import_session_legal_hold',
+                '2026_10_29_000001_create_import_source_keys_table',
+                '2026_10_29_000002_add_rollback_before_images',
+                '2026_10_30_000001_add_source_identity_to_import_source_keys',
+                '2026_10_30_000002_create_database_source_labels_table',
             ]);
     }
 

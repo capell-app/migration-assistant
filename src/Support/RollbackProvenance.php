@@ -99,7 +99,7 @@ final class RollbackProvenance
     /**
      * @param  array<array-key, mixed>  $entry
      */
-    public static function findEntryModel(array $entry, bool $lockForUpdate = false): ?Model
+    public static function findEntryModel(array $entry, bool $lockForUpdate = false, ?string $connection = null, ?string $targetClass = null): ?Model
     {
         $type = $entry['type'] ?? null;
         $id = $entry['id'] ?? null;
@@ -108,11 +108,11 @@ final class RollbackProvenance
             return null;
         }
 
-        $class = self::targets()[$type] ?? null;
+        $class = $targetClass ?? (self::targets()[$type] ?? null);
         if (! is_string($class) || ! class_exists($class)) {
             return null;
         }
-        $query = $class::query()->withoutGlobalScopes()->whereKey($id);
+        $query = ($connection === null ? $class::query() : $class::on($connection))->withoutGlobalScopes()->whereKey($id);
 
         if ($lockForUpdate) {
             $query->lockForUpdate();
@@ -168,9 +168,9 @@ final class RollbackProvenance
     /**
      * @return array{type: string, id: int|string, site_id: int|null, created_at: string, updated_at: string}
      */
-    public static function entryFor(Model $model): array
+    public static function entryFor(Model $model, ?string $typeOverride = null): array
     {
-        $type = array_search($model::class, self::targets(), true);
+        $type = $typeOverride ?? array_search($model::class, self::targets(), true);
         $siteId = $model instanceof Site ? $model->getKey() : (array_key_exists('site_id', $model->getAttributes()) ? $model->getAttribute('site_id') : null);
         $createdAt = self::modelTimestamp($model, $model->getCreatedAtColumn());
         $updatedAt = self::modelTimestamp($model, $model->getUpdatedAtColumn());
@@ -197,10 +197,10 @@ final class RollbackProvenance
     /**
      * @param  array<array-key, mixed>  $entry
      */
-    public static function matchesEntry(Model $model, array $entry): ?string
+    public static function matchesEntry(Model $model, array $entry, ?string $typeOverride = null): ?string
     {
         try {
-            $current = self::entryFor($model);
+            $current = self::entryFor($model, $typeOverride);
         } catch (LogicException) {
             return 'invalid_target';
         }

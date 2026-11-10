@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Support\TableName;
+use Capell\Core\Support\UserKeyType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,10 +12,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('import_sessions', function (Blueprint $table): void {
+        Schema::create(TableName::resolve('import_sessions'), function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('user_id')->type(UserKeyType::columnType())->nullable()->constrained('users')->nullOnDelete();
             $table->string('target_type', 64)->nullable()->index();
             $table->unsignedBigInteger('target_id')->nullable()->index();
             $table->string('target_label')->nullable();
@@ -45,6 +47,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('import_sessions');
+        Schema::dropIfExists(TableName::resolve('import_sessions'));
     }
 };

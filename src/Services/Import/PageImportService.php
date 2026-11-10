@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Services\Import;
 
+use Capell\Core\Enums\ContentStructure;
 use Capell\Core\Models\Media;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\PageUrl;
@@ -250,7 +251,42 @@ final readonly class PageImportService
         $page->forceFill($attributes);
         $page->save();
 
+        // Only a caller that authorised the target itself supplies translations;
+        // archive payloads stay untrusted and never reach this write.
+        if ($authorizedSiteId !== null) {
+            $this->writeTranslations($page, $descriptor);
+        }
+
         return $page->getKey();
+    }
+
+    /**
+     * @param  array<string, mixed>  $descriptor
+     */
+    private function writeTranslations(Page $page, array $descriptor): void
+    {
+        $translations = data_get($descriptor, 'owned_relations.translations');
+
+        if (! is_array($translations) || $translations === []) {
+            return;
+        }
+
+        // Imported bodies are HTML strings; a blocks blueprint would hand them to the block renderer.
+        $page->forceFill(['content_structure_override' => ContentStructure::Html->value])->save();
+
+        foreach ($translations as $translation) {
+            if (! is_array($translation) || ! is_int($translation['language_id'] ?? null)) {
+                continue;
+            }
+
+            $page->translations()->updateOrCreate(
+                ['language_id' => $translation['language_id']],
+                [
+                    'title' => is_string($translation['title'] ?? null) ? $translation['title'] : $page->name,
+                    'content' => is_string($translation['content'] ?? null) ? $translation['content'] : null,
+                ],
+            );
+        }
     }
 
     /**

@@ -18,7 +18,7 @@ return [
     ],
     'reclaim_stale' => [
         'description' => 'Requeue import sessions abandoned by terminated workers.',
-        'completed' => 'Requeued :count stale import session(s).',
+        'completed' => 'Stale import sessions requeued: :count.',
     ],
     'export' => [
         'description' => 'Export a Capell migration package from page or site ids.',
@@ -41,11 +41,11 @@ return [
         ],
     ],
     'rollback_execute' => [
-        'description' => 'Execute a signed Migration Assistant rollback report as an authorized actor.',
-        'actor_required' => 'A valid --actor user ID is required to authorize rollback execution.',
+        'description' => 'Execute a signed Migration Assistant rollback report as an authorised actor.',
+        'actor_required' => 'A valid --actor user ID is required to authorise rollback execution.',
         'dry_run' => 'Dry run only; no imported records were deleted or restored.',
         'not_found' => 'Rollback report for import session [:session] could not be found.',
-        'rejected' => 'Rollback execution was rejected because its provenance or actor authorization is invalid.',
-        'summary' => 'Matched :matched imported record(s), deleted :deleted, restored :restored, skipped :skipped.',
+        'rejected' => 'Rollback execution was rejected because its provenance or actor authorisation is invalid.',
+        'summary' => 'Imported records matched: :matched. Deleted: :deleted. Restored: :restored. Skipped: :skipped.',
     ],
 ];

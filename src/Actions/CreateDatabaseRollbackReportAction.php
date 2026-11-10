@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Actions;
 
+use Capell\Core\Support\TableName;
+use Capell\MigrationAssistant\Data\DatabaseImportWritePlan;
 use Capell\MigrationAssistant\Data\DatabaseRollbackChange;
+use Capell\MigrationAssistant\Data\DatabaseSourceManifest;
 use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Support\RollbackProvenance;
@@ -13,6 +16,7 @@ use Illuminate\Support\Str;
 use LogicException;
 use Lorisleiva\Actions\Concerns\AsFake;
 use Lorisleiva\Actions\Concerns\AsObject;
+use Spatie\LaravelSettings\Models\SettingsProperty;
 
 /** @method static ImportRollbackReport run(ImportSession $session, list<DatabaseRollbackChange> $changes, list<array{role_id: int|string, model_type: string, model_id: int|string, team_id?: int|string|null}> $rolePairs = []) */
 final class CreateDatabaseRollbackReportAction
@@ -26,6 +30,13 @@ final class CreateDatabaseRollbackReportAction
      */
     public function handle(ImportSession $session, array $changes, array $rolePairs = []): ImportRollbackReport
     {
+        $manifest = $session->manifest;
+        $plan = is_array($manifest) && array_key_exists('write_plan', $manifest) ? DatabaseSourceManifest::fromArray($manifest)->writePlan : null;
+        $connection = DB::connection($plan?->writerConnection);
+        if ($plan instanceof DatabaseImportWritePlan && $rolePairs !== []) {
+            throw new LogicException('In-place role assignments are not implemented.');
+        }
+
         $uuid = (string) Str::uuid();
         $entries = [];
         $images = [];
@@ -33,38 +44,46 @@ final class CreateDatabaseRollbackReportAction
         $counts = [];
         foreach ($changes as $change) {
             $model = $change->model;
+            $plan?->assertTarget($model);
             if (! $model->exists) {
                 throw new LogicException('Rollback target must exist.');
             }
+
             $key = $model->getKey();
             if (! is_int($key) && ! is_string($key)) {
                 throw new LogicException('Rollback target requires a scalar key.');
             }
+
             $model = $model->newQueryWithoutScopes()->whereKey($key)->firstOrFail();
-            $identity = $model::class . ':' . (string) $key;
+            $identity = $model::class . ':' . $key;
             if (isset($seen[$identity])) {
                 throw new LogicException('Duplicate rollback target.');
             }
+
             $seen[$identity] = true;
-            if ($change->source === null && DB::table('import_source_keys')->where('target_class', $model::class)->where('target_id', (string) $key)->exists()) {
+            if ($change->source === null && $connection->table(TableName::resolve('import_source_keys'))->where('target_class', $model::class)->where('target_id', (string) $key)->exists()) {
                 throw new LogicException('Rollback source mapping is required.');
             }
+
             if ($change->beforeImage === null && $change->source === null) {
                 throw new LogicException('Rollback created target requires source evidence.');
             }
-            $entry = RollbackProvenance::entryFor($model);
+
+            $entry = RollbackProvenance::entryFor($model, $plan instanceof DatabaseImportWritePlan && ($plan->executionMode !== 'dedicated-process' || $model instanceof SettingsProperty) ? 'setting' : null);
             if ($change->source !== null && ((string) $change->source->targetId !== (string) $key || $change->source->outcome !== ($change->beforeImage === null ? 'created' : 'updated') || $change->source->mapping === null || $change->source->beforeImage !== $change->beforeImage)) {
                 throw new LogicException('Rollback source mapping does not match the target.');
             }
+
             if ($change->source !== null) {
                 $mapping = $change->source->mapping;
                 $siteScope = $session->target_type === 'site' ? 'site:' . $session->target_id : 'global';
-                if (! is_array($mapping) || ! is_int($mapping['id'] ?? null) || ($mapping['target_class'] ?? null) !== $model::class || ($mapping['target_id'] ?? null) !== (string) $key || ! is_string($mapping['source_checksum'] ?? null) || ! is_string($mapping['target_checksum'] ?? null) || ! DB::table('import_source_keys')->where('id', $mapping['id'])->where('site_scope', $siteScope)
+                if (! is_array($mapping) || ! is_int($mapping['id'] ?? null) || ($mapping['target_class'] ?? null) !== $model::class || ($mapping['target_id'] ?? null) !== (string) $key || ! is_string($mapping['source_checksum'] ?? null) || ! is_string($mapping['target_checksum'] ?? null) || ! $connection->table(TableName::resolve('import_source_keys'))->where('id', $mapping['id'])->where('site_scope', $siteScope)
                     ->where('source_environment', $session->source_environment)->where('target_class', $model::class)->where('target_id', (string) $key)
                     ->where('source_checksum', $mapping['source_checksum'])->where('target_checksum', $mapping['target_checksum'])->exists()) {
                     throw new LogicException('Rollback source mapping does not match the session.');
                 }
             }
+
             $entry['mapping'] = $change->source?->mapping;
             $entry['after_hash'] = hash('sha256', json_encode($model->getAttributes(), JSON_THROW_ON_ERROR));
             $entry['operation'] = $change->beforeImage === null ? 'created' : 'updated';
@@ -75,6 +94,7 @@ final class CreateDatabaseRollbackReportAction
             $entry['before_hash'] = hash('sha256', json_encode($change->beforeImage, JSON_THROW_ON_ERROR));
             $entries[] = $entry;
         }
+
         // Role assignments come last so a rollback, which walks the entries in reverse, removes them before the
         // users and roles they connect.
         foreach ($rolePairs as $pair) {
@@ -82,12 +102,14 @@ final class CreateDatabaseRollbackReportAction
             if (isset($seen[$entry['id']])) {
                 throw new LogicException('Duplicate rollback target.');
             }
+
             $seen[$entry['id']] = true;
             $counts[RollbackProvenance::ROLE_PAIR]['created'] = ($counts[RollbackProvenance::ROLE_PAIR]['created'] ?? 0) + 1;
             $counts[RollbackProvenance::ROLE_PAIR]['updated'] ??= 0;
             $images[] = null;
             $entries[] = $entry;
         }
+
         $provenance = [
             'version' => 2,
             'report_uuid' => $uuid,
@@ -95,6 +117,7 @@ final class CreateDatabaseRollbackReportAction
             'session_user_id' => $session->user_id,
             'executed_at' => ($session->executed_at ?? now())->utc()->format('Y-m-d\\TH:i:s.u\\Z'),
             'entries' => $entries,
+            ...($plan instanceof DatabaseImportWritePlan ? ['write_plan' => $plan->toArray()] : []),
         ];
         $report = new ImportRollbackReport([
             'uuid' => $uuid,
@@ -105,6 +128,10 @@ final class CreateDatabaseRollbackReportAction
             'manual_instructions' => (string) __('migration-assistant::rollback.manual'),
             'executed_at' => $session->executed_at ?? now(),
         ]);
+        if ($plan instanceof DatabaseImportWritePlan) {
+            $report->setConnection($plan->writerConnection);
+        }
+
         $report->forceFill([
             'before_images' => $images,
             'provenance' => $provenance,

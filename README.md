@@ -2,230 +2,51 @@
 
 <!-- prettier-ignore-start -->
 
-## What This Plugin Adds
-
-Migration Assistant is an **Available**, **Schema-owning** Capell package in the **Capell Operations** product group. It ships as `capell-app/migration-assistant` and extends these surfaces: admin, console.
+## What It Does
 
 Migration Assistant adds staged import sessions for mapping, validating, executing, reviewing, retrying, and rolling back external content imports.
 
+- **Price and availability:** Check current availability and price on the [Capell Marketplace listing](https://capell.app/extensions/migration-assistant).
+- **Licence:** Check the licence terms on the [Capell Marketplace listing](https://capell.app/extensions/migration-assistant).
+- **Requires:** `PHP ^8.4`, `capell-app/admin ^1.0.66`, `capell-app/core ^1.0.75`, `illuminate/database ^11.0|^12.0|^13.0`, `illuminate/support ^12.41.1|^13.0`, `lorisleiva/laravel-actions ^2.8`, `spatie/laravel-package-tools ^1.15`.
+- **Install:** `composer require capell-app/migration-assistant`.
+
 Admins can upload or select source data, map it to Capell records, validate the plan, run the import, and inspect row-level results.
 
-Status details:
-
-- Status: Available
-- Tier: free
-- Bundle: operations
-- Composer package: `capell-app/migration-assistant`
-- Namespace: `Capell\MigrationAssistant`
-- Theme key: not applicable
-
-## Why It Matters
+## Who It Is For
 
 **For developers:** Source, target, and executor registries support file and database imports; database executors validate a previewed schema and track source keys for repeat imports.
 
 **For teams:** Teams can review migration problems before content is written and keep a recovery path when an import needs to be undone.
 
-## Screens And Workflow
+## Quick Start
 
-Screenshot contract: `docs/screenshots.json`.
+1. Install the package: `composer require capell-app/migration-assistant`.
+2. Open the package admin surface at `/admin/migration-assistant/import-sessions` and confirm Migration Assistant is available.
+
+## Configure
+
+- **Configuration files:** `config/migration-assistant.php`.
+- **Commands:** `php artisan migration-assistant:export`, `php artisan migration-assistant:import`, `php artisan migration-assistant:prune`, `php artisan migration-assistant:reclaim-stale`, `php artisan migration-assistant:rollback-execute`, `php artisan migration-assistant:rollback-report`, `php artisan migration-assistant:status`.
+
+## Limits And Pitfalls
+
+- Install the required Capell packages at the versions in `composer.json`: `capell-app/admin ^1.0.66`, `capell-app/core ^1.0.75`.
+- Run migrations before opening package resources or public routes.
+- Keep the host Laravel scheduler running so package-registered schedules can execute: `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`.
+
+## Screens And Workflow
 
 ![Import session index or host admin surface](docs/screenshots/import-session-index-or-host-admin-surface.png)
 
 ![Completed page import and recovery report](docs/screenshots/recovery-page-imports.png)
 
-- Import session index or host admin surface (admin, required authentic evidence).
-- Import validation summary (admin, supplementary evidence).
-- Completed page import and recovery report (admin, required evidence).
-- Relation resolution review (admin, supplementary evidence).
-- Rollback report view (admin, supplementary evidence).
-- Import session index or host admin surface with admin sidebar menu open (admin, supplementary evidence).
-
-## Technical Shape
-
-### Service providers
-
-- `Capell\MigrationAssistant\Providers\MigrationAssistantInstallServiceProvider`
-- `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`
-- `Capell\MigrationAssistant\Providers\AdminServiceProvider`
-
-### Config files
-
-- `packages/migration-assistant/config/migration-assistant.php`
-
-### Migrations
-
-- `packages/migration-assistant/database/migrations/2026_05_10_190859_01_create_import_sessions_table.php`
-- `packages/migration-assistant/database/migrations/2026_05_10_190859_02_create_import_rollback_reports_table.php`
-- `packages/migration-assistant/database/migrations/2026_06_04_000001_rename_import_rollback_reports_table.php`
-- `packages/migration-assistant/database/migrations/2026_07_10_000002_encrypt_import_diagnostics.php`
-- `packages/migration-assistant/database/migrations/2026_07_10_120000_harden_import_rollback_provenance.php`
-- `packages/migration-assistant/database/migrations/2026_10_18_000001_add_import_session_legal_hold.php`
-- `packages/migration-assistant/database/migrations/2026_10_29_000001_create_import_source_keys_table.php`
-- `packages/migration-assistant/database/migrations/2026_10_29_000002_add_rollback_before_images.php`
-- `packages/migration-assistant/database/migrations/2026_10_30_000001_add_source_identity_to_import_source_keys.php`
-- `packages/migration-assistant/database/migrations/2026_10_30_000002_create_database_source_labels_table.php`
-
-### Models
-
-- `ImportRollbackAudit`
-- `ImportRollbackReport`
-- `ImportSession`
-
-### Filament classes
-
-- `ImportPagesPage`
-- `ImportSitesPage`
-- `ImportSessionResource`
-- `ListImportSessions`
-- `ViewImportSession`
-- `ImportSessionInfolist`
-- `ImportSessionsTable`
-
-### Policies
-
-- `ImportSessionPolicy`
-
-### Extension contracts
-
-- `DatabaseImportSessionExecutor`
-- `ImportSessionExecutor`
-- `ImportSessionSubNavigationExtender`
-- `ImportSourceReader`
-- `MigrationAssistantContextResolver`
-- `MigrationAssistantRowContributor`
-- `NullMigrationAssistantContextResolver`
-- `NullMigrationAssistantRowContributor`
-- `NullPageCollisionDetector`
-- `NullPageImportTargetResolver`
-- `PageCollisionDetector`
-- `PageImportTargetResolver`
-- `PathAwareImportSourceReader`
-- `SafeDatabaseFailureContext`
-- `SafeFailureMessage`
-
-### Events
-
-- `ImportCompleted`
-- `ImportCompleting`
-- `ImportFailed`
-
-### Listeners
-
-- `SendImportSessionNotifications`
-
-### Actions
-
-- `AssertDatabaseSourceLabelBoundAction`
-- `BuildImportRecoveryStatusAction`
-- `BuildImportValidationSummaryAction`
-- `BuildPageReviewRowsAction`
-- `BuildRelationResolveRowsAction`
-- `CancelImportSessionAction`
-- `ClaimImportSessionForExecutionAction`
-- `CreateDatabaseRollbackReportAction`
-- `CreateImportRollbackReportAction`
-- `ExecuteImportRollbackAction`
-- `AdvancePageImportToValidationAction`
-- `AuthorizeExternalPageImportTargetAction`
-- `BindMigrationArchiveUploadAction`
-- `DispatchPageImportAction`
-- `ExecuteExternalPageImportAction`
-- `RefreshPageImportStatusAction`
-- `ResolvePageImportConfirmationTargetAction`
-- `ResolvePageImportSessionAction`
-- `StartPageImportAction`
-- `StartSiteImportAction`
-- `InstallMigrationAssistantPermissionsAction`
-- `InvalidateRollbackCachesAction`
-- `PrepareMigrationScreenshotDetailAction`
-- `PruneImportEvidenceAction`
-- `ReauthorizeImportSessionActorAction`
-- `ReauthorizeImportSessionExecutionAction`
-- `ReclaimStaleImportSessionsAction`
-- `RegisterDatabaseSourceLabelAction`
-- `RetryImportSessionAction`
-- `SetImportLegalHoldAction`
-- `StoreImportedMediaAction`
-
-### Data objects
-
-- `DatabaseRollbackChange`
-- `DatabaseSourceManifest`
-- `DependencyGraph`
-- `ExportOptions`
-- `ExternalImportPreview`
-- `ExternalImportReadResult`
-- `ExternalPageImportTargetData`
-- `ImportRecoveryStatusData`
-- `ImportRetentionReportData`
-- `ImportValidationSummary`
-- `ExternalPageImportExecutionResult`
-- `PageImportDecisionData`
-- `PageImportStatusData`
-- `PageImportWizardStateData`
-- `PackageManifest`
-- `PageImportTargetData`
-- `PageReviewRow`
-- `RelationResolveRow`
-- `RollbackExecutionResultData`
-- `SourceKeyImportResult`
-
-### Jobs
-
-- `ExecuteImportPlanJob`
-
-### Command signatures
-
-- `migration-assistant:export`
-- `migration-assistant:import`
-- `migration-assistant:prune`
-- `migration-assistant:reclaim-stale`
-- `migration-assistant:rollback-execute`
-- `migration-assistant:rollback-report`
-- `migration-assistant:status`
-
-### Scheduled commands
-
-- `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`
-
-### Console command classes
-
-- `ExecuteMigrationAssistantRollbackCommand`
-- `ExportMigrationAssistantPackageCommand`
-- `ImportMigrationAssistantPackageCommand`
-- `PruneImportEvidenceCommand`
-- `ReclaimStaleImportSessionsCommand`
-- `ShowMigrationAssistantRollbackReportCommand`
-- `ShowMigrationAssistantStatusCommand`
-
-### Manifest contributions
-
-- `admin-page: Capell\MigrationAssistant\Manifest\ImportPagesPageContribution`
-- `admin-page: Capell\MigrationAssistant\Manifest\ImportSitesPageContribution`
-- `admin-resource: Capell\MigrationAssistant\Manifest\ImportSessionResourceContribution`
-- `console-command: Capell\MigrationAssistant\Manifest\MigrationAssistantConsoleCommandsContribution`
-- `health-check: Capell\MigrationAssistant\Manifest\MigrationAssistantHealthContribution`
-- `model: Capell\MigrationAssistant\Manifest\MigrationAssistantModelsContribution`
-- `permission: Capell\MigrationAssistant\Manifest\MigrationAssistantPermissionsContribution`
-- `scheduled-job: Capell\MigrationAssistant\Manifest\MigrationAssistantRecoveryScheduleContribution`
-
-### Health checks
-
-- `Capell\MigrationAssistant\Health\MigrationAssistantHealthCheck`
-
-### Blade views
-
-- `packages/migration-assistant/resources/views/pages/import-pages.blade.php`
-
-
-## Data Model
-
-- Required tables: `import_sessions`, `import_rollback_reports`, `import_rollback_audits`, `import_source_keys`.
-- Models: `ImportRollbackAudit`, `ImportRollbackReport`, `ImportSession`.
-- Core record references in migrations: `users via user_id`.
-- Migration files: `2026_05_10_190859_01_create_import_sessions_table.php`, `2026_05_10_190859_02_create_import_rollback_reports_table.php`, `2026_06_04_000001_rename_import_rollback_reports_table.php`, `2026_07_10_000002_encrypt_import_diagnostics.php`, `2026_07_10_120000_harden_import_rollback_provenance.php`, `2026_10_18_000001_add_import_session_legal_hold.php`, `2026_10_29_000001_create_import_source_keys_table.php`, `2026_10_29_000002_add_rollback_before_images.php`, `2026_10_30_000001_add_source_identity_to_import_source_keys.php`, `2026_10_30_000002_create_database_source_labels_table.php`.
-- Migration impact: run host migrations through the package install flow before opening package surfaces.
-- Deletion/retention behaviour: migrations declare cascade-on-delete relationships and null-on-delete relationships; no timed pruning or retention schedule is declared in `capell.json`.
+- Import session index or host admin surface (admin).
+- Import validation summary (admin).
+- Completed page import and recovery report (admin).
+- Relation resolution review (admin).
+- Rollback report view (admin).
+- Import session index or host admin surface with admin sidebar menu open (admin).
 
 ## Install Impact
 
@@ -241,13 +62,6 @@ Screenshot contract: `docs/screenshots.json`.
 - Cache tags: none declared.
 - Commands: `migration-assistant:export`, `migration-assistant:import`, `migration-assistant:prune`, `migration-assistant:reclaim-stale`, `migration-assistant:rollback-execute`, `migration-assistant:rollback-report`, `migration-assistant:status`.
 
-## Common Pitfalls
-
-- Keep required Capell packages on compatible v4 releases: `capell-app/admin`, `capell-app/core`.
-- Run migrations before opening package resources or public routes.
-- Review package configuration before production-like verification: `config/migration-assistant.php`.
-- Keep the host Laravel scheduler running so package-registered schedules can execute: `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`.
-
 ## Troubleshooting
 
 | Symptom | Likely cause | Check | Fix |
@@ -255,11 +69,6 @@ Screenshot contract: `docs/screenshots.json`.
 | Package surface is missing after install | Provider or manifest is not loaded | Confirm `capell.json`, package `composer.json`, and provider registration | Reinstall the package, refresh Composer autoload, and clear host caches |
 | Admin screen or command fails on missing table | Package migrations have not run | Check the tables listed in `Data Model` | Run host migrations and rerun the focused package test |
 | Background work does not run | Queue worker or declared schedule is not active | Check the jobs and scheduled commands listed in `Technical Shape` | Start the queue worker or host scheduler, then run the focused command or package test |
-
-## Quick Start
-
-1. Install the package: `composer require capell-app/migration-assistant`.
-2. Open the package admin surface at `/admin/migration-assistant/import-sessions` and confirm Migration Assistant is available.
 
 ## Upgrading
 
@@ -275,11 +84,11 @@ Read [CHANGELOG.md](CHANGELOG.md) before upgrading.
 - [Admin guide](docs/admin-guide.md)
 - Configuration files: [`config/migration-assistant.php`](config/migration-assistant.php).
 - [Troubleshooting](#troubleshooting)
-- [Screenshot contract](docs/screenshots.json)
+- [Developer reference](docs/reference.md)
 - [Marketplace assets](docs/assets/marketplace/)
 - [Capell content language plan](../../docs/CONTENT_LANGUAGE_PLAN.md)
 - [Capell documentation design system](../../docs/DESIGN_SYSTEM.md)
 - [Capell and package ERD notes](../../docs/erd/capell-and-package-erds.md)
-- Related packages: [Html Cache](../html-cache/README.md), [Media Library](../media-library/README.md), [Seo Suite](../seo-suite/README.md), [Site Discovery](../site-discovery/README.md), [Url Manager](../url-manager/README.md), [Wordpress Importer](../wordpress-importer/README.md).
+- Related packages: [Blog](../blog/README.md), [HTML Cache](../html-cache/README.md), [Media Library](../media-library/README.md), [Navigation](../navigation/README.md), [SEO Suite](../seo-suite/README.md), [Site Discovery](../site-discovery/README.md), [URL Manager](../url-manager/README.md), [WordPress Importer](../wordpress-importer/README.md).
 
 <!-- prettier-ignore-end -->

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Models;
 
+use Capell\Core\Concerns\HasCapellTable;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -33,6 +34,8 @@ use Override;
  */
 class ImportRollbackReport extends Model
 {
+    use HasCapellTable;
+
     /** @use HasFactory<Factory<static>> */
     use HasFactory;
 
@@ -67,6 +70,7 @@ class ImportRollbackReport extends Model
         return $this->belongsTo(ImportSession::class);
     }
 
+    #[Override]
     protected static function booted(): void
     {
         static::updating(static function (self $report): void {

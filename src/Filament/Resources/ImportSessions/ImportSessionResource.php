@@ -7,6 +7,7 @@ namespace Capell\MigrationAssistant\Filament\Resources\ImportSessions;
 use BackedEnum;
 use Capell\Admin\Filament\Concerns\HasConfiguredTable;
 use Capell\Admin\Filament\Concerns\HasNavigationBadge;
+use Capell\Core\Support\TableName;
 use Capell\MigrationAssistant\Contracts\ImportSessionSubNavigationExtender;
 use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
@@ -89,7 +90,7 @@ class ImportSessionResource extends Resource
     #[Override]
     public static function canGloballySearch(): bool
     {
-        return SchemaFacade::hasTable('import_sessions') && parent::canGloballySearch();
+        return SchemaFacade::hasTable(TableName::resolve('import_sessions')) && parent::canGloballySearch();
     }
 
     /**

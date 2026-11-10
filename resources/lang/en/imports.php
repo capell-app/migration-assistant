@@ -8,7 +8,7 @@ return [
     'empty_state_site_import' => 'Import a site',
     'journey' => [
         'review_blocking_heading' => 'Resolve blocking decisions first',
-        'review_blocking_body' => ':count decision(s) need attention before this import can be validated.',
+        'review_blocking_body' => 'Decisions needing attention before this import can be validated: :count.',
         'technical_details' => 'Show technical matching details',
         'technical_details_body' => 'Confident matches, source identifiers, collision metadata, and resolver reasoning are available here without leading the common review path.',
         'match_details' => 'Target :target · :strategy · :confidence% confidence',
@@ -26,10 +26,10 @@ return [
         'current' => 'Current step',
     ],
     'external_target_actor_required' => 'An authenticated actor is required to select an external import target.',
-    'external_target_blueprint_invalid' => 'The selected page blueprint is invalid for this import target.',
+    'external_target_blueprint_invalid' => 'The selected page type is invalid for this import target.',
     'external_target_language_invalid' => 'The selected language does not belong to the import site.',
     'external_target_layout_invalid' => 'The selected layout does not belong to the import site.',
-    'external_target_site_not_authorized' => 'You are not authorized to import pages into the selected site.',
+    'external_target_site_not_authorized' => 'You are not authorised to import pages into the selected site.',
     'enums' => [
         'import_session_kind' => [
             'page-import' => 'Page import',
@@ -61,7 +61,7 @@ return [
     'execution_permission_revoked' => 'The import initiator no longer has permission to import pages.',
     'execution_site_access_revoked' => 'The import initiator no longer has access to every target site.',
     'execution_target_drifted' => 'The import target changed or no longer exists.',
-    'execution_target_missing' => 'The import no longer has an authorized target site.',
+    'execution_target_missing' => 'The import no longer has an authorised target site.',
     'health' => [
         'none' => 'none',
         'ok' => 'ok',

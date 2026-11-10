@@ -224,6 +224,7 @@ final class ImportMigrationAssistantPackageCommand extends Command
     {
         $storedPath = BindMigrationArchiveUploadAction::STAGING_DIRECTORY . '/' . Str::uuid() . '-' . basename($archivePath);
         $disk = config('migration-assistant.disk', 'local');
+        // capell-security-scan: local-stream reads the import archive the command was given as a local file argument
         Storage::disk(is_string($disk) ? $disk : 'local')->put($storedPath, file_get_contents($archivePath) ?: '');
 
         return $storedPath;

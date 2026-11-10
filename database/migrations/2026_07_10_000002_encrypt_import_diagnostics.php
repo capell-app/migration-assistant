@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Support\TableName;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Crypt;
@@ -35,27 +36,27 @@ return new class extends Migration
     /** @contract-migration-approved Widens encrypted storage before rewriting existing values. */
     public function up(): void
     {
-        Schema::table('import_sessions', function (Blueprint $table): void {
+        Schema::table(TableName::resolve('import_sessions'), function (Blueprint $table): void {
             foreach (self::SESSION_COLUMNS as $column) {
                 $table->mediumText($column)->nullable()->change();
             }
         });
-        Schema::table('import_rollback_reports', function (Blueprint $table): void {
+        Schema::table(TableName::resolve('import_rollback_reports'), function (Blueprint $table): void {
             foreach (self::ROLLBACK_COLUMNS as $column) {
                 $table->mediumText($column)->nullable()->change();
             }
         });
 
-        $this->transform('import_sessions', self::SESSION_COLUMNS, encrypt: true);
-        $this->transform('import_rollback_reports', self::ROLLBACK_COLUMNS, encrypt: true);
+        $this->transform(TableName::resolve('import_sessions'), self::SESSION_COLUMNS, encrypt: true);
+        $this->transform(TableName::resolve('import_rollback_reports'), self::ROLLBACK_COLUMNS, encrypt: true);
     }
 
     public function down(): void
     {
-        $this->transform('import_sessions', self::SESSION_COLUMNS, encrypt: false);
-        $this->transform('import_rollback_reports', self::ROLLBACK_COLUMNS, encrypt: false);
+        $this->transform(TableName::resolve('import_sessions'), self::SESSION_COLUMNS, encrypt: false);
+        $this->transform(TableName::resolve('import_rollback_reports'), self::ROLLBACK_COLUMNS, encrypt: false);
 
-        Schema::table('import_sessions', function (Blueprint $table): void {
+        Schema::table(TableName::resolve('import_sessions'), function (Blueprint $table): void {
             $table->string('target_url')->nullable()->change();
             $table->string('source_package_path')->nullable()->change();
             $table->string('working_dir')->nullable()->change();
@@ -67,7 +68,7 @@ return new class extends Migration
             $table->json('result_summary')->nullable()->change();
             $table->text('failure_reason')->nullable()->change();
         });
-        Schema::table('import_rollback_reports', function (Blueprint $table): void {
+        Schema::table(TableName::resolve('import_rollback_reports'), function (Blueprint $table): void {
             $table->string('source_filename')->nullable()->change();
             $table->json('created_models')->nullable()->change();
             $table->json('summary')->nullable()->change();

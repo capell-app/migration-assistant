@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Services\Import;
 
+use Capell\Core\Support\TableName;
 use Capell\MigrationAssistant\Contracts\PageCollisionDetector;
 use Capell\MigrationAssistant\Data\PageReviewRow;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,7 @@ final class PageUrlCollisionDetector implements PageCollisionDetector
             $siteId = $urlData['site_id'] ?? $resolvedSiteId;
             $languageId = $urlData['language_id'];
 
-            $query = DB::table('page_urls')
+            $query = DB::table(TableName::resolve('page_urls'))
                 ->where('url', $url)
                 ->whereNull('deleted_at');
 
