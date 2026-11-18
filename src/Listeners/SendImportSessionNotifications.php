@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Listeners;
 
+use Capell\Core\Facades\CapellCore;
 use Capell\MigrationAssistant\Events\ImportCompleted;
 use Capell\MigrationAssistant\Events\ImportFailed;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Notifications\ImportCompletedNotification;
 use Capell\MigrationAssistant\Notifications\ImportFailedNotification;
+use Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Notifications\Notification as NotificationBase;
 use Illuminate\Support\Facades\Notification;
@@ -23,6 +25,10 @@ class SendImportSessionNotifications
 {
     public function handleCompleted(ImportCompleted $event): void
     {
+        if (! CapellCore::isPackageEnabled(MigrationAssistantServiceProvider::$packageName)) {
+            return;
+        }
+
         $this->dispatch(
             $event->session,
             new ImportCompletedNotification($event->session),
@@ -32,6 +38,10 @@ class SendImportSessionNotifications
 
     public function handleFailed(ImportFailed $event): void
     {
+        if (! CapellCore::isPackageEnabled(MigrationAssistantServiceProvider::$packageName)) {
+            return;
+        }
+
         $this->dispatch(
             $event->session,
             new ImportFailedNotification($event->session),

@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Filament\Pages;
 
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
+use Capell\MigrationAssistant\Actions\Imports\ActorCanStartPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\AdvancePageImportToValidationAction;
 use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
 use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
@@ -30,11 +31,14 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Livewire\Attributes\Locked;
 use Override;
+use RuntimeException;
 use Throwable;
 
 class ImportPagesPage extends Page implements HasForms
 {
-    use HasPageShield;
+    use HasPageShield {
+        canAccess as shieldCanAccess;
+    }
     use InteractsWithForms;
 
     public const string STEP_UPLOAD = 'upload';
@@ -102,6 +106,15 @@ class ImportPagesPage extends Page implements HasForms
 
     protected string $view = 'migration-assistant::pages.import-pages';
 
+    /**
+     * The page permission alone would let an actor upload and parse packages they can never import.
+     */
+    #[Override]
+    public static function canAccess(): bool
+    {
+        return static::shieldCanAccess() && ActorCanStartPageImportAction::run(auth()->user());
+    }
+
     #[Override]
     public static function shouldRegisterNavigation(): bool
     {
@@ -142,9 +155,10 @@ class ImportPagesPage extends Page implements HasForms
                     ->schema([
                         FileUpload::make('archive')
                             ->label(__('capell-admin::exchanger.package_archive'))
-                            ->disk('local')
+                            ->disk(BindMigrationArchiveUploadAction::diskName())
                             ->directory(BindMigrationArchiveUploadAction::STAGING_DIRECTORY)
                             ->acceptedFileTypes(['application/zip', 'application/x-zip-compressed'])
+                            ->maxSize(BindMigrationArchiveUploadAction::maximumUploadKilobytes())
                             ->required()
                             ->storeFileNamesIn('archive_filename'),
                         TextInput::make('workspace_name')
@@ -176,11 +190,27 @@ class ImportPagesPage extends Page implements HasForms
 
     public function parseAndAdvance(): void
     {
+        // Reading the form state runs the upload field's rules (size, type) and moves a browser upload
+        // from Livewire's temporary storage into the staging directory the binder accepts.
+        $form = $this->getSchema('form');
+        throw_unless($form instanceof Schema, RuntimeException::class, 'The import form is not available.');
+        $state = $form->getState();
+
         try {
-            $this->applyWizardState($this->startImport(BindMigrationArchiveUploadAction::run($this->data)));
+            $this->applyWizardState($this->startImport(BindMigrationArchiveUploadAction::run($state)));
         } catch (Throwable $throwable) {
             if ($throwable->getMessage() === $this->uploadRequiredError()) {
                 Notification::make()->danger()->title(__('capell-admin::exchanger.upload_required'))->send();
+
+                return;
+            }
+
+            if ($throwable->getMessage() === BindMigrationArchiveUploadAction::ERROR_UPLOAD_TOO_LARGE) {
+                Notification::make()
+                    ->danger()
+                    ->title(__('capell-admin::exchanger.import_failed'))
+                    ->body(__('migration-assistant::imports.upload_too_large', ['size' => BindMigrationArchiveUploadAction::maximumUploadMegabytes()]))
+                    ->send();
 
                 return;
             }
@@ -324,13 +354,7 @@ class ImportPagesPage extends Page implements HasForms
 
     public function hasUpdateExistingRelationDecision(): bool
     {
-        foreach ($this->relationDecisions as $decision) {
-            if ($decision['action'] === 'update_existing') {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->relationDecisions, fn (array $decision): bool => $decision['action'] === 'update_existing');
     }
 
     public function backToUpload(): void
@@ -431,7 +455,7 @@ class ImportPagesPage extends Page implements HasForms
             Notification::make()
                 ->warning()
                 ->title(__('capell-admin::exchanger.unresolved_references'))
-                ->body(__('capell-admin::exchanger.unresolved_references_body', ['count' => $state->noticeCount ?? 0]))
+                ->body(trans_choice('capell-admin::exchanger.unresolved_references_body', $state->noticeCount ?? 0, ['count' => $state->noticeCount ?? 0]))
                 ->send();
         }
 

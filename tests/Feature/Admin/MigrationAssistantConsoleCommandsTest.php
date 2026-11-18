@@ -200,6 +200,8 @@ it('creates validated import sessions from the console', function (): void {
         includeMedia: false,
     ));
 
+    expect(auth()->guest())->toBeTrue();
+
     $exitCode = Artisan::call('migration-assistant:import', [
         'archive' => $archivePath,
         '--workspace-name' => 'Console Import',
@@ -302,6 +304,7 @@ function migrationAssistantConsoleRollbackActor(): User
 it('lists recent sessions and explains when there are none', function (): void {
     expect(Artisan::call('migration-assistant:status'))->toBe(0);
     expect(Artisan::output())->toContain((string) __('migration-assistant::commands.status.empty'));
+
     $session = ImportSession::query()->create(['kind' => ImportSessionKind::PageImport, 'status' => ImportSessionStatus::Queued, 'source_filename' => 'queued.zip']);
     expect(Artisan::call('migration-assistant:status'))->toBe(0);
     expect(Artisan::output())->toContain($session->uuid)->toContain('queued.zip');
@@ -325,12 +328,57 @@ it('runs stale session recovery with explicit limits', function (): void {
     expect(Artisan::output())->toContain('0');
 });
 
+it('refuses to execute a console import without an actor who may import pages', function (): void {
+    $relativeExportDirectory = 'framework/testing/console-import-actor-export-' . Str::random(8);
+    config()->set('migration-assistant.paths.exports', $relativeExportDirectory);
+    $site = Site::factory()->hasSiteDomains()->create();
+    $page = Page::factory()->recycle($site)->create();
+    $archivePath = resolve(PageExportService::class)->exportPages([migrationAssistantConsoleModelIntKey($page)], new ExportOptions(includeMedia: false));
+    $sessions = ImportSession::query()->count();
+    $unprivileged = User::factory()->create();
+
+    expect(Artisan::call('migration-assistant:import', ['archive' => $archivePath, '--sync' => true]))->toBe(1)
+        ->and(Artisan::output())->toContain('--actor')
+        ->and(Artisan::call('migration-assistant:import', ['archive' => $archivePath, '--execute' => true, '--actor' => '999999']))->toBe(1)
+        ->and(Artisan::call('migration-assistant:import', ['archive' => $archivePath, '--execute' => true, '--actor' => migrationAssistantConsoleModelStringKey($unprivileged)]))->toBe(1)
+        ->and(ImportSession::query()->count())->toBe($sessions)
+        ->and(auth()->guest())->toBeTrue();
+
+    File::deleteDirectory(storage_path('app/' . $relativeExportDirectory));
+});
+
+it('records the console actor on the import session it creates', function (): void {
+    $relativeExportDirectory = 'framework/testing/console-import-actor-export-' . Str::random(8);
+    $relativeImportDirectory = 'framework/testing/console-import-actor-' . Str::random(8);
+    config()->set('migration-assistant.paths.exports', $relativeExportDirectory);
+    config()->set('migration-assistant.paths.imports', $relativeImportDirectory);
+
+    $site = Site::factory()->hasSiteDomains()->create();
+    $page = Page::factory()->recycle($site)->create();
+    $archivePath = resolve(PageExportService::class)->exportPages([migrationAssistantConsoleModelIntKey($page)], new ExportOptions(includeMedia: false));
+    Permission::findOrCreate(MigrationAssistantPermission::PageImport->value);
+    $actor = User::factory()->create();
+    $actor->assignRole(Role::findOrCreate('super_admin'));
+    $actor->givePermissionTo(MigrationAssistantPermission::PageImport->value);
+
+    expect(Artisan::call('migration-assistant:import', ['archive' => $archivePath, '--actor' => migrationAssistantConsoleModelStringKey($actor), '--json' => true]))->toBe(0);
+    $result = migrationAssistantConsoleJsonObject();
+    $session = ImportSession::query()->where('uuid', migrationAssistantConsoleString($result['uuid'] ?? null))->sole();
+
+    expect($session->user_id)->toBe($actor->getKey())
+        ->and(auth()->guest())->toBeTrue();
+
+    File::deleteDirectory(storage_path('app/' . $relativeExportDirectory));
+    File::deleteDirectory(storage_path('app/' . $relativeImportDirectory));
+});
+
 it('refuses invalid import and export inputs before creating sessions', function (): void {
     expect(Artisan::call('migration-assistant:import', ['archive' => '/missing/archive.zip']))->toBe(1);
     $path = tempnam(sys_get_temp_dir(), 'capell-import-');
     if (! is_string($path)) {
         throw new LogicException('Could not create test archive.');
     }
+
     try {
         expect(Artisan::call('migration-assistant:import', ['archive' => $path, '--kind' => 'unknown']))->toBe(1);
         expect(ImportSession::query()->count())->toBe(0);
@@ -342,12 +390,49 @@ it('refuses invalid import and export inputs before creating sessions', function
     }
 });
 
+it('refuses a console package larger than the upload limit before creating a session', function (): void {
+    config()->set('migration-assistant.limits.max_package_upload_kilobytes', 1);
+    $path = tempnam(sys_get_temp_dir(), 'capell-import-');
+    if (! is_string($path)) {
+        throw new LogicException('Could not create test archive.');
+    }
+
+    try {
+        file_put_contents($path, str_repeat('x', 2048));
+
+        expect(Artisan::call('migration-assistant:import', ['archive' => $path]))->toBe(1)
+            ->and(ImportSession::query()->count())->toBe(0);
+    } finally {
+        unlink($path);
+    }
+});
+
 it('shows rollback instructions and imported model identifiers in the human-readable report', function (): void {
     $page = Page::factory()->create();
     $session = ImportSession::query()->create(['kind' => ImportSessionKind::PageImport, 'status' => ImportSessionStatus::Completed]);
     $report = CreateImportRollbackReportAction::run($session, new ImportExecutionReport(1, 0, [migrationAssistantConsoleModelIntKey($page)], []));
     expect(Artisan::call('migration-assistant:rollback-report', ['session' => $session->uuid]))->toBe(0);
     expect(Artisan::output())->toContain($report->manual_instructions)->toContain(Page::class)->toContain(migrationAssistantConsoleModelStringKey($page));
+});
+
+it('lists the recorded changes of a database import report that has no created models', function (): void {
+    $session = ImportSession::query()->create(['kind' => ImportSessionKind::PageImport, 'status' => ImportSessionStatus::Completed]);
+    $report = CreateImportRollbackReportAction::run($session, new ImportExecutionReport(0, 0, [], []));
+    $report->forceFill(['created_models' => [], 'provenance' => ['version' => 2, 'entries' => [
+        ['type' => 'page', 'id' => 11, 'site_id' => 1, 'operation' => 'created'],
+        ['type' => 'setting', 'id' => 4, 'site_id' => null, 'operation' => 'updated'],
+        ['type' => 'broken'],
+    ]]])->saveQuietly();
+
+    expect(Artisan::call('migration-assistant:rollback-report', ['session' => $session->uuid, '--json' => true]))->toBe(0)
+        ->and(migrationAssistantConsoleJsonObject()['changes'] ?? null)->toBe([
+            ['type' => 'page', 'id' => 11, 'site_id' => 1, 'operation' => 'created'],
+            ['type' => 'setting', 'id' => 4, 'site_id' => null, 'operation' => 'updated'],
+        ]);
+    expect(Artisan::call('migration-assistant:rollback-report', ['session' => $session->uuid]))->toBe(0);
+    expect(Artisan::output())->toContain('page')->toContain('11')->toContain('setting')->toContain('updated')
+        ->toContain((string) __('migration-assistant::commands.rollback_report.global'))
+        ->not->toContain((string) __('migration-assistant::commands.rollback_report.columns.model'));
 });
 
 it('explains a rejected rollback without changing its target', function (): void {

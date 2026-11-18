@@ -41,6 +41,7 @@ use Capell\MigrationAssistant\Support\AdminPageExporter;
 use Capell\MigrationAssistant\Support\ImportSessionExecutorRegistry;
 use Capell\MigrationAssistant\Support\ImportSourceRegistry;
 use Capell\MigrationAssistant\Support\ImportTargetRegistry;
+use Capell\MigrationAssistant\Support\Upgrade\InstallMigrationAssistantPermissionsUpgradeStep;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Override;
@@ -87,6 +88,7 @@ final class MigrationAssistantServiceProvider extends AbstractPackageServiceProv
     public function registeringPackage(): void
     {
         $this->app->register(AdminServiceProvider::class);
+        $this->app->tag([InstallMigrationAssistantPermissionsUpgradeStep::class], InstallMigrationAssistantPermissionsUpgradeStep::TAG);
 
         parent::registeringPackage();
     }

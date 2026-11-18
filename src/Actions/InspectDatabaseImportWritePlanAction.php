@@ -17,6 +17,9 @@ use PDO;
 
 final class InspectDatabaseImportWritePlanAction
 {
+    /** @var list<string> */
+    private const array STORAGE_TABLES = ['import_sessions', 'import_source_keys', 'database_source_labels', 'import_rollback_reports', 'import_rollback_audits', 'database_source_label_locks'];
+
     /**
      * @param  list<class-string<Model>>  $classes
      * @param  list<string>  $configurationKeys
@@ -89,7 +92,7 @@ final class InspectDatabaseImportWritePlanAction
 
         ksort($targets);
         $storage = [];
-        foreach (['import_sessions', 'import_source_keys', 'database_source_labels', 'import_rollback_reports', 'import_rollback_audits', 'database_source_label_locks'] as $table) {
+        foreach (self::STORAGE_TABLES as $table) {
             $storage[$table] = $this->identifier($writer->getTablePrefix() . TableName::resolve($table));
         }
 

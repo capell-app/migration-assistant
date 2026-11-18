@@ -77,8 +77,7 @@ it('advances from review (trivial map) to validate and stores the summary', func
     stageValidatePackage('migration-assistant/imports/staged/validate-basic.zip', $uuid, (int) $site->getKey(), '/validate-basic');
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', 'migration-assistant/imports/staged/validate-basic.zip')
-        ->set('data.archive_filename', 'validate-basic.zip')
+        ->set('data.archive', migrationAssistantStagedPackageUpload('migration-assistant/imports/staged/validate-basic.zip'))
         ->set('data.workspace_name', 'Validate WS')
         ->call('parseAndAdvance')
         ->assertSet('step', ImportPagesPage::STEP_REVIEW)
@@ -103,8 +102,7 @@ it('blocks dispatch without a matching confirmation string', function (): void {
     stageValidatePackage('migration-assistant/imports/staged/validate-confirm.zip', $uuid, (int) $site->getKey(), '/validate-confirm');
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', 'migration-assistant/imports/staged/validate-confirm.zip')
-        ->set('data.archive_filename', 'validate-confirm.zip')
+        ->set('data.archive', migrationAssistantStagedPackageUpload('migration-assistant/imports/staged/validate-confirm.zip'))
         ->set('data.workspace_name', 'Confirm WS')
         ->call('parseAndAdvance')
         ->call('advanceToResolve')
@@ -135,8 +133,7 @@ it('blocks dispatch while blocking_errors present and succeeds when clean', func
     stageValidatePackage('migration-assistant/imports/staged/validate-clean.zip', $uuid, (int) $site->getKey(), '/validate-clean');
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', 'migration-assistant/imports/staged/validate-clean.zip')
-        ->set('data.archive_filename', 'validate-clean.zip')
+        ->set('data.archive', migrationAssistantStagedPackageUpload('migration-assistant/imports/staged/validate-clean.zip'))
         ->set('data.workspace_name', 'Clean WS')
         ->call('parseAndAdvance')
         ->call('advanceToResolve')

@@ -55,7 +55,7 @@ class ImportCompletedNotification extends Notification implements ShouldBeEncryp
 
         return (new MailMessage)
             ->subject(__('capell-admin::exchanger.mail.completed_subject'))
-            ->line(__('capell-admin::exchanger.mail.completed_intro', [
+            ->line(trans_choice('capell-admin::exchanger.mail.completed_intro', $counts['pages'], [
                 'pages' => $counts['pages'],
             ]))
             ->action(__('capell-admin::exchanger.mail.completed_cta'), $this->resolveSessionUrl());

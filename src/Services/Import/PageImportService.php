@@ -350,8 +350,18 @@ final readonly class PageImportService
                 continue;
             }
 
-            $url = new PageUrl;
-            $url->fill($this->restorablePageUrlAttributes($urlAttributes, $page));
+            $attributes = $this->restorablePageUrlAttributes($urlAttributes, $page);
+
+            // Creating the page's translations already derives its address, so restoring the exported row must
+            // adopt that row rather than add a second one with the same address.
+            $url = PageUrl::query()
+                ->where('pageable_type', $attributes['pageable_type'])
+                ->where('pageable_id', $attributes['pageable_id'])
+                ->where('site_id', $attributes['site_id'])
+                ->where('language_id', $attributes['language_id'] ?? null)
+                ->where('url', $attributes['url'] ?? null)
+                ->first() ?? new PageUrl;
+            $url->fill($attributes);
             $url->save();
             $count++;
         }

@@ -106,3 +106,24 @@ it('isolates source keys by session site and refuses targets from another site',
     expect(fn () => $importer->import($firstSession, 'page', '1', ['site_id' => $firstSite->id, 'name' => 'Intrusion'], Page::class, $apply, force: true))->toThrow(LogicException::class, 'site');
     expect(Page::withoutGlobalScopes()->findOrFail($second->targetId)->name)->toBe('Changed');
 });
+
+it('binds Statamic file imports to their source identity', function (): void {
+    $importer = resolve(SourceKeyImporter::class);
+    $apply = static function (User $user, array $row): User {
+        if (! $user->exists) {
+            $user->forceFill(User::factory()->make()->getAttributes());
+        }
+        $user->forceFill(['name' => $row['name']])->save();
+
+        return $user->refresh();
+    };
+    $session = static fn (?string $identity): ImportSession => new ImportSession(['source_environment' => 'statamic-files', 'manifest' => $identity === null ? [] : ['source_identity' => $identity]]);
+
+    expect(fn () => $importer->import($session(null), 'user', 'home', ['name' => 'A'], User::class, $apply))->toThrow(LogicException::class, 'source identity is required');
+
+    $first = $importer->import($session(str_repeat('a', 64)), 'user', 'home', ['name' => 'First site'], User::class, $apply);
+
+    expect($first->outcome)->toBe('created')
+        ->and(fn () => $importer->import($session(str_repeat('b', 64)), 'user', 'home', ['name' => 'Second site'], User::class, $apply))->toThrow(LogicException::class, 'identity does not match')
+        ->and(User::query()->findOrFail($first->targetId)->name)->toBe('First site');
+});

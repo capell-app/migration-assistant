@@ -52,5 +52,5 @@ Active imports and unresolved recoveries are excluded, including partial writes 
 ## Good to know
 
 - Import pages and sites are separate entry points, but use the same review, resolution, validation, and queued-execution model.
-- Imported work is staged in the selected workspace; dispatching the import does not publish it. Migration Assistant exposes `page.import.publish-live` for a downstream auto-publish integration, but the current wizard only stages the imported work for a separate editorial operation.
+- The default page target writes to the live database. A draft workspace requires a target resolver supplied by Publishing Studio or another integration; check that resolver before importing. `page.import.publish-live` is reserved for downstream integrations and is not enforced as an extra publishing gate by this wizard.
 - Review every proposed decision and create a backup before importing. Migration Assistant does not make an archive safe to import merely because it is a ZIP file.

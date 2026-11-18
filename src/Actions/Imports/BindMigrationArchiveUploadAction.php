@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Actions\Imports;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Lorisleiva\Actions\Concerns\AsFake;
 use Lorisleiva\Actions\Concerns\AsObject;
@@ -19,6 +20,10 @@ final class BindMigrationArchiveUploadAction
     public const string STAGING_DIRECTORY = 'migration-assistant/imports/staged';
 
     public const string ERROR_INVALID_UPLOAD = 'invalid_or_expired_upload';
+
+    public const string ERROR_UPLOAD_TOO_LARGE = 'upload_too_large';
+
+    private const int DEFAULT_MAXIMUM_UPLOAD_KILOBYTES = 250 * 1024;
 
     private const string UPLOAD_DIRECTORY = 'migration-assistant/imports/uploads';
 
@@ -41,7 +46,7 @@ final class BindMigrationArchiveUploadAction
 
         throw_unless(is_array($upload) && ($upload['actor_session'] ?? null) === $action->actorSessionHash(), RuntimeException::class, self::ERROR_INVALID_UPLOAD);
         $path = $upload['path'] ?? null;
-        throw_unless(is_string($path) && $action->isOwnedPath($path) && Storage::disk($action->diskName())->exists($path), RuntimeException::class, self::ERROR_INVALID_UPLOAD);
+        throw_unless(is_string($path) && $action->isOwnedPath($path) && Storage::disk(self::diskName())->exists($path), RuntimeException::class, self::ERROR_INVALID_UPLOAD);
 
         $filename = $upload['filename'] ?? null;
 
@@ -52,9 +57,31 @@ final class BindMigrationArchiveUploadAction
         ];
     }
 
+    public static function maximumUploadKilobytes(): int
+    {
+        $configured = config('migration-assistant.limits.max_package_upload_kilobytes', self::DEFAULT_MAXIMUM_UPLOAD_KILOBYTES);
+
+        return is_numeric($configured) ? max(1, (int) $configured) : self::DEFAULT_MAXIMUM_UPLOAD_KILOBYTES;
+    }
+
+    public static function maximumUploadMegabytes(): string
+    {
+        $megabytes = Number::format(self::maximumUploadKilobytes() / 1024, maxPrecision: 1);
+
+        return is_string($megabytes) ? $megabytes : (string) round(self::maximumUploadKilobytes() / 1024, 1);
+    }
+
     public static function isCanonicalUploadPath(string $path): bool
     {
         return str_starts_with($path, self::UPLOAD_DIRECTORY . '/') && ! str_contains($path, '..');
+    }
+
+    /** The disk the upload field stages to and this action secures from; both must agree. */
+    public static function diskName(): string
+    {
+        $disk = config('migration-assistant.disk', 'local');
+
+        return is_string($disk) ? $disk : 'local';
     }
 
     /**
@@ -66,8 +93,16 @@ final class BindMigrationArchiveUploadAction
         $stagedPath = $this->pathFrom($state['archive'] ?? null);
         throw_unless($this->isStagedPath($stagedPath), RuntimeException::class, StartPageImportAction::ERROR_UPLOAD_REQUIRED);
 
-        $disk = Storage::disk($this->diskName());
+        $disk = Storage::disk(self::diskName());
         throw_unless($disk->exists($stagedPath), RuntimeException::class, StartPageImportAction::ERROR_UPLOAD_REQUIRED);
+
+        // The upload field's size rule only runs in the browser form, so the staged file is measured here
+        // before it is bound to an import and parsed.
+        if ($disk->size($stagedPath) > self::maximumUploadKilobytes() * 1024) {
+            $disk->delete($stagedPath);
+
+            throw new RuntimeException(self::ERROR_UPLOAD_TOO_LARGE);
+        }
 
         $token = (string) Str::uuid();
         $path = self::UPLOAD_DIRECTORY . '/' . $this->actorSessionHash() . '/' . $token . '.zip';
@@ -82,13 +117,6 @@ final class BindMigrationArchiveUploadAction
         $state['archive'] = $token;
 
         return $state;
-    }
-
-    private function diskName(): string
-    {
-        $disk = config('migration-assistant.disk', 'local');
-
-        return is_string($disk) ? $disk : 'local';
     }
 
     private function actorSessionHash(): string

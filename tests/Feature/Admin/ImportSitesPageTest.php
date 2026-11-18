@@ -95,8 +95,7 @@ it('runs the site import wizard through to queued execution', function (): void 
     stageSiteImportWizardPackage($relativePath, $pageUuid, $sourceSiteId);
 
     $component = Livewire::test(ImportSitesPage::class)
-        ->set('data.archive', $relativePath)
-        ->set('data.archive_filename', 'site-import-wizard.zip')
+        ->set('data.archive', migrationAssistantStagedPackageUpload($relativePath))
         ->set('data.workspace_name', $workspaceName)
         ->call('parseAndAdvance')
         ->assertSet('step', ImportSitesPage::STEP_REVIEW)

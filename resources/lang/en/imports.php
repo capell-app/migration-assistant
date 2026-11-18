@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 return [
+    'upload_too_large' => 'This package is larger than the :size MB upload limit, so nothing was imported. Export fewer pages into each package, or ask an administrator to raise the limit.',
     'empty_state_description' => 'Start a page or site import to review its decisions and validate the write plan before anything is changed.',
     'empty_state_page_import' => 'Import pages',
     'empty_state_site_import' => 'Import a site',

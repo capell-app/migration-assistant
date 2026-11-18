@@ -4,12 +4,11 @@
     "scenarios": {
         "default": {
             "source": {
-                "ref": "c92ce184be4d91c372f35ca125ea25f6c1308599",
-                "commit": "c92ce184be4d91c372f35ca125ea25f6c1308599",
+                "ref": "HEAD",
+                "commit": "ee159a140616f0fe4f559085f4a902e22e759784",
                 "providers": {
                     "Providers/AdminServiceProvider.php": "4c477fd0e4653496df9f19a14001487963d5fabcf9006c76503b5d05f5cdc670",
-                    "Providers/MigrationAssistantInstallServiceProvider.php": "efd0cdac7d81ba4c11b24d09af6847376f6ac3dab679051a0c7ac5737db79f9a",
-                    "Providers/MigrationAssistantServiceProvider.php": "a1c117aca4a095a6f68a0e018d7888538f0b98aaaf8b998c673ab724cd3fce6b",
+                    "Providers/MigrationAssistantServiceProvider.php": "0ba2988c37362d551e336307b0020c8267344070e2a94625ff3c30cf823fe694",
                     "Providers/MigrationMetadataServiceProvider.php": "2a132937aa8060a7d482a4f768609cfb531174fe31b90d35324769c0b23b34fa"
                 },
                 "configure": null
@@ -171,10 +170,13 @@
                 },
                 "config-defaults": {
                     "migration-assistant.php": {
+                        "dedicated_process.entry": null,
                         "disk": "local",
+                        "limits.max_archive_entries": 10000,
                         "limits.max_media_bytes": 52428800,
                         "limits.max_metadata_json_bytes": 1048576,
                         "limits.max_package_uncompressed_bytes": 262144000,
+                        "limits.max_package_upload_kilobytes": 256000,
                         "limits.max_payload_json_bytes": 5242880,
                         "notifications.channels": ["mail", "database"],
                         "notifications.enabled": true,
@@ -192,16 +194,21 @@
                         "rollback_targets.permission": "Spatie\\Permission\\Models\\Permission",
                         "rollback_targets.role": "Spatie\\Permission\\Models\\Role",
                         "rollback_targets.setting": "Spatie\\LaravelSettings\\Models\\SettingsProperty",
-                        "rollback_targets.translation": "Capell\\Core\\Models\\Translation"
+                        "rollback_targets.translation": "Capell\\Core\\Models\\Translation",
+                        "rollback_targets.wordpress_redirect": "Capell\\UrlManager\\Models\\RedirectRule"
                     }
                 },
                 "config-keys": [
                     "migration-assistant",
+                    "migration-assistant.dedicated_process",
+                    "migration-assistant.dedicated_process.entry",
                     "migration-assistant.disk",
                     "migration-assistant.limits",
+                    "migration-assistant.limits.max_archive_entries",
                     "migration-assistant.limits.max_media_bytes",
                     "migration-assistant.limits.max_metadata_json_bytes",
                     "migration-assistant.limits.max_package_uncompressed_bytes",
+                    "migration-assistant.limits.max_package_upload_kilobytes",
                     "migration-assistant.limits.max_payload_json_bytes",
                     "migration-assistant.notifications",
                     "migration-assistant.notifications.channels",
@@ -230,7 +237,8 @@
                     "migration-assistant.rollback_targets.permission",
                     "migration-assistant.rollback_targets.role",
                     "migration-assistant.rollback_targets.setting",
-                    "migration-assistant.rollback_targets.translation"
+                    "migration-assistant.rollback_targets.translation",
+                    "migration-assistant.rollback_targets.wordpress_redirect"
                 ],
                 "config-values": {
                     "app.providers": [
@@ -519,6 +527,16 @@
                         }
                     }
                 },
+                "tagged-consumers": {
+                    "capell.upgrade-steps": [
+                        "Capell\\MigrationAssistant\\Support\\Upgrade\\InstallMigrationAssistantPermissionsUpgradeStep"
+                    ]
+                },
+                "tags": {
+                    "capell.upgrade-steps": [
+                        "Capell\\MigrationAssistant\\Support\\Upgrade\\InstallMigrationAssistantPermissionsUpgradeStep"
+                    ]
+                },
                 "views": {
                     "migration-assistant": ["<package>/resources/views"]
                 }
@@ -535,10 +553,13 @@
                 },
                 "config-defaults": {
                     "migration-assistant.php": {
+                        "dedicated_process.entry": null,
                         "disk": "local",
+                        "limits.max_archive_entries": 10000,
                         "limits.max_media_bytes": 52428800,
                         "limits.max_metadata_json_bytes": 1048576,
                         "limits.max_package_uncompressed_bytes": 262144000,
+                        "limits.max_package_upload_kilobytes": 256000,
                         "limits.max_payload_json_bytes": 5242880,
                         "notifications.channels": ["mail", "database"],
                         "notifications.enabled": true,
@@ -556,16 +577,21 @@
                         "rollback_targets.permission": "Spatie\\Permission\\Models\\Permission",
                         "rollback_targets.role": "Spatie\\Permission\\Models\\Role",
                         "rollback_targets.setting": "Spatie\\LaravelSettings\\Models\\SettingsProperty",
-                        "rollback_targets.translation": "Capell\\Core\\Models\\Translation"
+                        "rollback_targets.translation": "Capell\\Core\\Models\\Translation",
+                        "rollback_targets.wordpress_redirect": "Capell\\UrlManager\\Models\\RedirectRule"
                     }
                 },
                 "config-keys": [
                     "migration-assistant",
+                    "migration-assistant.dedicated_process",
+                    "migration-assistant.dedicated_process.entry",
                     "migration-assistant.disk",
                     "migration-assistant.limits",
+                    "migration-assistant.limits.max_archive_entries",
                     "migration-assistant.limits.max_media_bytes",
                     "migration-assistant.limits.max_metadata_json_bytes",
                     "migration-assistant.limits.max_package_uncompressed_bytes",
+                    "migration-assistant.limits.max_package_upload_kilobytes",
                     "migration-assistant.limits.max_payload_json_bytes",
                     "migration-assistant.notifications",
                     "migration-assistant.notifications.channels",
@@ -594,7 +620,8 @@
                     "migration-assistant.rollback_targets.permission",
                     "migration-assistant.rollback_targets.role",
                     "migration-assistant.rollback_targets.setting",
-                    "migration-assistant.rollback_targets.translation"
+                    "migration-assistant.rollback_targets.translation",
+                    "migration-assistant.rollback_targets.wordpress_redirect"
                 ],
                 "config-values": {
                     "app.providers": [
@@ -623,6 +650,16 @@
                             ]
                         }
                     }
+                },
+                "tagged-consumers": {
+                    "capell.upgrade-steps": [
+                        "Capell\\MigrationAssistant\\Support\\Upgrade\\InstallMigrationAssistantPermissionsUpgradeStep"
+                    ]
+                },
+                "tags": {
+                    "capell.upgrade-steps": [
+                        "Capell\\MigrationAssistant\\Support\\Upgrade\\InstallMigrationAssistantPermissionsUpgradeStep"
+                    ]
                 },
                 "views": {
                     "migration-assistant": ["<package>/resources/views"]

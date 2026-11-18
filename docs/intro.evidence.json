@@ -1,0 +1,93 @@
+[
+    {
+        "claim": "If your team runs more than one Capell site, you move pages or a whole site between them in the admin.",
+        "evidence": [
+            "src/Filament/Pages/ImportPagesPage.php",
+            "src/Filament/Pages/ImportSitesPage.php",
+            "src/Support/AdminPageExporter.php"
+        ]
+    },
+    {
+        "claim": "An import there goes through a review before anything is written.",
+        "evidence": [
+            "src/Filament/Pages/ImportPagesPage.php",
+            "src/Actions/Imports/DispatchPageImportAction.php",
+            "resources/lang/en/imports.php"
+        ]
+    },
+    {
+        "claim": "You build a package file from a page or a whole site with a command, copy it across, and upload it in the admin under Import Pages or Import Sites.",
+        "evidence": [
+            "src/Console/Commands/ExportMigrationAssistantPackageCommand.php",
+            "src/Filament/Resources/ImportSessions/ImportSessionResource.php",
+            "src/Filament/Pages/ImportPagesPage.php",
+            "src/Filament/Pages/ImportSitesPage.php"
+        ]
+    },
+    {
+        "claim": "The review lists every page in the file. Where an address already exists on the target site, you choose what happens to that page.",
+        "evidence": [
+            "src/Actions/BuildPageReviewRowsAction.php",
+            "src/Services/Import/PageUrlCollisionDetector.php",
+            "src/Data/PageReviewRow.php",
+            "src/Providers/MigrationAssistantServiceProvider.php"
+        ]
+    },
+    {
+        "claim": "Layouts and images are matched to those already on the target, and you choose what happens to the rest.",
+        "evidence": [
+            "src/Providers/MigrationAssistantServiceProvider.php",
+            "src/Services/Import/Resolvers/KeyedMatchResolver.php",
+            "src/Services/Import/Resolvers/FingerprintMatchResolver.php",
+            "src/Services/Import/Resolvers/MediaMatchResolver.php",
+            "src/Actions/BuildRelationResolveRowsAction.php",
+            "src/Data/RelationResolveRow.php"
+        ]
+    },
+    {
+        "claim": "After a validation step you type a confirmation phrase and the import is queued.",
+        "evidence": [
+            "src/Actions/Imports/DispatchPageImportAction.php",
+            "src/Actions/Imports/ResolvePageImportConfirmationTargetAction.php",
+            "src/Actions/BuildImportValidationSummaryAction.php"
+        ]
+    },
+    {
+        "claim": "The writing happens in background jobs, which your host or developer must have running.",
+        "evidence": [
+            "src/Jobs/ExecuteImportPlanJob.php",
+            "config/migration-assistant.php"
+        ]
+    },
+    {
+        "claim": "Before it writes, it checks again that the person who started the import is still allowed to.",
+        "evidence": [
+            "src/Actions/ReauthorizeImportSessionExecutionAction.php",
+            "src/Jobs/ExecuteImportPlanJob.php"
+        ]
+    },
+    {
+        "claim": "With Publishing Studio installed, imports land in a draft workspace you name.",
+        "evidence": [
+            "src/Contracts/PageImportTargetResolver.php",
+            "src/Contracts/NullPageImportTargetResolver.php",
+            "src/Actions/Imports/StartPageImportAction.php"
+        ]
+    },
+    {
+        "claim": "Two commands undo an import. One lists the records it created, the other removes those nobody has edited since, and a preview run shows the result first.",
+        "evidence": [
+            "src/Console/Commands/ShowMigrationAssistantRollbackReportCommand.php",
+            "src/Console/Commands/ExecuteMigrationAssistantRollbackCommand.php",
+            "src/Actions/ExecuteImportRollbackAction.php"
+        ]
+    },
+    {
+        "claim": "Each import then appears in the Import Sessions list in the admin with its status.",
+        "evidence": [
+            "src/Filament/Resources/ImportSessions/ImportSessionResource.php",
+            "src/Filament/Resources/ImportSessions/Tables/ImportSessionsTable.php",
+            "src/Enums/ImportSessionStatus.php"
+        ]
+    }
+]

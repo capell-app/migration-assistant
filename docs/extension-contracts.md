@@ -236,3 +236,19 @@ final class ExampleSafeFailureMessage extends \LogicException implements \Capell
 
 app()->bind(\Capell\MigrationAssistant\Contracts\SafeFailureMessage::class, ExampleSafeFailureMessage::class);
 ```
+
+Capell runs the install action when the package is installed. It creates the Migration Assistant permission matrix once, instead of on every boot. Sites installed before this change get the same permissions from the `migration-assistant.install-permissions` step of `capell:upgrade`.
+
+<!-- example: action install -->
+
+```php
+<?php
+declare(strict_types=1);
+
+namespace App\CapellExamples\MigrationAssistant;
+
+function runInstall(\Capell\Core\Data\PackageData $package, array $arguments = [], ?\Capell\Core\Contracts\ProgressReporter $reporter = null): void
+{
+    \Capell\MigrationAssistant\Actions\InstallMigrationAssistantPackageAction::run($package, $arguments, $reporter);
+}
+```

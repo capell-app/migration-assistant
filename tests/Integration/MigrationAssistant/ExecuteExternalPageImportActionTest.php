@@ -9,6 +9,7 @@ use Capell\Core\Models\Layout;
 use Capell\Core\Models\Page;
 use Capell\Core\Models\Site;
 use Capell\Core\Support\Publishing\PublishSentinel;
+use Capell\MigrationAssistant\Actions\ExecuteImportRollbackAction;
 use Capell\MigrationAssistant\Actions\Imports\ExecuteExternalPageImportAction;
 use Capell\MigrationAssistant\Data\ExternalImportPreview;
 use Capell\MigrationAssistant\Data\ExternalImportReadResult;
@@ -22,6 +23,7 @@ use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
 use Capell\MigrationAssistant\Services\Import\PackageReadResult;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\ResolutionMap;
+use Capell\MigrationAssistant\Support\RollbackProvenance;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +31,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Assert;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 beforeEach(function (): void {
@@ -388,4 +391,91 @@ it('keeps the allow-listed WordPress publish status public', function (): void {
     $page = Page::query()->withoutGlobalScopes()->findOrFail($result->report->createdPageIds[0]);
     expect(PublishSentinel::isDraftValue($page->visible_from))->toBeFalse()
         ->and($page->visible_from?->format('Y-m-d H:i:s'))->toBe('2020-01-01 00:00:00');
+});
+
+it('records rollback provenance before returning an unfinalised external import', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->page()->create();
+    $site = Site::factory()->create();
+    $preview = (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'csv',
+        columns: ['title'],
+        rows: [['title' => 'Unfinalised page']],
+        suggestedTarget: 'page',
+    ));
+    $result = ExecuteExternalPageImportAction::run($preview, migrationAssistantExternalTarget($site, $layout, $type), finalize: false);
+    $report = $result->session->rollbackReports()->sole();
+
+    expect($report->created_models)->toContain(['class' => Page::class, 'id' => $result->report->createdPageIds[0]])
+        ->and(RollbackProvenance::hasValidSignature((array) $report->provenance, $report->provenance_signature))->toBeTrue();
+});
+
+it('keeps earlier rollback snapshots immutable when another unfinalised chunk creates pages', function (): void {
+    $site = Site::factory()->create();
+    $target = migrationAssistantExternalTarget($site, Layout::factory()->create(), Blueprint::factory()->page()->create());
+    $preview = static fn (string $title): ExternalImportPreview => (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'csv',
+        columns: ['title'],
+        rows: [['title' => $title]],
+        suggestedTarget: 'page',
+    ));
+    $first = ExecuteExternalPageImportAction::run($preview('First chunk'), $target, sourceFilename: 'chunks.csv', finalize: false);
+    $original = $first->session->rollbackReports()->sole();
+    $provenance = $original->provenance;
+    ExecuteExternalPageImportAction::run($preview('Second chunk'), $target, existingSession: $first->session, finalize: false);
+    $latest = $first->session->rollbackReports()->latest('id')->firstOrFail();
+
+    expect($original->refresh()->provenance)->toBe($provenance)
+        ->and($latest->is($original))->toBeFalse()
+        ->and($latest->created_models)->toHaveCount(2)
+        ->and($latest->source_filename)->toBe('chunks.csv')
+        ->and(RollbackProvenance::hasValidSignature((array) $latest->provenance, $latest->provenance_signature))->toBeTrue();
+});
+
+it('keeps an appended creation when an editor changes it within the captured timestamp', function (): void {
+    $site = Site::factory()->create();
+    $target = migrationAssistantExternalTarget($site, Layout::factory()->create(), Blueprint::factory()->page()->create());
+    $preview = static fn (string $title): ExternalImportPreview => (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'csv',
+        columns: ['title'],
+        rows: [['title' => $title]],
+        suggestedTarget: 'page',
+    ));
+    $first = ExecuteExternalPageImportAction::run($preview('Initial chunk'), $target, finalize: false);
+    $second = ExecuteExternalPageImportAction::run($preview('Appended chunk'), $target, existingSession: $first->session, finalize: false);
+    $report = $second->session->rollbackReports()->latest('id')->firstOrFail();
+    $page = Page::query()->withoutGlobalScopes()->findOrFail($second->report->createdPageIds[0]);
+    $stamp = $page->getRawOriginal('updated_at');
+    // Simulate a second write at the same database timestamp precision.
+    $page->timestamps = false;
+    $page->forceFill(['name' => 'Editorial work'])->save();
+    expect($page->refresh()->getRawOriginal('updated_at'))->toBe($stamp);
+    $actor = $this->authenticatedUser();
+    $actor->givePermissionTo(Permission::findOrCreate('import-session.rollback', 'web'));
+    $result = ExecuteImportRollbackAction::run($report, actor: $actor);
+
+    expect($result->rejected)->toBeFalse()
+        ->and(Page::query()->withoutGlobalScopes()->whereKey($page->getKey())->exists())->toBeTrue()
+        ->and(array_column($result->skipped, 'reason'))->toContain('edited_after_import');
+});
+
+it('adopts the address a page already has instead of restoring a second row for it', function (): void {
+    $layout = Layout::factory()->create();
+    $type = Blueprint::factory()->page()->create();
+    $site = Site::factory()->create();
+    $preview = (new ExternalImportPreviewBuilder)->build(new ExternalImportReadResult(
+        sourceType: 'csv',
+        columns: ['title', 'slug'],
+        rows: [['title' => 'First address', 'slug' => 'first-address'], ['title' => 'Second address', 'slug' => 'second-address']],
+        suggestedTarget: 'page',
+    ));
+
+    $result = ExecuteExternalPageImportAction::run($preview, migrationAssistantExternalTarget($site, $layout, $type));
+    $pageIds = $result->report->createdPageIds;
+    $rows = DB::table('page_urls')->whereIn('pageable_id', $pageIds)->where('pageable_type', (new Page)->getMorphClass())->whereNull('deleted_at');
+
+    expect($result->report->errors)->toBe([])
+        ->and($pageIds)->toHaveCount(2)
+        ->and($rows->count())->toBe(2)
+        ->and($rows->pluck('url')->sort()->values()->all())->toBe(['/first-address', '/second-address']);
 });

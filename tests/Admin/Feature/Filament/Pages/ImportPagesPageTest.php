@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 use Capell\Core\Models\Site;
+use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
+use Capell\MigrationAssistant\Actions\Imports\StartPageImportAction;
 use Capell\MigrationAssistant\Data\PageReviewRow;
 use Capell\MigrationAssistant\Filament\Pages\ImportPagesPage;
 use Capell\MigrationAssistant\Filament\Pages\ImportSitesPage;
 use Capell\MigrationAssistant\Jobs\ExecuteImportPlanJob;
 use Capell\MigrationAssistant\Support\ChecksumGenerator;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -87,8 +90,7 @@ it('transitions to review step after parsing a package', function (): void {
     writeImportPackage($absolutePath, $uuid, (int) $site->getKey(), '/hello-world');
 
     Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', [$relativePath])
-        ->set('data.archive_filename', [$relativePath => 'test-package.zip'])
+        ->set('data.archive', migrationAssistantStagedPackageUpload($relativePath))
         ->set('data.workspace_name', 'Import test')
         ->call('parseAndAdvance')
         ->assertSet('step', ImportPagesPage::STEP_REVIEW)
@@ -136,14 +138,64 @@ it('discloses actual confident matches while leading with unresolved relations',
         ->and(importJourneyNodeCount($xpath, '//section[@aria-labelledby="migration-review-blockers"]/following-sibling::details'))->toBe(1);
 })->with([ImportPagesPage::class, ImportSitesPage::class]);
 
+it('parses a package uploaded through the browser file field', function (): void {
+    $site = Site::factory()->create();
+    $uuid = (string) Str::uuid();
+    $sourcePath = tempnam(sys_get_temp_dir(), 'capell-import-upload-');
+    throw_if($sourcePath === false, RuntimeException::class, 'Expected a temporary package path.');
+    writeImportPackage($sourcePath, $uuid, (int) $site->getKey(), '/browser-upload');
+    $contents = file_get_contents($sourcePath);
+    unlink($sourcePath);
+    throw_if($contents === false, RuntimeException::class, 'Expected the temporary package contents.');
+
+    Livewire::test(ImportPagesPage::class)
+        ->set('data.archive', UploadedFile::fake()->createWithContent('browser-package.zip', $contents))
+        ->set('data.workspace_name', 'Browser upload')
+        ->call('parseAndAdvance')
+        ->assertSet('step', ImportPagesPage::STEP_REVIEW)
+        ->assertSet('reviewRows.0.uuid', $uuid);
+});
+
+it('stages a browser upload on the configured migration disk', function (): void {
+    config()->set('migration-assistant.disk', 'migration-imports');
+    Storage::fake('migration-imports');
+    $site = Site::factory()->create();
+    $uuid = (string) Str::uuid();
+    $sourcePath = tempnam(sys_get_temp_dir(), 'capell-import-upload-');
+    throw_if($sourcePath === false, RuntimeException::class, 'Expected a temporary package path.');
+    writeImportPackage($sourcePath, $uuid, (int) $site->getKey(), '/configured-disk-upload');
+    $contents = file_get_contents($sourcePath);
+    unlink($sourcePath);
+    throw_if($contents === false, RuntimeException::class, 'Expected the temporary package contents.');
+
+    Livewire::test(ImportPagesPage::class)
+        ->set('data.archive', UploadedFile::fake()->createWithContent('configured-disk-package.zip', $contents))
+        ->set('data.workspace_name', 'Configured disk upload')
+        ->call('parseAndAdvance')
+        ->assertHasNoErrors()
+        ->assertSet('step', ImportPagesPage::STEP_REVIEW)
+        ->assertSet('reviewRows.0.uuid', $uuid);
+});
+
+it('refuses a browser upload larger than the package size limit before parsing it', function (): void {
+    config(['migration-assistant.limits.max_package_upload_kilobytes' => 1]);
+
+    Livewire::test(ImportPagesPage::class)
+        ->set('data.archive', UploadedFile::fake()->create('oversized-package.zip', 4, 'application/zip'))
+        ->set('data.workspace_name', 'Oversized upload')
+        ->call('parseAndAdvance')
+        ->assertHasErrors('data.archive')
+        ->assertSet('step', ImportPagesPage::STEP_UPLOAD);
+});
+
 it('rejects hostile Livewire archive paths without reading local storage', function (): void {
     Storage::disk('local')->put('private/never-import.zip', 'not a migration package');
 
     Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', '../../private/never-import.zip')
-        ->set('data.archive_filename', 'never-import.zip')
+        ->set('data.archive', ['../../private/never-import.zip'])
         ->set('data.workspace_name', 'Hostile import')
         ->call('parseAndAdvance')
+        ->assertHasErrors('data.archive')
         ->assertSet('step', ImportPagesPage::STEP_UPLOAD);
 
     Storage::disk('local')->assertExists('private/never-import.zip');
@@ -158,13 +210,29 @@ it('rejects replayed Livewire migration uploads after the token is consumed', fu
     writeImportPackage($absolutePath, $uuid, (int) $site->getKey(), '/replayed-package');
 
     Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', $relativePath)
-        ->set('data.archive_filename', 'replayed-package.zip')
+        ->set('data.archive', migrationAssistantStagedPackageUpload($relativePath))
         ->set('data.workspace_name', 'Replay test')
         ->call('parseAndAdvance')
         ->assertSet('step', ImportPagesPage::STEP_REVIEW)
         ->call('backToUpload')
-        ->set('data.archive', $relativePath)
+        ->set('data.archive', [$relativePath])
         ->call('parseAndAdvance')
+        ->assertHasErrors('data.archive')
         ->assertSet('step', ImportPagesPage::STEP_UPLOAD);
+});
+
+it('refuses a migration upload token once an import has used it', function (): void {
+    $site = Site::factory()->create();
+    $relativePath = 'migration-assistant/imports/staged/token-replay.zip';
+    $absolutePath = Storage::disk('local')->path($relativePath);
+    if (! is_dir(dirname($absolutePath))) {
+        mkdir(dirname($absolutePath), 0777, true);
+    }
+
+    writeImportPackage($absolutePath, (string) Str::uuid(), (int) $site->getKey(), '/token-replay');
+    $state = BindMigrationArchiveUploadAction::run(['archive' => $relativePath, 'workspace_name' => 'Token replay']);
+    StartPageImportAction::run($state);
+
+    expect(fn (): mixed => StartPageImportAction::run($state))
+        ->toThrow(RuntimeException::class, BindMigrationArchiveUploadAction::ERROR_INVALID_UPLOAD);
 });

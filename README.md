@@ -2,27 +2,27 @@
 
 <!-- prettier-ignore-start -->
 
-## What It Does
+If your team runs more than one Capell site, you move pages or a whole site between them in the admin. An import there goes through a review before anything is written.
 
-Migration Assistant adds staged import sessions for mapping, validating, executing, reviewing, retrying, and rolling back external content imports.
+You build a package file from a page or a whole site with a command, copy it across, and upload it in the admin under Import Pages or Import Sites. The review lists every page in the file. Where an address already exists on the target site, you choose what happens to that page. Layouts and images are matched to those already on the target, and you choose what happens to the rest. After a validation step you type a confirmation phrase and the import is queued.
+
+The writing happens in background jobs, which your host or developer must have running. Before it writes, it checks again that the person who started the import is still allowed to. With Publishing Studio installed, imports land in a draft workspace you name.
+
+Two commands undo an import. One lists the records it created, the other removes those nobody has edited since, and a preview run shows the result first. Each import then appears in the Import Sessions list in the admin with its status.
 
 - **Price and availability:** Check current availability and price on the [Capell Marketplace listing](https://capell.app/extensions/migration-assistant).
 - **Licence:** Check the licence terms on the [Capell Marketplace listing](https://capell.app/extensions/migration-assistant).
-- **Requires:** `PHP ^8.4`, `capell-app/admin ^1.0.66`, `capell-app/core ^1.0.75`, `illuminate/database ^11.0|^12.0|^13.0`, `illuminate/support ^12.41.1|^13.0`, `lorisleiva/laravel-actions ^2.8`, `spatie/laravel-package-tools ^1.15`.
+- **Requires:** `PHP ^8.4`, `capell-app/admin ^1.0.66`, `capell-app/core ^1.0.78`, `illuminate/database ^11.0|^12.0|^13.0`, `illuminate/support ^12.41.1|^13.0`, `lorisleiva/laravel-actions ^2.8`, `spatie/laravel-package-tools ^1.15`.
 - **Install:** `composer require capell-app/migration-assistant`.
-
-Admins can upload or select source data, map it to Capell records, validate the plan, run the import, and inspect row-level results.
-
-## Who It Is For
-
-**For developers:** Source, target, and executor registries support file and database imports; database executors validate a previewed schema and track source keys for repeat imports.
-
-**For teams:** Teams can review migration problems before content is written and keep a recovery path when an import needs to be undone.
 
 ## Quick Start
 
 1. Install the package: `composer require capell-app/migration-assistant`.
 2. Open the package admin surface at `/admin/migration-assistant/import-sessions` and confirm Migration Assistant is available.
+
+## For Developers
+
+Source, target, and executor registries support file and database imports; database executors validate a previewed schema and track source keys for repeat imports.
 
 ## Configure
 
@@ -31,7 +31,7 @@ Admins can upload or select source data, map it to Capell records, validate the 
 
 ## Limits And Pitfalls
 
-- Install the required Capell packages at the versions in `composer.json`: `capell-app/admin ^1.0.66`, `capell-app/core ^1.0.75`.
+- Install the required Capell packages at the versions in `composer.json`: `capell-app/admin ^1.0.66`, `capell-app/core ^1.0.78`.
 - Run migrations before opening package resources or public routes.
 - Keep the host Laravel scheduler running so package-registered schedules can execute: `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`.
 
@@ -69,6 +69,8 @@ Admins can upload or select source data, map it to Capell records, validate the 
 | Package surface is missing after install | Provider or manifest is not loaded | Confirm `capell.json`, package `composer.json`, and provider registration | Reinstall the package, refresh Composer autoload, and clear host caches |
 | Admin screen or command fails on missing table | Package migrations have not run | Check the tables listed in `Data Model` | Run host migrations and rerun the focused package test |
 | Background work does not run | Queue worker or declared schedule is not active | Check the jobs and scheduled commands listed in `Technical Shape` | Start the queue worker or host scheduler, then run the focused command or package test |
+| A package upload fails in the admin before the import review opens | Livewire checks every temporary upload against `livewire.temporary_file_upload.rules`, whose default limit (12 MB) is lower than the package limit | Compare the package size with the `max:` rule in `config/livewire.php` and with `migration-assistant.limits.max_package_upload_kilobytes` | Publish the Livewire config and raise the `max:` value in `temporary_file_upload.rules` to at least the package limit, or import the file with `php artisan migration-assistant:import` |
+| `migration-assistant:import --execute` or `--sync` stops before creating a session | An import that writes pages runs as a named user, and no `--actor` was given or that user cannot import pages | Read the error the command printed | Run the command again with `--actor=<user id>` for a user who holds the page import permission |
 
 ## Upgrading
 
@@ -89,6 +91,6 @@ Read [CHANGELOG.md](CHANGELOG.md) before upgrading.
 - [Capell content language plan](../../docs/CONTENT_LANGUAGE_PLAN.md)
 - [Capell documentation design system](../../docs/DESIGN_SYSTEM.md)
 - [Capell and package ERD notes](../../docs/erd/capell-and-package-erds.md)
-- Related packages: [Blog](../blog/README.md), [HTML Cache](../html-cache/README.md), [Media Library](../media-library/README.md), [Navigation](../navigation/README.md), [SEO Suite](../seo-suite/README.md), [Site Discovery](../site-discovery/README.md), [URL Manager](../url-manager/README.md), [WordPress Importer](../wordpress-importer/README.md).
+- Related packages: [Blog](../blog/README.md), [HTML Cache](../html-cache/README.md), [Media Library](../media-library/README.md), [Navigation](../navigation/README.md), [SEO Checks](../seo-suite/README.md), [Site Discovery](../site-discovery/README.md), [Redirects](../url-manager/README.md), [WordPress Importer](../wordpress-importer/README.md).
 
 <!-- prettier-ignore-end -->

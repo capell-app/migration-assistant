@@ -7,6 +7,7 @@ use Illuminate\Support\Env;
 return [
     // Optional targets are resolved only when the corresponding package is installed.
     'rollback_targets' => [
+        'wordpress_redirect' => 'Capell\\UrlManager\\Models\\RedirectRule',
         'page_url' => 'Capell\\Core\\Models\\PageUrl',
         'translation' => 'Capell\\Core\\Models\\Translation',
         'permission' => 'Spatie\\Permission\\Models\\Permission',
@@ -19,6 +20,11 @@ return [
     'queue' => [
         'connection' => Env::get('MIGRATOR_QUEUE_CONNECTION'),
         'name' => Env::get('MIGRATOR_QUEUE', 'migration-assistant'),
+    ],
+
+    // Dedicated in-place imports re-run Artisan in a child booted from a private configuration cache.
+    'dedicated_process' => [
+        'entry' => null, // defaults to the application's base_path('artisan')
     ],
 
     'retention' => [
@@ -39,10 +45,13 @@ return [
     ],
 
     'limits' => [
+        'max_archive_entries' => 10000,
         'max_metadata_json_bytes' => 1024 * 1024,
         'max_payload_json_bytes' => 5 * 1024 * 1024,
         'max_media_bytes' => 50 * 1024 * 1024,
         'max_package_uncompressed_bytes' => 250 * 1024 * 1024,
+        // Largest package archive the import wizard accepts, in kilobytes.
+        'max_package_upload_kilobytes' => 250 * 1024,
     ],
 
     'notifications' => [

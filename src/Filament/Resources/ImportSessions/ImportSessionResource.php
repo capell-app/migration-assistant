@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Capell\MigrationAssistant\Filament\Resources\ImportSessions;
 
 use BackedEnum;
+use Capell\Admin\Enums\NavigationGroupEnum;
 use Capell\Admin\Filament\Concerns\HasConfiguredTable;
 use Capell\Admin\Filament\Concerns\HasNavigationBadge;
 use Capell\Core\Support\TableName;
@@ -58,9 +59,9 @@ class ImportSessionResource extends Resource
     }
 
     #[Override]
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationGroup(): NavigationGroupEnum
     {
-        return __('capell-admin::navigation.group_system');
+        return NavigationGroupEnum::Developer;
     }
 
     #[Override]

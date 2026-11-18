@@ -221,7 +221,23 @@ final class RollbackProvenance
             return 'edited_after_import';
         }
 
+        if (array_key_exists('attributes_hash', $entry)) {
+            $hash = $entry['attributes_hash'];
+            if (! is_string($hash) || ! hash_equals($hash, self::attributesHash($model))) {
+                return 'edited_after_import';
+            }
+        }
+
         return null;
+    }
+
+    /** A keyed fingerprint avoids disclosing the target's attributes in readable provenance. */
+    public static function attributesHash(Model $model): string
+    {
+        $attributes = $model->getRawOriginal();
+        throw_unless(is_array($attributes), LogicException::class, 'Rollback attributes must be an array.');
+
+        return self::sign(['attributes' => $attributes]);
     }
 
     /**

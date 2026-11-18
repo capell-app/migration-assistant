@@ -178,3 +178,51 @@ it('rejects oversized integrity metadata before reading it', function (): void {
 
     (new PackageReader)->read($this->tempArchive);
 })->throws(RuntimeException::class, 'exceeds the maximum metadata JSON size');
+
+it('fails closed when an archive limit is zero or negative', function (string $key, int $value): void {
+    config()->set('migration-assistant.limits.' . $key, $value);
+    writeArchive($this->tempArchive, ['manifest.json' => '{}', 'integrity.json' => '{"files":{}}']);
+
+    expect(fn () => (new PackageReader)->read($this->tempArchive))->toThrow(RuntimeException::class);
+})->with([
+    ['max_metadata_json_bytes', 0], ['max_payload_json_bytes', 0], ['max_media_bytes', -1],
+    ['max_package_uncompressed_bytes', 0], ['max_archive_entries', 0],
+]);
+
+it('limits archive entries even when they are absent from the integrity list', function (): void {
+    config()->set('migration-assistant.limits.max_archive_entries', 2);
+    writeArchive($this->tempArchive, ['manifest.json' => '{}', 'integrity.json' => '{"files":{}}', 'extra.txt' => 'unlisted']);
+
+    expect(fn () => (new PackageReader)->read($this->tempArchive))->toThrow(RuntimeException::class);
+});
+
+it('counts unlisted bytes towards the aggregate archive budget', function (): void {
+    config()->set('migration-assistant.limits.max_package_uncompressed_bytes', 128);
+    writeArchive($this->tempArchive, ['manifest.json' => '{}', 'integrity.json' => '{"files":{}}', 'unlisted.txt' => str_repeat('x', 129)]);
+
+    expect(fn () => (new PackageReader)->read($this->tempArchive))->toThrow(RuntimeException::class);
+});
+
+it('fails closed for a ZIP whose uncompressed length headers understate the payload', function (): void {
+    config()->set('migration-assistant.limits.max_payload_json_bytes', 128);
+    $payload = json_encode(['body' => str_repeat('x', 1024)], JSON_THROW_ON_ERROR);
+    writeArchive($this->tempArchive, [
+        'manifest.json' => '{}',
+        'integrity.json' => json_encode(['files' => ['pages/lying.json' => ChecksumGenerator::forString($payload)]], JSON_THROW_ON_ERROR),
+        'pages/lying.json' => $payload,
+    ]);
+    $bytes = file_get_contents($this->tempArchive);
+    throw_unless(is_string($bytes), RuntimeException::class);
+    foreach ([["PK\x03\x04", 30, 22], ["PK\x01\x02", 46, 24]] as [$signature, $nameOffset, $lengthOffset]) {
+        $offset = 0;
+        while (($offset = strpos($bytes, $signature, $offset)) !== false) {
+            if (substr($bytes, $offset + $nameOffset, strlen('pages/lying.json')) === 'pages/lying.json') {
+                $bytes = substr_replace($bytes, pack('V', 64), $offset + $lengthOffset, 4);
+            }
+            $offset++;
+        }
+    }
+    file_put_contents($this->tempArchive, $bytes);
+
+    expect(fn () => (new PackageReader)->read($this->tempArchive))->toThrow(RuntimeException::class);
+});

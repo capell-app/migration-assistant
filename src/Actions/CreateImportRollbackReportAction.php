@@ -8,20 +8,39 @@ use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
 use Capell\MigrationAssistant\Support\RollbackProvenance;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use LogicException;
 use Lorisleiva\Actions\Concerns\AsFake;
 use Lorisleiva\Actions\Concerns\AsObject;
 
 /**
- * @method static ImportRollbackReport run(ImportSession $session, ImportExecutionReport $report)
+ * @method static ImportRollbackReport run(ImportSession $session, ImportExecutionReport $report, bool $merge = false)
  */
 final class CreateImportRollbackReportAction
 {
     use AsFake;
     use AsObject;
 
-    public function handle(ImportSession $session, ImportExecutionReport $report): ImportRollbackReport
+    public function handle(ImportSession $session, ImportExecutionReport $report, bool $merge = false): ImportRollbackReport
     {
+        $existing = $merge ? $session->rollbackReports()->latest('id')->first() : null;
+        if ($existing instanceof ImportRollbackReport) {
+            $models = [];
+            foreach ($report->createdModels() as $created) {
+                $modelClass = $created['class'];
+                throw_unless(is_subclass_of($modelClass, Model::class), LogicException::class, 'Rollback targets must be Eloquent models.');
+                $model = $modelClass::query()->withoutGlobalScopes()->find($created['id']);
+                if ($model instanceof Model) {
+                    $models[] = $model;
+                }
+            }
+            $existing = AppendImportRollbackModelsAction::run($existing, $models);
+            $existing->forceFill(['summary' => array_replace($existing->summary ?? [], $report->toArray())])->save();
+
+            return $existing;
+        }
+
         $uuid = (string) Str::uuid();
         $provenance = RollbackProvenance::create($uuid, $session, $report);
 

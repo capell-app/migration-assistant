@@ -6,9 +6,9 @@ This guide is for editors running a content import and owners planning a migrati
 
 ### How to start an import
 
-1. Open **System > Import Sessions** and choose **Import Pages** or **Import Sites**.
+1. Open **Developer > Import sessions** and choose **Import pages** or **Import sites**.
 2. Upload the Capell package archive (`.zip`), give the workspace a name, and optionally add a note.
-3. Continue to create an import session you can return to from **Import Sessions**.
+3. Continue to create an import session you can return to from **Import sessions**.
 
 ![An administrator reviews import sessions and their current migration state.](screenshots/import-session-index-or-host-admin-surface.png)
 
@@ -45,10 +45,10 @@ A `create` decision whose URL already exists on a live page requires you to chec
 
 ### How to import pages through Recovery Center
 
-1. Open **System > Import Sessions** and choose **Import Pages**.
+1. Open **Developer > Import sessions** and choose **Import pages**.
 2. Upload a Capell page package, then work through page review, relation resolution, and validation.
 3. Dispatch the import and watch its progress.
-4. If something goes wrong, you can roll the import back from here.
+4. If something goes wrong, note the import reference and problem details and ask an authorised administrator to assess recovery. Rollback runs from the command line; this screen has no rollback button.
 
 ![An operator imports pages through Recovery Center and reviews validation, relation resolution, execution, and rollback state.](screenshots/recovery-page-imports.png)
 
@@ -60,9 +60,11 @@ A `create` decision whose URL already exists on a live page requires you to chec
 
 ### How to undo an import
 
-1. Open the import you want to undo.
-2. Roll it back to remove what it added.
-3. Read the rollback report to see exactly what was changed and what manual cleanup, if any, is still needed.
+1. As an editor, give your administrator the import reference and the errors or unexpected results you can see. You may not have access to the session or its reports.
+2. A global administrator with `import-session.view` opens the session and reads its rollback reports. With a current backup, the operator inspects `migration-assistant:rollback-report <session-id-or-uuid>` and runs `migration-assistant:rollback-execute <session-id-or-uuid> --actor=<user-id> --dry-run`.
+3. After reviewing the proposed deletions, an authorised operator runs that execution command without `--dry-run`. The named actor must hold `import-session.rollback` and be permitted to delete the affected records. Review the resulting audit and manual instructions.
+
+Rollback only removes recorded creations that are unchanged. It skips edited records and does not restore edits to reused records, external effects or backups. Follow the [rollback procedure and recovery limits](overview.md#roll-back-created-records) before executing it; skipped records need an administrator's manual recovery assessment.
 
 ![An operator reviews what rollback changed and what manual cleanup remains.](screenshots/import-rollback-report-view.png)
 
@@ -94,7 +96,7 @@ A `create` decision whose URL already exists on a live page requires you to chec
 | Role       | First useful screen                                 |
 | ---------- | --------------------------------------------------- |
 | Editor     | Recovery Center: review, resolve, validate, and run |
-| Site owner | **Import Sessions**: track progress and results     |
+| Site owner | **Import sessions**: track progress and results     |
 
 ## Troubleshooting for editors
 
@@ -104,3 +106,11 @@ A `create` decision whose URL already exists on a live page requires you to chec
 | Some items were skipped                   | The review or validation found a blocking issue                 | Review the session result, fix the package or decisions, and import again |
 | The import session will not start         | The archive was missing, unreadable, or not a valid package     | Upload a valid Capell ZIP package and check the validation message        |
 | Images did not come across                | The package did not contain usable media, or ingest rejected it | Check the rollback/result report and package media before trying again    |
+
+## File readers and command-line review
+
+The shipped Import Pages wizard accepts Capell ZIP archives. CSV, XML and spreadsheet readers and field mapping are APIs for integrations; the wizard does not offer a CSV/XML upload or mapping screen. The target registry contains `page`, `type` and `collection` mappings for integrations; these do not add target choices or mapping screens to the wizard. The default page resolver is the live database unless an enabled integration replaces it.
+
+`migration-assistant:import <archive>` validates without executing. `--execute` queues the validated import and `--sync` executes it immediately in the foreground. Both writing paths require `--actor=<user-id>` and recheck that actor's import permission and site scope. The CLI is a trusted operator path: it does not require the wizard's interactive review or confirmation phrase. Preview a small sample and inspect the validation result before choosing either writing option. Retention pruning remains an explicit operator command; the stale-session reclamation schedule does not prune retained evidence.
+
+Version-one rollback reports preserve each failed deletion in place and report `delete_failed`, while recovering other independent recorded creations. The command exits with failure when a deletion fails. Review the report and application log before manual recovery. Planned database rollback remains atomic; connection failures and programming errors still abort. Extended reports are new signed snapshots: the earlier provenance stays immutable. Appended creations carry keyed attribute fingerprints so edits at the same timestamp still block their deletion.

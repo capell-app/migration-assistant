@@ -6,7 +6,7 @@
     "kind": "package",
     "capellApiVersion": "^1.0",
     "version": "1.1.0",
-    "description": "Import external content through staged mapping, validation and queued execution, with row-level results, retries and rollback reports.",
+    "description": "Imports pages or whole sites exported from another Capell site, with a review before anything is written and a saved record of each import.",
     "product": {
         "group": "Capell Operations",
         "tier": "free",
@@ -32,9 +32,7 @@
         "metadata": [
             "Capell\\MigrationAssistant\\Providers\\MigrationMetadataServiceProvider"
         ],
-        "install": [
-            "Capell\\MigrationAssistant\\Providers\\MigrationAssistantInstallServiceProvider"
-        ],
+        "install": [],
         "runtime": [
             "Capell\\MigrationAssistant\\Providers\\MigrationAssistantServiceProvider"
         ],
@@ -142,6 +140,9 @@
         "rollback-report": "migration-assistant:rollback-report",
         "rollback-execute": "migration-assistant:rollback-execute",
         "prune": "migration-assistant:prune"
+    },
+    "actions": {
+        "install": "Capell\\MigrationAssistant\\Actions\\InstallMigrationAssistantPackageAction"
     },
     "settings": [],
     "permissions": [
@@ -261,33 +262,38 @@
         "privateDocsRequested": true
     },
     "marketplace": {
-        "summary": "Safely move pages and media into Capell: preview every change, validate before you write, and keep a rollback report for every import.",
-        "problem": "Our team cannot confidently move external content without seeing what each import will change.",
-        "outcome": "Our team has a validated import plan and row-level results to review.",
+        "summary": "See every page an import would write, and choose what happens to the ones that already exist.",
+        "description": "Move pages and whole sites between Capell installs with a review first. Export a package file, upload it in the admin, decide what happens to pages whose address already exists, match layouts and images, validate and confirm. Imports run in the background and each one is recorded in a session list with its outcome.",
+        "problem": "I'm wary of moving pages to another site when I can't see what the import will change.",
+        "outcome": "Every import is validated first and listed afterwards with its status.",
         "faq": [
             {
-                "question": "Can we inspect a plan before writing?",
-                "answer": "Admins can map source data and validate the plan before running the import."
+                "question": "Can I see what an import will do before it writes anything?",
+                "answer": "Yes. The review lists every page in the file and you choose what happens to clashes. After a validation step you type a confirmation phrase, and only then is the import queued."
             },
             {
-                "question": "How can a team undo an import?",
-                "answer": "The package provides rollback reports and rollback execution commands."
+                "question": "Can I undo an import?",
+                "answer": "Partly. Two commands list the records the import created and remove those nobody has edited since, with a preview run first. They do not undo edits made to pages that already existed."
             },
             {
-                "question": "Where can we inspect import problems?",
-                "answer": "Admins can review row-level results after an import."
+                "question": "Does the import run as soon as I confirm?",
+                "answer": "It is queued and written by background jobs, which your host or developer must have running. Before it writes, it checks again that you are still allowed to import."
+            },
+            {
+                "question": "Do I need Publishing Studio to use it?",
+                "answer": "No. With Publishing Studio installed, imports land in a draft workspace you name."
             }
         ],
         "screenshots": [
             {
                 "path": "docs/assets/marketplace/extension-card.jpg",
-                "alt": "Migration Assistant extension preview image",
-                "caption": "Migration Assistant extension preview"
+                "alt": "Marketplace card titled Migration Assistant with two Import Sessions lists beside the words Map, Validate and Import.",
+                "caption": "The Marketplace card for Migration Assistant, which moves pages and sites between Capell sites."
             },
             {
                 "path": "docs/screenshots/import-session-index-or-host-admin-surface.png",
-                "alt": "Migration Assistant import sessions index",
-                "caption": "Review mapped, validated, and completed migration sessions in the installed admin resource"
+                "alt": "Import Sessions list of three page imports marked Mapped, Validated and Completed, with a filename and a result column.",
+                "caption": "Each import is listed with its status, who ran it and when it finished."
             }
         ],
         "categories": ["admin", "console", "operations"]

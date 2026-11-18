@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Console\Commands;
 
+use Capell\MigrationAssistant\Actions\Imports\ActorCanStartPageImportAction;
 use Capell\MigrationAssistant\Actions\Imports\AdvancePageImportToValidationAction;
 use Capell\MigrationAssistant\Actions\Imports\BindMigrationArchiveUploadAction;
 use Capell\MigrationAssistant\Actions\Imports\DispatchPageImportAction;
@@ -22,6 +23,8 @@ use Capell\MigrationAssistant\Services\Import\PackageReader;
 use Capell\MigrationAssistant\Services\Import\PageImportService;
 use Capell\MigrationAssistant\Services\Import\SiteImportService;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Override;
@@ -35,6 +38,7 @@ final class ImportMigrationAssistantPackageCommand extends Command
         {--workspace-name= : Target workspace/site label for the import session}
         {--execute : Queue the import after validation passes}
         {--sync : Run the import job synchronously after validation passes}
+        {--actor= : User ID the import runs as; required with --execute or --sync}
         {--json : Output import data as JSON}';
 
     protected $description = 'Create, validate, and optionally execute a Migration Assistant import session.';
@@ -55,6 +59,12 @@ final class ImportMigrationAssistantPackageCommand extends Command
             return SymfonyCommand::FAILURE;
         }
 
+        if ((int) filesize($archivePath) > BindMigrationArchiveUploadAction::maximumUploadKilobytes() * 1024) {
+            $this->components->error((string) __('migration-assistant::commands.import.archive_too_large', ['size' => BindMigrationArchiveUploadAction::maximumUploadMegabytes()]));
+
+            return SymfonyCommand::FAILURE;
+        }
+
         $kind = $this->importKind();
 
         if (! $kind instanceof ImportSessionKind) {
@@ -63,6 +73,48 @@ final class ImportMigrationAssistantPackageCommand extends Command
             return SymfonyCommand::FAILURE;
         }
 
+        // The execution job re-authorises the session's recorded user, so a run that writes needs a named actor
+        // who may start imports. A validation-only run may stay unattributed.
+        $writes = (bool) $this->option('execute') || (bool) $this->option('sync');
+        $actor = $this->actor();
+        if ($this->option('actor') !== null && ! $actor instanceof Authenticatable) {
+            $this->components->error((string) __('migration-assistant::commands.import.actor_not_found'));
+
+            return SymfonyCommand::FAILURE;
+        }
+
+        if ($writes && ! $actor instanceof Authenticatable) {
+            $this->components->error((string) __('migration-assistant::commands.import.actor_required'));
+
+            return SymfonyCommand::FAILURE;
+        }
+
+        if ($actor instanceof Authenticatable && ! ActorCanStartPageImportAction::run($actor)) {
+            $this->components->error((string) __('migration-assistant::commands.import.actor_denied'));
+
+            return SymfonyCommand::FAILURE;
+        }
+
+        if (! $actor instanceof Authenticatable) {
+            return $this->import($archivePath, $kind);
+        }
+
+        $previous = Auth::guard()->user();
+        Auth::guard()->setUser($actor);
+
+        try {
+            return $this->import($archivePath, $kind);
+        } finally {
+            if ($previous instanceof Authenticatable) {
+                Auth::guard()->setUser($previous);
+            } else {
+                Auth::guard()->forgetUser();
+            }
+        }
+    }
+
+    private function import(string $archivePath, ImportSessionKind $kind): int
+    {
         $storedArchivePath = $this->storeArchive($archivePath);
         $state = BindMigrationArchiveUploadAction::run([
             'archive' => $storedArchivePath,
@@ -101,7 +153,7 @@ final class ImportMigrationAssistantPackageCommand extends Command
 
         if ((bool) $this->option('sync')) {
             $session->forceFill(['status' => ImportSessionStatus::Queued])->save();
-            (new ExecuteImportPlanJob($this->sessionId($session)))->handle(
+            new ExecuteImportPlanJob($this->sessionId($session))->handle(
                 resolve(PackageReader::class),
                 resolve(PageImportService::class),
                 resolve(MediaIngestService::class),
@@ -124,6 +176,19 @@ final class ImportMigrationAssistantPackageCommand extends Command
         $this->writeSessionResult($session);
 
         return SymfonyCommand::SUCCESS;
+    }
+
+    private function actor(): ?Authenticatable
+    {
+        $actorId = $this->option('actor');
+
+        if (! is_string($actorId) || preg_match('/\A[1-9]\d*\z/D', $actorId) !== 1) {
+            return null;
+        }
+
+        $actor = Auth::guard()->getProvider()->retrieveById((int) $actorId);
+
+        return $actor instanceof Authenticatable ? $actor : null;
     }
 
     private function hasBlockingValidationErrors(ImportSession $session): bool

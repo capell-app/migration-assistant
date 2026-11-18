@@ -1,22 +1,4 @@
 {
-    "whatThisPluginAdds": {
-        "text": "Migration Assistant adds staged import sessions for mapping, validating, executing, reviewing, retrying, and rolling back external content imports.",
-        "evidence": [
-            "src/Filament/Resources/ImportSessions/ImportSessionResource.php",
-            "src/Actions/BuildImportValidationSummaryAction.php",
-            "src/Jobs/ExecuteImportPlanJob.php",
-            "src/Actions/ExecuteImportRollbackAction.php"
-        ]
-    },
-    "surfaceOutcome": {
-        "text": "Admins can upload or select source data, map it to Capell records, validate the plan, run the import, and inspect row-level results.",
-        "evidence": [
-            "src/Filament/Pages/ImportPagesPage.php",
-            "src/Filament/Pages/ImportSitesPage.php",
-            "tests/Admin/Feature/Filament/Pages/ImportPagesPageValidateTest.php",
-            "tests/Admin/Feature/Filament/Pages/ImportPagesPageExecuteTest.php"
-        ]
-    },
     "whyItMatters": {
         "developers": {
             "text": "Source, target, and executor registries support file and database imports; database executors validate a previewed schema and track source keys for repeat imports.",
@@ -26,14 +8,29 @@
                 "src/Support/ImportSessionExecutorRegistry.php",
                 "tests/Integration/MigrationAssistant/ExecuteImportRollbackActionTest.php"
             ]
-        },
-        "teams": {
-            "text": "Teams can review migration problems before content is written and keep a recovery path when an import needs to be undone.",
+        }
+    },
+    "troubleshooting": [
+        {
+            "symptom": "A package upload fails in the admin before the import review opens",
+            "cause": "Livewire checks every temporary upload against `livewire.temporary_file_upload.rules`, whose default limit (12 MB) is lower than the package limit",
+            "check": "Compare the package size with the `max:` rule in `config/livewire.php` and with `migration-assistant.limits.max_package_upload_kilobytes`",
+            "fix": "Publish the Livewire config and raise the `max:` value in `temporary_file_upload.rules` to at least the package limit, or import the file with `php artisan migration-assistant:import`",
             "evidence": [
-                "docs/overview.admin.md",
-                "src/Actions/BuildImportRecoveryStatusAction.php",
-                "src/Actions/CreateImportRollbackReportAction.php"
+                "src/Filament/Pages/ImportPagesPage.php",
+                "src/Actions/Imports/BindMigrationArchiveUploadAction.php",
+                "tests/Admin/Feature/Filament/Pages/ImportPagesPageTest.php"
+            ]
+        },
+        {
+            "symptom": "`migration-assistant:import --execute` or `--sync` stops before creating a session",
+            "cause": "An import that writes pages runs as a named user, and no `--actor` was given or that user cannot import pages",
+            "check": "Read the error the command printed",
+            "fix": "Run the command again with `--actor=<user id>` for a user who holds the page import permission",
+            "evidence": [
+                "src/Console/Commands/ImportMigrationAssistantPackageCommand.php",
+                "tests/Feature/Admin/MigrationAssistantConsoleCommandsTest.php"
             ]
         }
-    }
+    ]
 }

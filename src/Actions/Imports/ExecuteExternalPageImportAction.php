@@ -68,6 +68,20 @@ final class ExecuteExternalPageImportAction
             );
 
             if (! $finalize) {
+                if ($report->createdPageIds !== []) {
+                    try {
+                        CreateImportRollbackReportAction::run($session, $report, merge: true);
+                    } catch (Throwable $throwable) {
+                        // The resumable WordPress executor owns final/failure recovery and records a missing
+                        // report explicitly. Other non-finalising callers cannot return without provenance.
+                        if (data_get($session->manifest, 'wordpress_wxr.format') !== 'capell-wordpress-wxr-spool-v1') {
+                            throw $throwable;
+                        }
+                        report($throwable);
+                        $session->forceFill(['result_summary' => array_replace($session->result_summary ?? [], ['rollback_report_missing' => true])])->save();
+                    }
+                }
+
                 return new ExternalPageImportExecutionResult($session->refresh(), $report);
             }
 
@@ -80,7 +94,7 @@ final class ExecuteExternalPageImportAction
             ])->save();
 
             if ($report->createdPageIds !== []) {
-                CreateImportRollbackReportAction::run($session, $report);
+                CreateImportRollbackReportAction::run($session, $report, merge: true);
             }
 
             if ($report->isSuccess()) {

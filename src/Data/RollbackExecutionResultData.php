@@ -19,4 +19,9 @@ final class RollbackExecutionResultData extends Data
         public bool $rejected = false,
         public int $restored = 0,
     ) {}
+
+    public function hasFailures(): bool
+    {
+        return $this->rejected || array_any($this->skipped, static fn (array $entry): bool => $entry['reason'] === 'delete_failed');
+    }
 }

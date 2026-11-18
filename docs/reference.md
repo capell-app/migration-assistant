@@ -6,7 +6,7 @@ Developer reference for `capell-app/migration-assistant`. Start with the [README
 
 ## Package Details
 
-Migration Assistant is an **Available**, **Schema-owning** Capell package in the **Capell Operations** product group. It ships as `capell-app/migration-assistant` and extends these surfaces: admin, console.
+Migration Assistant is an **Available** Capell package in the **Capell Operations** product group. It ships as `capell-app/migration-assistant` and extends these surfaces: admin, console.
 
 - Status: Available
 - Tier: free
@@ -20,7 +20,6 @@ Migration Assistant is an **Available**, **Schema-owning** Capell package in the
 ### Service providers
 
 - `Capell\MigrationAssistant\Providers\MigrationMetadataServiceProvider`
-- `Capell\MigrationAssistant\Providers\MigrationAssistantInstallServiceProvider`
 - `Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider`
 - `Capell\MigrationAssistant\Providers\AdminServiceProvider`
 
@@ -91,10 +90,12 @@ Migration Assistant is an **Available**, **Schema-owning** Capell package in the
 
 ### Actions
 
+- `AppendImportRollbackModelsAction`
 - `AssertDatabaseSourceLabelBoundAction`
 - `AssertDedicatedImportProcessAction`
 - `AssertInPlaceDatabaseIdentityAction`
 - `AuthorizeInPlaceRollbackActorAction`
+- `BuildDedicatedImportConfigurationAction`
 - `BuildImportRecoveryStatusAction`
 - `BuildImportValidationSummaryAction`
 - `BuildPageReviewRowsAction`
@@ -105,6 +106,7 @@ Migration Assistant is an **Available**, **Schema-owning** Capell package in the
 - `CreateImportRollbackReportAction`
 - `ExecuteImportRollbackAction`
 - `FinalisePlannedContentGraphAction`
+- `ActorCanStartPageImportAction`
 - `AdvancePageImportToValidationAction`
 - `AuthorizeExternalPageImportTargetAction`
 - `BindMigrationArchiveUploadAction`
@@ -116,6 +118,7 @@ Migration Assistant is an **Available**, **Schema-owning** Capell package in the
 - `StartPageImportAction`
 - `StartSiteImportAction`
 - `InspectDatabaseImportWritePlanAction`
+- `InstallMigrationAssistantPackageAction`
 - `InstallMigrationAssistantPermissionsAction`
 - `InvalidateRollbackCachesAction`
 - `PrepareMigrationScreenshotDetailAction`
@@ -125,6 +128,7 @@ Migration Assistant is an **Available**, **Schema-owning** Capell package in the
 - `ReclaimStaleImportSessionsAction`
 - `RegisterDatabaseSourceLabelAction`
 - `RetryImportSessionAction`
+- `RunDedicatedImportProcessAction`
 - `SetImportLegalHoldAction`
 - `StoreImportedMediaAction`
 
@@ -165,6 +169,10 @@ Migration Assistant is an **Available**, **Schema-owning** Capell package in the
 - `migration-assistant:rollback-execute`
 - `migration-assistant:rollback-report`
 - `migration-assistant:status`
+
+### Manifest action API
+
+- `install: Capell\MigrationAssistant\Actions\InstallMigrationAssistantPackageAction`
 
 ### Scheduled commands
 

@@ -6,6 +6,7 @@ namespace Capell\MigrationAssistant\Actions;
 
 use Capell\Core\Facades\CapellCore;
 use Capell\Core\Support\TableName;
+use Capell\HtmlCache\Actions\MarkAllCachedUrlsStaleAction;
 use Capell\HtmlCache\Actions\MarkCachedUrlsForSiteStaleAction;
 use Capell\MigrationAssistant\Support\DatabaseImportWriteGuard;
 use Illuminate\Support\Facades\Schema;
@@ -14,10 +15,12 @@ use Lorisleiva\Actions\Concerns\AsObject;
 use Throwable;
 
 /**
- * Marks every cached URL of the sites a rollback touched stale, once the rollback has committed. Without the HTML
- * cache package there is nothing to invalidate, and a failed invalidation never fails the rollback.
+ * Marks every cached URL of the sites a rollback touched stale, once the rollback has committed. A rollback of
+ * global records, such as settings, may change what any page renders, so it marks every cached URL stale, including
+ * URLs cached without a site. Without the
+ * HTML cache package there is nothing to invalidate, and a failed invalidation never fails the rollback.
  *
- * @method static int run(list<int> $siteIds)
+ * @method static int run(list<int> $siteIds, bool $everySite = false)
  */
 final class InvalidateRollbackCachesAction
 {
@@ -25,9 +28,9 @@ final class InvalidateRollbackCachesAction
     use AsObject;
 
     /** @param list<int> $siteIds */
-    public function handle(array $siteIds): int
+    public function handle(array $siteIds, bool $everySite = false): int
     {
-        if ($siteIds === [] || ! CapellCore::isPackageEnabled('capell-app/html-cache')) {
+        if (($siteIds === [] && ! $everySite) || ! CapellCore::isPackageEnabled('capell-app/html-cache')) {
             return 0;
         }
 
@@ -37,6 +40,20 @@ final class InvalidateRollbackCachesAction
 
         if (! Schema::hasTable(TableName::resolve('cached_model_urls'))) {
             return 0;
+        }
+
+        if ($everySite) {
+            try {
+                return MarkAllCachedUrlsStaleAction::run('import_rollback');
+            } catch (Throwable $exception) {
+                if (DatabaseImportWriteGuard::isDedicated()) {
+                    throw $exception;
+                }
+
+                logger()->warning('Import rollback could not mark every cached URL stale.', ['exception' => $exception::class]);
+
+                return 0;
+            }
         }
 
         $marked = 0;

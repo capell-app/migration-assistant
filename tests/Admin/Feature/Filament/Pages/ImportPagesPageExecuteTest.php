@@ -82,8 +82,7 @@ function bootExecuteWizardToDispatch(string $archiveName, string $workspaceName)
     );
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', sprintf('migration-assistant/imports/staged/%s', $archiveName))
-        ->set('data.archive_filename', $archiveName)
+        ->set('data.archive', migrationAssistantStagedPackageUpload(sprintf('migration-assistant/imports/staged/%s', $archiveName)))
         ->set('data.workspace_name', $workspaceName)
         ->call('parseAndAdvance')
         ->call('advanceToResolve')

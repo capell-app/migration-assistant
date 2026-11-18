@@ -19,11 +19,16 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsFake;
 use Lorisleiva\Actions\Concerns\AsObject;
+use RuntimeException;
 use Spatie\LaravelSettings\Models\SettingsProperty;
+use Spatie\MediaLibrary\MediaCollections\Filesystem;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\Permission\PermissionRegistrar;
 use Throwable;
 use UnexpectedValueException;
@@ -36,11 +41,42 @@ final class ExecuteImportRollbackAction
     use AsFake;
     use AsObject;
 
+    /** @var list<Media> media rows this run purged; their stored files are removed once the purge has committed */
+    private array $purgedMedia = [];
+
+    /** @var list<int>|null sites whose cached URLs are marked stale once the rollback has committed; null when none are due */
+    private ?array $staleSiteIds = null;
+
+    private bool $staleEverySite = false;
+
     public function handle(
         ImportRollbackReport $report,
         ?Authenticatable $actor = null,
         bool $dryRun = false,
     ): RollbackExecutionResultData {
+        $provenance = $report->provenance;
+        $dedicated = is_array($provenance) && data_get($provenance, 'write_plan.execution_mode') === 'dedicated-process';
+        try {
+            $result = $this->execute($report, $actor, $dryRun);
+            $staleSiteIds = $this->staleSiteIds;
+
+            // Both run only after every guarded transaction has committed, so no worker can re-render from rows the
+            // rollback has not yet removed, and no file is removed while its row could still be restored.
+            if ($staleSiteIds !== null) {
+                InvalidateRollbackCachesAction::run($staleSiteIds, $this->staleEverySite);
+            }
+            $this->removePurgedMediaFiles($dedicated);
+
+            return $result;
+        } finally {
+            $this->purgedMedia = [];
+            $this->staleSiteIds = null;
+            $this->staleEverySite = false;
+        }
+    }
+
+    private function execute(ImportRollbackReport $report, ?Authenticatable $actor, bool $dryRun): RollbackExecutionResultData
+    {
         $provenance = $report->provenance;
         if (is_array($provenance) && array_key_exists('write_plan', $provenance)) {
             if (! RollbackProvenance::hasValidSignature($provenance, $report->provenance_signature)) {
@@ -63,7 +99,8 @@ final class ExecuteImportRollbackAction
         }
 
         $siteIds = [];
-        $result = $connection->transaction(function () use ($report, $actor, $dryRun, &$siteIds, $connection, $plan): RollbackExecutionResultData {
+        $everySite = false;
+        $result = $connection->transaction(function () use ($report, $actor, $dryRun, &$siteIds, &$everySite, $connection, $plan): RollbackExecutionResultData {
             $actor = $this->freshActor($actor);
             $reportKey = $this->scalarKey($report);
             $lockedReport = ImportRollbackReport::on($plan?->writerConnection)
@@ -229,7 +266,7 @@ final class ExecuteImportRollbackAction
                 }
 
                 $operation = $version === 2 ? $entry['operation'] : 'created';
-                if (! Gate::forUser($actor)->allows($operation === 'updated' ? 'update' : 'delete', $model)) {
+                if (! $this->actorMayChangeRecord($actor, $operation === 'updated' ? 'updated' : 'created', $model)) {
                     return $this->rejectedResult($lockedReport, $actor, $dryRun, 'unauthorized');
                 }
 
@@ -281,14 +318,37 @@ final class ExecuteImportRollbackAction
                         // A row the import created is purged, not soft-deleted, so its unique keys are free for a re-import.
                         $soft = in_array(SoftDeletes::class, class_uses_recursive($model), true);
                         $blocker = $soft ? RollbackPurgeGuard::blockingReference($model) : null;
+                        try {
+                            // A failed observer or constraint must leave this record intact without undoing
+                            // other independent creations already recovered by a version-one report.
+                            $connection->transaction(static function () use ($model, $soft, $blocker): void {
+                                $removed = $soft && $blocker === null ? $model->forceDelete() : $model->delete();
+                                throw_unless($removed === true, UnexpectedValueException::class, 'Rollback target could not be deleted.');
+                            });
+                        } catch (Throwable $exception) {
+                            // Planned database rollback remains atomic. Connection/transaction failures and
+                            // programming errors also abort; only recoverable deletion failures are reported.
+                            if ($version !== 1 || ! $connection->getPdo()->inTransaction()
+                                || ($exception instanceof QueryException && ! str_starts_with((string) $exception->getCode(), '23'))
+                                || (! $exception instanceof QueryException && ! $exception instanceof RuntimeException)) {
+                                throw $exception;
+                            }
+                            $entry = RollbackProvenance::entryFor($model);
+                            $skipped[] = $this->skip($entry, 'delete_failed');
+                            Log::warning('Import rollback could not delete a recorded creation.', [
+                                'report_uuid' => $lockedReport->uuid,
+                                'type' => $entry['type'], 'id' => $entry['id'], 'exception' => $exception::class,
+                            ]);
+
+                            continue;
+                        }
                         if ($blocker !== null) {
-                            // Rows added after the import reference this one; a purge would cascade into them.
                             $softDeleted[] = ['type' => RollbackProvenance::entryFor($model)['type'], 'id' => $this->scalarKey($model), 'reason' => 'has_references:' . $blocker];
                         }
 
-                        $removed = $soft && $blocker === null ? $model->forceDelete() : $model->delete();
-                        if ($removed !== true) {
-                            throw new UnexpectedValueException('Rollback target could not be deleted.');
+                        if ($model instanceof Media && $blocker === null) {
+                            // A signed in-place rollback runs without model events, so the media observer never removes the file.
+                            $this->purgedMedia[] = $model;
                         }
 
                         $deleted++;
@@ -337,15 +397,52 @@ final class ExecuteImportRollbackAction
 
             $this->audit($lockedReport, $actor, $result, $skipped === [] ? 'completed' : 'completed_with_skips');
             $siteIds = array_values(array_unique(array_filter(array_column($entries, 'site_id'), is_int(...))));
+            $everySite = in_array(null, array_column($entries, 'site_id'), true);
 
             return $result;
         });
         if (! $dryRun && ! $result->rejected && ($result->deleted + $result->restored) > 0) {
             // Removing or restoring rows quietly leaves the public HTML cache serving the imported pages.
-            InvalidateRollbackCachesAction::run($siteIds);
+            $this->staleSiteIds = $siteIds;
+            $this->staleEverySite = $everySite;
         }
 
         return $result;
+    }
+
+    /**
+     * Every purged file is attempted. The rows are already gone and a rerun resolves nothing, so the failures are named
+     * for manual removal: logged, or raised together from a dedicated process whose operator must act on them.
+     */
+    private function removePurgedMediaFiles(bool $dedicated): void
+    {
+        $failed = [];
+        foreach ($this->purgedMedia as $media) {
+            try {
+                resolve(Filesystem::class)->removeAllFiles($media);
+            } catch (Throwable $exception) {
+                try {
+                    $path = $media->getPathRelativeToRoot();
+                } catch (Throwable) {
+                    $path = $media->file_name;
+                }
+
+                $failed[] = sprintf('media %s on disk %s at %s (%s)', (string) $this->scalarKey($media), $media->disk, $path, $exception::class);
+            }
+        }
+
+        $this->purgedMedia = [];
+        if ($failed === []) {
+            return;
+        }
+
+        if ($dedicated) {
+            throw new RuntimeException('The rollback has committed, but these purged media files could not be removed: ' . implode('; ', $failed) . '.');
+        }
+
+        foreach ($failed as $failure) {
+            logger()->warning('Import rollback could not remove a purged media file: ' . $failure);
+        }
     }
 
     /**
@@ -383,7 +480,14 @@ final class ExecuteImportRollbackAction
             return $version === 2 && $this->isValidRolePairEntry($entry);
         }
 
-        return $this->hasExactKeys($entry, $version === 2 ? ['after_hash', 'before_hash', 'created_at', 'id', 'mapping', 'operation', 'site_id', 'type', 'updated_at'] : ['created_at', 'id', 'site_id', 'type', 'updated_at'])
+        $versionOneKeys = ['created_at', 'id', 'site_id', 'type', 'updated_at'];
+        $validFingerprint = true;
+        if ($version === 1 && array_key_exists('attributes_hash', $entry)) {
+            $versionOneKeys[] = 'attributes_hash';
+            $validFingerprint = is_string($entry['attributes_hash']) && preg_match('/\A[a-f0-9]{64}\z/', $entry['attributes_hash']) === 1;
+        }
+
+        return $validFingerprint && $this->hasExactKeys($entry, $version === 2 ? ['after_hash', 'before_hash', 'created_at', 'id', 'mapping', 'operation', 'site_id', 'type', 'updated_at'] : $versionOneKeys)
             && ($version !== 2 || ($this->validMapping($entry['mapping'] ?? null, $entry['operation'] ?? null) && in_array($entry['operation'] ?? null, ['created', 'updated'], true) && is_string($entry['after_hash'] ?? null) && preg_match('/\A[a-f0-9]{64}\z/', $entry['after_hash']) === 1 && is_string($entry['before_hash'] ?? null) && preg_match('/\A[a-f0-9]{64}\z/', $entry['before_hash']) === 1))
             && is_string($type)
             && RollbackProvenance::isAllowedType($type)
@@ -490,6 +594,22 @@ final class ExecuteImportRollbackAction
         $siteIds = array_values(array_unique(array_filter(array_column($entries, 'site_id'), is_int(...))));
 
         return array_all($siteIds, fn (int $siteId): bool => $this->actorCanRollbackSite($actor, $siteId));
+    }
+
+    /**
+     * A record whose model has a registered policy is changed only when that policy allows it; Capell Admin registers
+     * policies for roles, users, pages and other admin resources. Records whose model has no registered policy, such as
+     * settings properties, permissions and translations, have no per-record rule to apply; the actor has already passed
+     * the session checks (active, `import-session.rollback`, global administrator for global rows and site permission
+     * for each affected site), which are what authorise reverting them.
+     */
+    private function actorMayChangeRecord(?Authenticatable $actor, string $operation, Model $model): bool
+    {
+        if (Gate::getPolicyFor($model) === null) {
+            return $actor instanceof Authenticatable;
+        }
+
+        return Gate::forUser($actor)->allows($operation === 'updated' ? 'update' : 'delete', $model);
     }
 
     private function actorCanRollbackSite(Authenticatable $actor, int $siteId): bool

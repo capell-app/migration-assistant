@@ -8,7 +8,7 @@ use Capell\MigrationAssistant\Enums\InPlaceDatabaseRefusalReason;
 use Illuminate\Support\Facades\DB;
 use PDO;
 
-/** Verifies an already restricted CLI bootstrap; never changes its default or connection configuration. */
+/** Verifies the launcher-built restricted CLI bootstrap; never changes its default or connection configuration. */
 final class AssertDedicatedImportProcessAction
 {
     private ?string $writer = null;
@@ -24,6 +24,14 @@ final class AssertDedicatedImportProcessAction
         sort($names);
         $expected = [$inspector, $reader, $writer];
         sort($expected);
+        // The defaults must have been fixed before the child booted: a launcher-built configuration cache is the
+        // only source, so no provider, environment file or runtime call chose them.
+        if (! app()->configurationIsCached() || config(BuildDedicatedImportConfigurationAction::MARKER) !== true) {
+            throw InPlaceDatabaseRefusalReason::ProfileMismatch->exception('Dedicated imports must run in a child process booted from the launcher-built configuration cache.');
+        }
+
+        $this->removeLauncherCache();
+
         if (! app()->runningInConsole() || count(array_unique($expected)) !== 3 || $names !== $expected || array_diff(array_keys(DB::getConnections()), $expected) !== [] || DB::getDefaultConnection() !== $writer || config('queue.default') !== 'sync' || config('cache.default') !== 'array' || config('session.driver') !== 'array') {
             throw InPlaceDatabaseRefusalReason::ProfileMismatch->exception('Dedicated imports require a restricted writer as the bootstrapped default, only three planned profiles, and synchronous queue/array cache/session stores.');
         }
@@ -64,6 +72,20 @@ final class AssertDedicatedImportProcessAction
         $connection = DB::connection($writer);
         if ($connection->transactionLevel() !== 0 || $connection->getPdo()->inTransaction()) {
             throw InPlaceDatabaseRefusalReason::ProfileMismatch->exception('The dedicated import left an unfinished transaction at termination.');
+        }
+    }
+
+    /**
+     * The configuration is already loaded from the launcher's cache, which holds the restricted credentials, is
+     * removed before anything else runs rather than when the launcher exits: a killed launcher then leaves nothing behind.
+     */
+    private function removeLauncherCache(): void
+    {
+        $path = getenv('APP_CONFIG_CACHE');
+        $root = realpath(storage_path('framework/dedicated-imports'));
+        $real = is_string($path) ? realpath($path) : false;
+        if ($root !== false && $real !== false && str_starts_with($real, $root . DIRECTORY_SEPARATOR) && basename($real) === 'config.php') {
+            @unlink($real);
         }
     }
 }

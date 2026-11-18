@@ -52,10 +52,21 @@ final class ShowMigrationAssistantRollbackReportCommand extends Command
         }
 
         $this->components->info((string) $report->manual_instructions);
-        $this->table([
-            (string) __('migration-assistant::commands.rollback_report.columns.model'),
-            (string) __('migration-assistant::commands.rollback_report.columns.id'),
-        ], $payload['created_models']);
+        if ($payload['created_models'] !== [] || $payload['changes'] === []) {
+            $this->table([
+                (string) __('migration-assistant::commands.rollback_report.columns.model'),
+                (string) __('migration-assistant::commands.rollback_report.columns.id'),
+            ], $payload['created_models']);
+        }
+
+        if ($payload['changes'] !== []) {
+            $this->table([
+                (string) __('migration-assistant::commands.rollback_report.columns.type'),
+                (string) __('migration-assistant::commands.rollback_report.columns.id'),
+                (string) __('migration-assistant::commands.rollback_report.columns.site'),
+                (string) __('migration-assistant::commands.rollback_report.columns.operation'),
+            ], array_map(static fn (array $change): array => [$change['type'], $change['id'], $change['site_id'] ?? (string) __('migration-assistant::commands.rollback_report.global'), $change['operation']], $payload['changes']));
+        }
 
         return SymfonyCommand::SUCCESS;
     }
@@ -73,7 +84,7 @@ final class ShowMigrationAssistantRollbackReportCommand extends Command
     }
 
     /**
-     * @return array{session_id: int|string|null, source_filename: string|null, created_models: list<array{class: string, id: int|string}>, summary: array<array-key, mixed>, manual_instructions: string}
+     * @return array{session_id: int|string|null, source_filename: string|null, created_models: list<array{class: string, id: int|string}>, changes: list<array{type: string, id: int|string, site_id: int|null, operation: string}>, summary: array<array-key, mixed>, manual_instructions: string}
      */
     private function payloadForReport(ImportRollbackReport $report): array
     {
@@ -90,8 +101,36 @@ final class ShowMigrationAssistantRollbackReportCommand extends Command
                     && is_string($model['class'])
                     && (is_int($model['id']) || is_string($model['id'])),
             )),
+            'changes' => $this->changes($report),
             'summary' => is_array($report->summary) ? $report->summary : [],
             'manual_instructions' => $report->manual_instructions,
         ];
+    }
+
+    /**
+     * The recorded changes of a database import report, which keeps them in its provenance rather than in created
+     * models. Only the record identity and operation are listed; values and before images stay in the report.
+     *
+     * @return list<array{type: string, id: int|string, site_id: int|null, operation: string}>
+     */
+    private function changes(ImportRollbackReport $report): array
+    {
+        $provenance = is_array($report->provenance) ? $report->provenance : [];
+        $entries = is_array($provenance['entries'] ?? null) ? $provenance['entries'] : [];
+        $changes = [];
+        foreach ($entries as $entry) {
+            if (! is_array($entry) || ! is_string($entry['type'] ?? null) || (! is_int($entry['id'] ?? null) && ! is_string($entry['id'] ?? null))) {
+                continue;
+            }
+
+            $changes[] = [
+                'type' => $entry['type'],
+                'id' => $entry['id'],
+                'site_id' => is_int($entry['site_id'] ?? null) ? $entry['site_id'] : null,
+                'operation' => is_string($entry['operation'] ?? null) ? $entry['operation'] : 'created',
+            ];
+        }
+
+        return $changes;
     }
 }

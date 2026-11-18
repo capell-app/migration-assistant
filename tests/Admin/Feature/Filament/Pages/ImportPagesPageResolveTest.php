@@ -130,8 +130,7 @@ it('skips resolve and lands on validate when the map is trivial', function (): v
     writeBasicImportPackage($absolutePath, $uuid, (int) $site->getKey(), '/trivial-resolve');
 
     Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', $relativePath)
-        ->set('data.archive_filename', 'trivial.zip')
+        ->set('data.archive', migrationAssistantStagedPackageUpload($relativePath))
         ->set('data.workspace_name', 'Trivial')
         ->call('parseAndAdvance')
         ->assertSet('step', ImportPagesPage::STEP_REVIEW)
@@ -149,8 +148,7 @@ it('transitions review → resolve when the map has unresolved refs', function (
     stageResolvePackage('migration-assistant/imports/staged/resolve.zip', $uuid, (int) $site->getKey(), $layoutId, '/resolve-step');
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', 'migration-assistant/imports/staged/resolve.zip')
-        ->set('data.archive_filename', 'resolve.zip')
+        ->set('data.archive', migrationAssistantStagedPackageUpload('migration-assistant/imports/staged/resolve.zip'))
         ->set('data.workspace_name', 'Resolve test')
         ->call('parseAndAdvance')
         // Unresolved layout ref keeps the wizard on review after parse (warning surfaced).
@@ -198,8 +196,7 @@ it('blocks dispatch when a relation decision is invalid and persists decisions w
     $siteRef = 'site:' . $site->getKey();
 
     $component = Livewire::test(ImportPagesPage::class)
-        ->set('data.archive', $relativePath)
-        ->set('data.archive_filename', 'relation-decisions.zip')
+        ->set('data.archive', migrationAssistantStagedPackageUpload($relativePath))
         ->set('data.workspace_name', 'Relations')
         ->call('parseAndAdvance')
         ->assertSet('step', ImportPagesPage::STEP_REVIEW);

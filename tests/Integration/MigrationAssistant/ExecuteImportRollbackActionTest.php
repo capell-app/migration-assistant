@@ -17,6 +17,7 @@ use Capell\MigrationAssistant\Actions\RegisterDatabaseSourceLabelAction;
 use Capell\MigrationAssistant\Actions\RetryImportSessionAction;
 use Capell\MigrationAssistant\Data\DatabaseRollbackChange;
 use Capell\MigrationAssistant\Data\DatabaseSourceManifest;
+use Capell\MigrationAssistant\Data\RollbackExecutionResultData;
 use Capell\MigrationAssistant\Data\SourceKeyImportResult;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
@@ -26,16 +27,20 @@ use Capell\MigrationAssistant\Models\ImportRollbackReport;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Services\Import\ImportExecutionReport;
 use Capell\MigrationAssistant\Support\RollbackProvenance;
+use Capell\MigrationAssistant\Support\RollbackPurgeGuard;
 use Capell\MigrationAssistant\Support\SourceKeyImporter;
 use Capell\MigrationAssistant\Tests\Fixtures\FakeDatabaseImportExecutor;
 use Capell\Navigation\Models\Navigation;
 use Capell\Tests\Fixtures\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\LaravelSettings\Models\SettingsProperty;
+use Spatie\MediaLibrary\MediaCollections\Filesystem;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -290,6 +295,7 @@ it('rolls back created and updated database entities', function (string $entity,
     $actor = migrationAssistantRollbackActor();
     if ($entity === 'navigation') {
         (require __DIR__ . '/../../../../navigation/database/migrations/2026_05_10_190860_01_create_navigations_table.php')->up();
+        (require __DIR__ . '/../../../../navigation/database/migrations/2026_11_14_000001_scope_navigation_key_uniqueness_to_active_menus.php')->up();
     }
     if ($entity === 'article') {
         app()->register(FrontendServiceProvider::class);
@@ -308,7 +314,8 @@ it('rolls back created and updated database entities', function (string $entity,
         'setting' => 'payload',
         default => 'name',
     };
-    $before = $updated ? $model->getAttributes() : null;
+    // Read the stored row first: a factory-built model lacks the columns the database defaults.
+    $before = $updated ? $model->refresh()->getAttributes() : null;
     if ($updated) {
         $model->forceFill([$field => $entity === 'setting' ? '"after"' : 'After import'])->save();
         $model->refresh();
@@ -574,6 +581,7 @@ it('rolls back an imported Blog article through its default rollback target', fu
 
 it('rolls back an imported Navigation menu through its default rollback target', function (): void {
     (require __DIR__ . '/../../../../navigation/database/migrations/2026_05_10_190860_01_create_navigations_table.php')->up();
+    (require __DIR__ . '/../../../../navigation/database/migrations/2026_11_14_000001_scope_navigation_key_uniqueness_to_active_menus.php')->up();
     $actor = migrationAssistantRollbackActor();
     $navigation = Navigation::factory()->create();
     $session = ImportSession::query()->create([
@@ -611,6 +619,7 @@ function migrationAssistantCreatedChange(Model $model, ImportSession $session): 
 it('purges a created soft-deleting row on rollback so the same key can be imported again', function (): void {
     $actor = migrationAssistantRollbackActor();
     (require __DIR__ . '/../../../../navigation/database/migrations/2026_05_10_190860_01_create_navigations_table.php')->up();
+    (require __DIR__ . '/../../../../navigation/database/migrations/2026_11_14_000001_scope_navigation_key_uniqueness_to_active_menus.php')->up();
     $navigation = Navigation::factory()->create(['key' => 'main']);
     $session = ImportSession::query()->create([
         'user_id' => $actor->getKey(), 'kind' => ImportSessionKind::PageImport,
@@ -726,6 +735,7 @@ it('still removes a role assignment that was re-created after the import, becaus
 it('soft-deletes instead of purging a created row that something added after the import still references', function (): void {
     $actor = migrationAssistantRollbackActor();
     (require __DIR__ . '/../../../../navigation/database/migrations/2026_05_10_190860_01_create_navigations_table.php')->up();
+    (require __DIR__ . '/../../../../navigation/database/migrations/2026_11_14_000001_scope_navigation_key_uniqueness_to_active_menus.php')->up();
     Schema::create('purge_probe', static function (Illuminate\Database\Schema\Blueprint $table): void {
         $table->id();
         $table->string('owner_type');
@@ -765,4 +775,101 @@ it('marks the cached URLs of the rolled-back site stale', function (): void {
 
     expect(DB::table('stale_cached_urls')->where('site_id', $page->site_id)->where('reason', 'import_rollback')->count())->toBe(1)
         ->and(DB::table('stale_cached_urls')->where('site_id', $other->id)->count())->toBe(0);
+});
+
+it('marks every cached site stale when a rollback removes a global setting', function (): void {
+    $actor = migrationAssistantRollbackActor();
+    CapellCore::registerPackage('capell-app/html-cache');
+    CapellCore::getPackage('capell-app/html-cache')->installed = true;
+    foreach (['2026_05_10_190854_01_create_cached_model_urls_table.php', '2026_05_14_000001_create_stale_cached_urls_table.php', '2026_06_07_000001_add_telemetry_to_cached_model_urls_table.php'] as $migration) {
+        (require __DIR__ . '/../../../../html-cache/database/migrations/' . $migration)->up();
+    }
+    $page = Page::factory()->create();
+    $other = Site::factory()->create();
+    foreach ([$page->site_id, $other->id] as $siteId) {
+        DB::table('cached_model_urls')->insert(['url' => '/c-' . $siteId, 'url_hash' => hash('sha256', '/c-' . $siteId), 'path' => '/c-' . $siteId, 'site_id' => $siteId, 'cacheable_type' => $page->getMorphClass(), 'cacheable_id' => $page->id, 'created_at' => now(), 'updated_at' => now()]);
+    }
+    // A URL cached without a site still renders the global setting.
+    DB::table('cached_model_urls')->insert(['url' => '/c-global', 'url_hash' => hash('sha256', '/c-global'), 'path' => '/c-global', 'site_id' => null, 'cacheable_type' => $page->getMorphClass(), 'cacheable_id' => $page->id, 'created_at' => now(), 'updated_at' => now()]);
+    $setting = SettingsProperty::query()->create(['group' => 'test', 'name' => 'global_rollback', 'payload' => '"imported"', 'locked' => false]);
+    $session = ImportSession::query()->create([
+        'user_id' => $actor->getKey(), 'kind' => ImportSessionKind::SiteImport,
+        'status' => ImportSessionStatus::Completed, 'source_environment' => 'fixture', 'executed_at' => now(),
+    ]);
+    $report = CreateDatabaseRollbackReportAction::run($session, [migrationAssistantCreatedChange($setting, $session)]);
+
+    $result = ExecuteImportRollbackAction::run($report, actor: $actor);
+
+    expect($result->deleted)->toBe(1)
+        ->and(data_get($report->refresh()->provenance, 'entries.0.site_id'))->toBeNull()
+        ->and(DB::table('stale_cached_urls')->where('site_id', $page->site_id)->where('reason', 'import_rollback')->count())->toBe(1)
+        ->and(DB::table('stale_cached_urls')->where('site_id', $other->id)->where('reason', 'import_rollback')->count())->toBe(1)
+        ->and(DB::table('stale_cached_urls')->whereNull('site_id')->where('url', '/c-global')->where('reason', 'import_rollback')->count())->toBe(1);
+});
+
+it('attempts every purged media file and names each one it could not remove', function (): void {
+    $actor = migrationAssistantRollbackActor();
+    $session = ImportSession::query()->create([
+        'user_id' => $actor->getKey(), 'kind' => ImportSessionKind::SiteImport,
+        'status' => ImportSessionStatus::Completed, 'source_environment' => 'fixture', 'executed_at' => now(),
+    ]);
+    $first = Media::factory()->model(Page::factory()->create())->create();
+    $second = Media::factory()->model(Page::factory()->create())->create();
+    $report = CreateDatabaseRollbackReportAction::run($session, [migrationAssistantCreatedChange($first, $session), migrationAssistantCreatedChange($second, $session)]);
+    $attempted = [];
+    $filesystem = Mockery::mock(Filesystem::class);
+    $filesystem->shouldReceive('removeAllFiles')->andReturnUsing(static function (Media $media) use (&$attempted): void {
+        $attempted[] = $media->getKey();
+
+        throw new RuntimeException('disk unavailable');
+    });
+    app()->instance(Filesystem::class, $filesystem);
+    $log = Log::spy();
+
+    // As in a signed in-place rollback, no model events fire, so only the rollback itself removes the files.
+    $result = Model::withoutEvents(static fn (): RollbackExecutionResultData => ExecuteImportRollbackAction::run($report, actor: $actor));
+
+    expect($result->deleted)->toBe(2)
+        ->and($attempted)->toEqualCanonicalizing([$first->getKey(), $second->getKey()])
+        ->and(Media::query()->withoutGlobalScopes()->withTrashed()->whereKey([$first->getKey(), $second->getKey()])->count())->toBe(0);
+    foreach ([$first, $second] as $media) {
+        $log->shouldHaveReceived('warning')->withArgs(static fn (string $message): bool => str_contains($message, 'media ' . $media->getKey() . ' on disk ' . $media->disk))->once();
+    }
+});
+
+it('reports a failed deletion while recovering the other recorded creations', function (): void {
+    $actor = migrationAssistantRollbackActor();
+    $kept = Page::factory()->create();
+    $removed = activity()->withoutLogs(static fn (): Page => Page::factory()->create());
+    throw_unless($removed instanceof Page, LogicException::class);
+    // This fixture has no independent references, so recovery must purge it rather than retain a soft-deleted row.
+    $removed->pageUrls()->withTrashed()->forceDelete();
+    $removed->translations()->withTrashed()->forceDelete();
+    expect(RollbackPurgeGuard::blockingReference($removed))->toBeNull();
+    $session = ImportSession::query()->create([
+        'uuid' => (string) Str::uuid(), 'user_id' => $actor->getKey(),
+        'kind' => ImportSessionKind::PageImport, 'status' => ImportSessionStatus::Completed,
+    ]);
+    $report = CreateImportRollbackReportAction::run($session, new ImportExecutionReport(
+        pagesCreated: 2,
+        pagesSkipped: 0,
+        createdPageIds: [$kept->id, $removed->id],
+        errors: [],
+    ));
+    Page::deleting(static function (Page $page) use ($kept): void {
+        if ($page->is($kept)) {
+            throw new RuntimeException('Deletion refused.');
+        }
+    });
+
+    $result = ExecuteImportRollbackAction::run($report, actor: $actor);
+
+    expect($result->deleted)->toBe(1)
+        ->and(array_column($result->skipped, 'reason'))->toContain('delete_failed')
+        ->and(Page::query()->withoutGlobalScopes()->whereKey($kept->getKey())->exists())->toBeTrue()
+        ->and(Page::query()->withoutGlobalScopes()->whereKey($removed->getKey())->exists())->toBeFalse();
+    $exit = Artisan::call('migration-assistant:rollback-execute', [
+        'session' => $session->uuid, '--actor' => $actor->getKey(), '--json' => true,
+    ]);
+    expect($exit)->toBe(1);
 });

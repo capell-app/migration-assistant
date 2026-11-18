@@ -17,6 +17,12 @@ use InvalidArgumentException;
 final class SourceKeyImporter
 {
     /**
+     * Source environments whose sessions must carry a 64-character source identity, so two
+     * different sources that reuse the same keys can never update each other's records.
+     */
+    public const array IDENTITY_BOUND_ENVIRONMENTS = ['voyager-db', 'statamic-files'];
+
+    /**
      * @template T of Model
      *
      * @param  array<string, mixed>  $row
@@ -49,8 +55,9 @@ final class SourceKeyImporter
         $environment = $session->source_environment;
         $manifest = $session->manifest;
         $sourceIdentity = is_array($manifest) ? ($manifest['source_identity'] ?? null) : null;
-        if ($environment === 'voyager-db' && (! is_string($sourceIdentity) || preg_match('/\A[a-f0-9]{64}\z/', $sourceIdentity) !== 1)) {
-            throw new ImportRefusedException('Voyager source identity is required.');
+        $identityBound = in_array($environment, self::IDENTITY_BOUND_ENVIRONMENTS, true);
+        if ($identityBound && (! is_string($sourceIdentity) || preg_match('/\A[a-f0-9]{64}\z/', $sourceIdentity) !== 1)) {
+            throw new ImportRefusedException($environment === 'voyager-db' ? 'Voyager source identity is required.' : 'Import source identity is required.');
         }
 
         $siteId = $session->target_type === 'site' ? $session->target_id : null;
@@ -66,7 +73,7 @@ final class SourceKeyImporter
             throw new ImportRefusedException('Import target and source keys must use the same database connection.');
         }
 
-        return $connection->transaction(function () use ($connection, $plan, $environment, $entityType, $sourceKey, $row, $targetClass, $apply, $force, $siteId, $sourceIdentity): SourceKeyImportResult {
+        return $connection->transaction(function () use ($connection, $plan, $environment, $entityType, $sourceKey, $row, $targetClass, $apply, $force, $siteId, $sourceIdentity, $identityBound): SourceKeyImportResult {
             $identity = ['site_scope' => $siteId === null ? 'global' : 'site:' . $siteId, 'source_environment' => $environment, 'entity_type' => $entityType, 'source_key_hash' => hash('sha256', $sourceKey)];
             $mapping = $connection->table(TableName::resolve('import_source_keys'))->where($identity)->lockForUpdate()->first();
             $sourceChecksum = $this->checksum($row);
@@ -75,7 +82,7 @@ final class SourceKeyImporter
             $originalKey = null;
 
             if ($mapping !== null) {
-                if ($environment === 'voyager-db' && $mapping->source_identity !== $sourceIdentity) {
+                if ($identityBound && $mapping->source_identity !== $sourceIdentity) {
                     throw new ImportRefusedException('Source key identity does not match.');
                 }
 

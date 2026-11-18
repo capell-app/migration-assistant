@@ -1,12 +1,12 @@
 {
     "name": "capell-app/migration-assistant",
-    "description": "Safely move pages and media into Capell — preview every change, validate before you write, and keep a rollback report for every import.",
+    "description": "Review, validate and import Capell page and site packages into another install, with a saved session for each import.",
     "type": "library",
     "license": "proprietary",
     "require": {
         "php": "^8.4",
         "capell-app/admin": "^1.0.66",
-        "capell-app/core": "^1.0.75",
+        "capell-app/core": "^1.0.78",
         "illuminate/database": "^11.0|^12.0|^13.0",
         "illuminate/support": "^12.41.1|^13.0",
         "lorisleiva/laravel-actions": "^2.8",

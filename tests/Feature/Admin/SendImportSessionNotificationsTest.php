@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Capell\Core\Facades\CapellCore;
 use Capell\MigrationAssistant\Enums\ImportSessionKind;
 use Capell\MigrationAssistant\Enums\ImportSessionStatus;
 use Capell\MigrationAssistant\Events\ImportCompleted;
@@ -10,6 +11,7 @@ use Capell\MigrationAssistant\Listeners\SendImportSessionNotifications;
 use Capell\MigrationAssistant\Models\ImportSession;
 use Capell\MigrationAssistant\Notifications\ImportCompletedNotification;
 use Capell\MigrationAssistant\Notifications\ImportFailedNotification;
+use Capell\MigrationAssistant\Providers\MigrationAssistantServiceProvider;
 use Capell\Tests\Fixtures\Models\User;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Support\Facades\Notification;
@@ -33,6 +35,25 @@ function makeImportSessionForNotification(?int $userId = null): ImportSession
         'result_summary' => ['pages_created' => 5, 'relations_resolved' => 2],
     ]);
 }
+
+it('sends no import notifications while Migration Assistant is disabled, and resumes once re-enabled', function (): void {
+    Notification::fake();
+    $initiator = User::factory()->create();
+    $session = makeImportSessionForNotification($initiator->getKey());
+
+    CapellCore::markPackageDisabled(MigrationAssistantServiceProvider::$packageName);
+    (new SendImportSessionNotifications)->handleCompleted(new ImportCompleted($session));
+    (new SendImportSessionNotifications)->handleFailed(new ImportFailed($session, 'Import failed.'));
+
+    Notification::assertNothingSent();
+
+    CapellCore::markPackageInstalled(MigrationAssistantServiceProvider::$packageName);
+    (new SendImportSessionNotifications)->handleCompleted(new ImportCompleted($session));
+    (new SendImportSessionNotifications)->handleFailed(new ImportFailed($session, 'Import failed.'));
+
+    Notification::assertSentTo($initiator, ImportCompletedNotification::class);
+    Notification::assertSentTo($initiator, ImportFailedNotification::class);
+});
 
 it('notifies the initiating user on a completed import via mail and database channels', function (): void {
     Notification::fake();
