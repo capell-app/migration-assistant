@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\MigrationAssistant\Listeners;
 
-use Capell\Core\Facades\CapellCore;
+use Capell\Core\Actions\Extensions\RunUnderPackageAdmissionAction;
 use Capell\MigrationAssistant\Events\ImportCompleted;
 use Capell\MigrationAssistant\Events\ImportFailed;
 use Capell\MigrationAssistant\Models\ImportSession;
@@ -25,28 +25,24 @@ class SendImportSessionNotifications
 {
     public function handleCompleted(ImportCompleted $event): void
     {
-        if (! CapellCore::isPackageEnabled(MigrationAssistantServiceProvider::$packageName)) {
-            return;
-        }
-
-        $this->dispatch(
-            $event->session,
-            new ImportCompletedNotification($event->session),
-            'completed',
-        );
+        RunUnderPackageAdmissionAction::run(MigrationAssistantServiceProvider::$packageName, function () use ($event): void {
+            $this->dispatch(
+                $event->session,
+                new ImportCompletedNotification($event->session),
+                'completed',
+            );
+        });
     }
 
     public function handleFailed(ImportFailed $event): void
     {
-        if (! CapellCore::isPackageEnabled(MigrationAssistantServiceProvider::$packageName)) {
-            return;
-        }
-
-        $this->dispatch(
-            $event->session,
-            new ImportFailedNotification($event->session),
-            'failed',
-        );
+        RunUnderPackageAdmissionAction::run(MigrationAssistantServiceProvider::$packageName, function () use ($event): void {
+            $this->dispatch(
+                $event->session,
+                new ImportFailedNotification($event->session),
+                'failed',
+            );
+        });
     }
 
     private function dispatch(ImportSession $session, NotificationBase $notification, string $outcome): void

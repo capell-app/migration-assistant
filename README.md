@@ -10,9 +10,9 @@ The writing happens in background jobs, which your host or developer must have r
 
 Two commands undo an import. One lists the records it created, the other removes those nobody has edited since, and a preview run shows the result first. Each import then appears in the Import Sessions list in the admin with its status.
 
-- **Price and availability:** Check current availability and price on the [Capell Marketplace listing](https://capell.app/extensions/migration-assistant).
-- **Licence:** Check the licence terms on the [Capell Marketplace listing](https://capell.app/extensions/migration-assistant).
-- **Requires:** `PHP ^8.4`, `capell-app/admin ^1.0.66`, `capell-app/core ^1.0.78`, `illuminate/database ^11.0|^12.0|^13.0`, `illuminate/support ^12.41.1|^13.0`, `lorisleiva/laravel-actions ^2.8`, `spatie/laravel-package-tools ^1.15`.
+- **Price and availability:** Check current availability and price on the [Capell Marketplace listing](https://capell.app/marketplace/extensions/migration-assistant).
+- **Licence:** Check the licence terms on the [Capell Marketplace listing](https://capell.app/marketplace/extensions/migration-assistant).
+- **Requires:** `PHP ^8.4`, `capell-app/admin ^1.0.78`, `capell-app/core ^1.0.79`, `illuminate/database ^11.0|^12.0|^13.0`, `illuminate/support ^12.41.1|^13.0`, `lorisleiva/laravel-actions ^2.8`, `spatie/laravel-package-tools ^1.15`.
 - **Install:** `composer require capell-app/migration-assistant`.
 
 ## Quick Start
@@ -31,7 +31,7 @@ Source, target, and executor registries support file and database imports; datab
 
 ## Limits And Pitfalls
 
-- Install the required Capell packages at the versions in `composer.json`: `capell-app/admin ^1.0.66`, `capell-app/core ^1.0.78`.
+- Install the required Capell packages at the versions in `composer.json`: `capell-app/admin ^1.0.78`, `capell-app/core ^1.0.79`.
 - Run migrations before opening package resources or public routes.
 - Keep the host Laravel scheduler running so package-registered schedules can execute: `migration-assistant:reclaim-stale (everyTenMinutes; manifest declared)`.
 

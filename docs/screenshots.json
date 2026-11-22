@@ -1,7 +1,8 @@
 {
     "package": "migration-assistant",
     "composerName": "capell-app/migration-assistant",
-    "generatedFor": "deployment-screenshot-runner",
+    "generatedFor": "shared-capell-screenshot-runner",
+    "provenancePolicy": "runner-only-v1",
     "requiresInstalledPackage": true,
     "auditStatus": "authentic-installed-app-captured",
     "auditReason": "Required Marketplace evidence is captured from the real installed Migration Assistant Filament resource after runner-owned deterministic setup.",

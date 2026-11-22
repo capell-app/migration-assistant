@@ -129,6 +129,7 @@ Migration Assistant is an **Available** Capell package in the **Capell Operation
 - `RegisterDatabaseSourceLabelAction`
 - `RetryImportSessionAction`
 - `RunDedicatedImportProcessAction`
+- `SealImportRollbackProvenanceAction`
 - `SetImportLegalHoldAction`
 - `StoreImportedMediaAction`
 

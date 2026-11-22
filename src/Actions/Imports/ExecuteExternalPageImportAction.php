@@ -9,6 +9,7 @@ use Capell\Core\Models\Layout;
 use Capell\Core\Models\Site;
 use Capell\MigrationAssistant\Actions\ClaimImportSessionForExecutionAction;
 use Capell\MigrationAssistant\Actions\CreateImportRollbackReportAction;
+use Capell\MigrationAssistant\Actions\SealImportRollbackProvenanceAction;
 use Capell\MigrationAssistant\Contracts\PageImportTargetResolver;
 use Capell\MigrationAssistant\Data\ExternalImportPreview;
 use Capell\MigrationAssistant\Data\ExternalPageImportTargetData;
@@ -99,6 +100,10 @@ final class ExecuteExternalPageImportAction
 
             if ($report->isSuccess()) {
                 event(new ImportCompleting($session->refresh()));
+
+                // Completing listeners write the imported pages again (media, authors, baselines), so provenance
+                // is brought up to their final state before the session is marked complete.
+                SealImportRollbackProvenanceAction::run($session);
 
                 $session->forceFill([
                     'status' => ImportSessionStatus::Completed,
