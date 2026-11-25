@@ -6,8 +6,7 @@ namespace Capell\MigrationAssistant\Actions;
 
 use Capell\Core\Facades\CapellCore;
 use Capell\Core\Support\TableName;
-use Capell\HtmlCache\Actions\MarkAllCachedUrlsStaleAction;
-use Capell\HtmlCache\Actions\MarkCachedUrlsForSiteStaleAction;
+use Capell\MigrationAssistant\Bridges\HtmlCache\HtmlCacheStaleBridge;
 use Capell\MigrationAssistant\Support\DatabaseImportWriteGuard;
 use Illuminate\Support\Facades\Schema;
 use Lorisleiva\Actions\Concerns\AsFake;
@@ -44,7 +43,7 @@ final class InvalidateRollbackCachesAction
 
         if ($everySite) {
             try {
-                return MarkAllCachedUrlsStaleAction::run('import_rollback');
+                return HtmlCacheStaleBridge::markAll('import_rollback');
             } catch (Throwable $exception) {
                 if (DatabaseImportWriteGuard::isDedicated()) {
                     throw $exception;
@@ -59,7 +58,7 @@ final class InvalidateRollbackCachesAction
         $marked = 0;
         foreach ($siteIds as $siteId) {
             try {
-                $marked += MarkCachedUrlsForSiteStaleAction::run($siteId, 'import_rollback');
+                $marked += HtmlCacheStaleBridge::markSite($siteId, 'import_rollback');
             } catch (Throwable $exception) {
                 if (DatabaseImportWriteGuard::isDedicated()) {
                     throw $exception;
