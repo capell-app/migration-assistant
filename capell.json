@@ -6,6 +6,7 @@
     "kind": "package",
     "capellApiVersion": "^1.0",
     "version": "1.1.0",
+    "launchStatus": "shipped",
     "description": "Imports pages or whole sites exported from another Capell site, with a review before anything is written and a saved record of each import.",
     "product": {
         "group": "Capell Operations",
